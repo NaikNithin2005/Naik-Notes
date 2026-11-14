@@ -94,6 +94,7 @@ class StrokesTable extends Table {
   TextColumn get pointsJson => text()();
   TextColumn get boundingBoxJson => text()();
   DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(1))();
 
   @override
@@ -113,7 +114,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'naik_notes_local');

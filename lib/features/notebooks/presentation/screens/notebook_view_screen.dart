@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
+import 'package:naik_notes/data/models/stroke_model.dart';
+import 'package:naik_notes/features/canvas/data/stroke_provider.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_canvas.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_toolbar.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/notebooks/data/page_provider.dart';
-import 'package:naik_notes/features/templates/presentation/widgets/paper_template_view.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
 
 /// Notebook reader & writing canvas workspace.
@@ -19,10 +22,6 @@ class NotebookViewScreen extends ConsumerStatefulWidget {
 }
 
 class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
-  String _selectedTool = 'ballpoint';
-  Color _selectedColor = const Color(0xFF1E2A38);
-  final double _strokeWidth = 2.5;
-
   @override
   void initState() {
     super.initState();
@@ -242,11 +241,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
             tooltip: 'Paper Template & Style',
             onPressed: () {
               if (activePage != null) {
-                _openTemplateSettings(
-                  activePage.id,
-                  activeType,
-                  activeProps,
-                );
+                _openTemplateSettings(activePage.id, activeType, activeProps);
               }
             },
           ),
@@ -255,12 +250,22 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
           IconButton(
             icon: const Icon(Icons.undo_rounded),
             tooltip: 'Undo',
-            onPressed: () {},
+            onPressed:
+                activePage != null && ref.watch(canUndoProvider(activePage.id))
+                ? () => ref
+                      .read(strokesNotifierProvider.notifier)
+                      .undo(activePage.id)
+                : null,
           ),
           IconButton(
             icon: const Icon(Icons.redo_rounded),
             tooltip: 'Redo',
-            onPressed: () {},
+            onPressed:
+                activePage != null && ref.watch(canRedoProvider(activePage.id))
+                ? () => ref
+                      .read(strokesNotifierProvider.notifier)
+                      .redo(activePage.id)
+                : null,
           ),
           const VerticalDivider(width: 16, indent: 12, endIndent: 12),
 
@@ -305,145 +310,50 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
       ),
       body: Column(
         children: [
-          // Writing Toolbar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+          // Dynamic Vector Handwriting & Inking Toolbar
+          if (activePage != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: HandwritingToolbar(pageId: activePage.id),
             ),
-            child: Row(
-              children: [
-                // Tool selection buttons
-                _buildToolButton(
-                  'ballpoint',
-                  Icons.edit_rounded,
-                  'Ballpoint Pen',
-                ),
-                _buildToolButton(
-                  'fountain',
-                  Icons.gesture_rounded,
-                  'Fountain Pen',
-                ),
-                _buildToolButton(
-                  'pencil',
-                  Icons.mode_edit_outline_rounded,
-                  'Pencil',
-                ),
-                _buildToolButton(
-                  'highlighter',
-                  Icons.brush_rounded,
-                  'Highlighter',
-                ),
-                _buildToolButton(
-                  'eraser',
-                  Icons.cleaning_services_rounded,
-                  'Eraser',
-                ),
-                _buildToolButton(
-                  'lasso',
-                  Icons.highlight_alt_rounded,
-                  'Lasso Selection',
-                ),
 
-                const VerticalDivider(width: 24, indent: 4, endIndent: 4),
-
-                // Quick Color Swatches
-                ...[
-                  const Color(0xFF1E2A38),
-                  const Color(0xFF1D4ED8),
-                  const Color(0xFFB91C1C),
-                  const Color(0xFF15803D),
-                  const Color(0xFF9E4731),
-                ].map(
-                  (c) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: InkWell(
-                      onTap: () => setState(() => _selectedColor = c),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: c,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _selectedColor == c
-                                ? theme.colorScheme.primary
-                                : Colors.transparent,
-                            width: 2.5,
+          // Paper Page Canvas with Vector Strokes & Interactive Zoom & Pan
+          Expanded(
+            child: activePage == null
+                ? const Center(child: CircularProgressIndicator())
+                : InteractiveViewer(
+                    minScale: 0.4,
+                    maxScale: 3.5,
+                    boundaryMargin: const EdgeInsets.all(80),
+                    panEnabled: ref.watch(activeToolProvider) == ToolType.pan,
+                    scaleEnabled: true,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: HandwritingCanvas(
+                            pageId: activePage.id,
+                            type: activeType,
+                            properties: activeProps,
+                            width: activePage.width,
+                            height: activePage.height,
+                            readOnly:
+                                ref.watch(activeToolProvider) == ToolType.pan,
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-
-                const Spacer(),
-
-                // Stroke width indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${_strokeWidth.toStringAsFixed(1)} pt',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Paper Page Canvas with Interactive Zoom & Pan
-          Expanded(
-            child: InteractiveViewer(
-              minScale: 0.4,
-              maxScale: 3.5,
-              boundaryMargin: const EdgeInsets.all(80),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: PaperTemplateView(
-                    type: activeType,
-                    properties: activeProps,
-                    child: activeProps.showPageNumber
-                        ? Align(
-                            alignment: Alignment.bottomRight,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                right: activeProps.marginRight,
-                                bottom: activeProps.marginBottom / 2,
-                              ),
-                              child: Text(
-                                '$clampedIndex',
-                                style: TextStyle(
-                                  color: Colors.black.withValues(alpha: 0.35),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          )
-                        : null,
-                  ),
-                ),
-              ),
-            ),
           ),
 
           // Bottom Page Navigation Bar
@@ -543,36 +453,6 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildToolButton(String id, IconData icon, String tooltip) {
-    final isSelected = _selectedTool == id;
-    final theme = Theme.of(context);
-
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: () => setState(() => _selectedTool = id),
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          margin: const EdgeInsets.only(right: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.primaryContainer
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
-        ),
       ),
     );
   }

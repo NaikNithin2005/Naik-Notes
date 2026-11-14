@@ -2755,6 +2755,17 @@ class $StrokesTableTable extends StrokesTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -2778,6 +2789,7 @@ class $StrokesTableTable extends StrokesTable
     pointsJson,
     boundingBoxJson,
     createdAt,
+    deletedAt,
     revision,
   ];
   @override
@@ -2864,6 +2876,12 @@ class $StrokesTableTable extends StrokesTable
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -2915,6 +2933,10 @@ class $StrokesTableTable extends StrokesTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -2939,6 +2961,7 @@ class StrokesTableData extends DataClass
   final String pointsJson;
   final String boundingBoxJson;
   final DateTime createdAt;
+  final DateTime? deletedAt;
   final int revision;
   const StrokesTableData({
     required this.id,
@@ -2950,6 +2973,7 @@ class StrokesTableData extends DataClass
     required this.pointsJson,
     required this.boundingBoxJson,
     required this.createdAt,
+    this.deletedAt,
     required this.revision,
   });
   @override
@@ -2964,6 +2988,9 @@ class StrokesTableData extends DataClass
     map['points_json'] = Variable<String>(pointsJson);
     map['bounding_box_json'] = Variable<String>(boundingBoxJson);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     map['revision'] = Variable<int>(revision);
     return map;
   }
@@ -2979,6 +3006,9 @@ class StrokesTableData extends DataClass
       pointsJson: Value(pointsJson),
       boundingBoxJson: Value(boundingBoxJson),
       createdAt: Value(createdAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
       revision: Value(revision),
     );
   }
@@ -2998,6 +3028,7 @@ class StrokesTableData extends DataClass
       pointsJson: serializer.fromJson<String>(json['pointsJson']),
       boundingBoxJson: serializer.fromJson<String>(json['boundingBoxJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       revision: serializer.fromJson<int>(json['revision']),
     );
   }
@@ -3014,6 +3045,7 @@ class StrokesTableData extends DataClass
       'pointsJson': serializer.toJson<String>(pointsJson),
       'boundingBoxJson': serializer.toJson<String>(boundingBoxJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'revision': serializer.toJson<int>(revision),
     };
   }
@@ -3028,6 +3060,7 @@ class StrokesTableData extends DataClass
     String? pointsJson,
     String? boundingBoxJson,
     DateTime? createdAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
     int? revision,
   }) => StrokesTableData(
     id: id ?? this.id,
@@ -3039,6 +3072,7 @@ class StrokesTableData extends DataClass
     pointsJson: pointsJson ?? this.pointsJson,
     boundingBoxJson: boundingBoxJson ?? this.boundingBoxJson,
     createdAt: createdAt ?? this.createdAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     revision: revision ?? this.revision,
   );
   StrokesTableData copyWithCompanion(StrokesTableCompanion data) {
@@ -3058,6 +3092,7 @@ class StrokesTableData extends DataClass
           ? data.boundingBoxJson.value
           : this.boundingBoxJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       revision: data.revision.present ? data.revision.value : this.revision,
     );
   }
@@ -3074,6 +3109,7 @@ class StrokesTableData extends DataClass
           ..write('pointsJson: $pointsJson, ')
           ..write('boundingBoxJson: $boundingBoxJson, ')
           ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('revision: $revision')
           ..write(')'))
         .toString();
@@ -3090,6 +3126,7 @@ class StrokesTableData extends DataClass
     pointsJson,
     boundingBoxJson,
     createdAt,
+    deletedAt,
     revision,
   );
   @override
@@ -3105,6 +3142,7 @@ class StrokesTableData extends DataClass
           other.pointsJson == this.pointsJson &&
           other.boundingBoxJson == this.boundingBoxJson &&
           other.createdAt == this.createdAt &&
+          other.deletedAt == this.deletedAt &&
           other.revision == this.revision);
 }
 
@@ -3118,6 +3156,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
   final Value<String> pointsJson;
   final Value<String> boundingBoxJson;
   final Value<DateTime> createdAt;
+  final Value<DateTime?> deletedAt;
   final Value<int> revision;
   final Value<int> rowid;
   const StrokesTableCompanion({
@@ -3130,6 +3169,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
     this.pointsJson = const Value.absent(),
     this.boundingBoxJson = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3143,6 +3183,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
     required String pointsJson,
     required String boundingBoxJson,
     required DateTime createdAt,
+    this.deletedAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -3164,6 +3205,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
     Expression<String>? pointsJson,
     Expression<String>? boundingBoxJson,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? deletedAt,
     Expression<int>? revision,
     Expression<int>? rowid,
   }) {
@@ -3177,6 +3219,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
       if (pointsJson != null) 'points_json': pointsJson,
       if (boundingBoxJson != null) 'bounding_box_json': boundingBoxJson,
       if (createdAt != null) 'created_at': createdAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
       if (revision != null) 'revision': revision,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3192,6 +3235,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
     Value<String>? pointsJson,
     Value<String>? boundingBoxJson,
     Value<DateTime>? createdAt,
+    Value<DateTime?>? deletedAt,
     Value<int>? revision,
     Value<int>? rowid,
   }) {
@@ -3205,6 +3249,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
       pointsJson: pointsJson ?? this.pointsJson,
       boundingBoxJson: boundingBoxJson ?? this.boundingBoxJson,
       createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       revision: revision ?? this.revision,
       rowid: rowid ?? this.rowid,
     );
@@ -3240,6 +3285,9 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -3261,6 +3309,7 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
           ..write('pointsJson: $pointsJson, ')
           ..write('boundingBoxJson: $boundingBoxJson, ')
           ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('revision: $revision, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5145,6 +5194,7 @@ typedef $$StrokesTableTableCreateCompanionBuilder =
       required String pointsJson,
       required String boundingBoxJson,
       required DateTime createdAt,
+      Value<DateTime?> deletedAt,
       Value<int> revision,
       Value<int> rowid,
     });
@@ -5159,6 +5209,7 @@ typedef $$StrokesTableTableUpdateCompanionBuilder =
       Value<String> pointsJson,
       Value<String> boundingBoxJson,
       Value<DateTime> createdAt,
+      Value<DateTime?> deletedAt,
       Value<int> revision,
       Value<int> rowid,
     });
@@ -5232,6 +5283,11 @@ class $$StrokesTableTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5313,6 +5369,11 @@ class $$StrokesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -5381,6 +5442,9 @@ class $$StrokesTableTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
 
@@ -5445,6 +5509,7 @@ class $$StrokesTableTableTableManager
                 Value<String> pointsJson = const Value.absent(),
                 Value<String> boundingBoxJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => StrokesTableCompanion(
@@ -5457,6 +5522,7 @@ class $$StrokesTableTableTableManager
                 pointsJson: pointsJson,
                 boundingBoxJson: boundingBoxJson,
                 createdAt: createdAt,
+                deletedAt: deletedAt,
                 revision: revision,
                 rowid: rowid,
               ),
@@ -5471,6 +5537,7 @@ class $$StrokesTableTableTableManager
                 required String pointsJson,
                 required String boundingBoxJson,
                 required DateTime createdAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => StrokesTableCompanion.insert(
@@ -5483,6 +5550,7 @@ class $$StrokesTableTableTableManager
                 pointsJson: pointsJson,
                 boundingBoxJson: boundingBoxJson,
                 createdAt: createdAt,
+                deletedAt: deletedAt,
                 revision: revision,
                 rowid: rowid,
               ),

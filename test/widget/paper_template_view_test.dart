@@ -54,75 +54,78 @@ void main() {
 
         // Verify the painter is attached
         final customPaint = tester.widget<CustomPaint>(
-          find.descendant(
-            of: find.byType(PaperTemplateView),
-            matching: find.byType(CustomPaint),
-          ).first,
+          find
+              .descendant(
+                of: find.byType(PaperTemplateView),
+                matching: find.byType(CustomPaint),
+              )
+              .first,
         );
         expect(customPaint.painter, isA<PaperTemplatePainter>());
       }
     });
 
-    testWidgets('TemplateCustomizerSheet opens and selects different template', (
-      tester,
-    ) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 900));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets(
+      'TemplateCustomizerSheet opens and selects different template',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1200, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      PaperTemplateType? appliedType;
-      PaperProperties? appliedProps;
+        PaperTemplateType? appliedType;
+        PaperProperties? appliedProps;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) {
-                return ElevatedButton(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => TemplateCustomizerSheet(
-                        initialType: PaperTemplateType.collegeRuled,
-                        initialProperties: PaperProperties.defaultFor(
-                          PaperTemplateType.collegeRuled,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  return ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => TemplateCustomizerSheet(
+                          initialType: PaperTemplateType.collegeRuled,
+                          initialProperties: PaperProperties.defaultFor(
+                            PaperTemplateType.collegeRuled,
+                          ),
+                          onApply: (type, props, applyToAll) {
+                            appliedType = type;
+                            appliedProps = props;
+                          },
                         ),
-                        onApply: (type, props, applyToAll) {
-                          appliedType = type;
-                          appliedProps = props;
-                        },
-                      ),
-                    );
-                  },
-                  child: const Text('Open Sheet'),
-                );
-              },
+                      );
+                    },
+                    child: const Text('Open Sheet'),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Open sheet
-      await tester.tap(find.text('Open Sheet'));
-      await tester.pumpAndSettle();
+        // Open sheet
+        await tester.tap(find.text('Open Sheet'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Paper Template & Style'), findsOneWidget);
-      expect(find.text('Live Preview'), findsOneWidget);
+        expect(find.text('Paper Template & Style'), findsOneWidget);
+        expect(find.text('Live Preview'), findsOneWidget);
 
-      // Scroll to Cornell Notes and select
-      await tester.ensureVisible(find.text('Cornell Notes'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cornell Notes'));
-      await tester.pumpAndSettle();
+        // Scroll to Cornell Notes and select
+        await tester.ensureVisible(find.text('Cornell Notes'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Cornell Notes'));
+        await tester.pumpAndSettle();
 
-      // Tap Apply Template button
-      await tester.ensureVisible(find.text('Apply Template'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Apply Template'));
-      await tester.pumpAndSettle();
+        // Tap Apply Template button
+        await tester.ensureVisible(find.text('Apply Template'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Apply Template'));
+        await tester.pumpAndSettle();
 
-      expect(appliedType, PaperTemplateType.cornellNotes);
-      expect(appliedProps?.marginLeft, 150.0);
-    });
+        expect(appliedType, PaperTemplateType.cornellNotes);
+        expect(appliedProps?.marginLeft, 150.0);
+      },
+    );
 
     testWidgets(
       'NotebookViewScreen displays PaperTemplateView and page navigation',

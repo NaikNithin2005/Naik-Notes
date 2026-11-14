@@ -14,8 +14,8 @@
 | **Phase 1** | Project Foundation & Architecture | **VERIFIED & COMPLETE** | 16 Flutter Tests + 2 Pytest Tests (100% Passed) | Clean (`0 issues`), Web & Android APK Built |
 | **Phase 2** | Authentication & Session | **VERIFIED & COMPLETE** | 25 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 3** | Notebook Library & Dashboard | **VERIFIED & COMPLETE** | 41 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
-| **Phase 4** | Templates Engine & Cover Gallery | Scheduled | - | - |
-| **Phase 5** | Vector Handwriting Engine | Scheduled | - | - |
+| **Phase 4** | Paper Template Engine & Custom Backgrounds | **VERIFIED & COMPLETE** | 52 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
+| **Phase 5** | Vector Handwriting Engine | **VERIFIED & COMPLETE** | 80 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 6** | PDF Reader & Annotation Engine | Scheduled | - | - |
 | **Phase 7** | Cloud Synchronization & Offline DB | Scheduled | - | - |
 | **Phase 8** | Cross-Platform Optimization | Scheduled | - | - |
@@ -26,93 +26,170 @@
 
 ---
 
-## Phase 3: Notebook Library & Dashboard (Completed)
+## Phase 4: Paper Template Engine & Custom Background Properties (Completed)
 
 ### 1. Implemented Features
-- **Folder Architecture & SQLite Persistence**:
-  - Upgraded Drift SQLite schema to version 2 with `FoldersTable` and `SectionsTable` alongside `NotebooksTable`, `PagesTable`, and `StrokesTable`.
-  - Built immutable `Folder` domain model (`lib/data/models/folder_model.dart`) with `id`, `ownerId`, `parentId`, `name`, `colorHex`, and audit timestamps.
-  - Built `FolderRepository` and `DriftFolderRepository` (`lib/data/repositories/folder_repository.dart`) with `getAllFolders()`, `watchAllFolders()`, `getFolderById()`, `saveFolder()`, `renameFolder()`, `deleteFolder()` (with cascade unfiling of orphaned notebooks), and sample seeding.
-  - Implemented `FoldersNotifier`, `foldersProvider`, `SelectedFolderNotifier`, and `selectedFolderProvider` in `lib/features/folders/data/folder_provider.dart`.
-- **Notebook CRUD & Organization Enhancements**:
-  - Enhanced `Notebook` domain model (`lib/data/models/notebook_model.dart`) with `folderId` and `isArchived` fields.
-  - Added repository and state methods for notebook operations:
-    - `renameNotebook(id, newTitle, newDescription)`: Real-time renaming with SQLite persistence.
-    - `duplicateNotebook(id)`: Full notebook duplication appending "(Copy)" with fresh ID, preserving page templates, orientation, and cover styling.
-    - `moveNotebookToFolder(notebookId, folderId)`: Move between folders or unfile to root library.
-    - `archiveNotebook(id)` / `unarchiveNotebook(id)`: Dedicated archival state separating active notebooks from archived without deletion.
-    - `getNotebooksByFolder(folderId)`: Instant folder-based queries.
-- **Interactive Stationery Dashboard (`DashboardScreen`)**:
-  - **Horizontal Folder Navigation Bar**: Instant filter chips for "All Folders", "Unfiled", custom user folders with color indicators, and a "+ New Folder" action button.
-  - **Filter Segment**: Added "All Notebooks", "Recent", "Favorites", and "Archived" tabs with proper filtering.
-  - **Context Menu on NotebookCard**: 3-dots popup menu (`...`) and List View trailing menu featuring:
-    - *Rename* (opens `RenameNotebookDialog`)
-    - *Duplicate* (creates duplicate copy with notification)
-    - *Move to Folder* (opens `MoveToFolderDialog` with option to create new folder on the fly)
-    - *Archive / Unarchive* (toggles notebook archive status)
-    - *Delete* (safe confirmation dialog moving notebook to trash)
-- **Cover Gallery & Customizer**:
-  - Created `CoverTemplate` model and `CoverRegistry` (`lib/data/models/cover_template_model.dart`) containing 17 curated designs across 10 prompt-specified categories:
-    - *Dark Academia* (Oxford Leather, Cambridge Velvet)
-    - *Minimalist* (Pure Linen Cream, Monolith Charcoal)
-    - *Academic* (Scholar Blue, Ivory League Green)
-    - *Floral* (Vintage Rosewood, Wildflower Field)
-    - *Pastel* (Peach Bellini, Misty Sage)
-    - *Professional* (Executive Onyx, Architect Slate)
-    - *Nature* (Terracotta Clay, Cedar Pine)
-    - *Geometric* (Bauhaus Grid, Honeycomb Gilt)
-    - *Gradient* (Twilight Aurum, Oceanic Depths)
-    - *Abstract* (Venetian Marble)
-  - Upgraded `TemplateGalleryScreen` with tabbed navigation ("Cover Designs" and "Paper Templates"), live interactive 3D notebook cover preview with realistic spine crease, embossed foil title customizer, and one-tap "Create Notebook with this Cover".
-- **Sections Support**:
-  - Created `NotebookSection` domain model (`lib/data/models/section_model.dart`) ready for notebook tab dividers.
+- **Complete 19 Paper Template Suite**:
+  - Implemented the full catalog of all 19 prompt-specified templates in `lib/data/models/paper_template_model.dart`:
+    1. *Blank Paper* (`blank_paper`): Clean stationery canvas with subtle perimeter guide.
+    2. *Narrow Ruled* (`narrow_ruled`): 6.35mm compact line ruling for dense academic notes.
+    3. *College Ruled* (`college_ruled`): 7.1mm standard university line ruling with red margin line.
+    4. *Wide Ruled* (`wide_ruled`): 8.7mm spacious line ruling for larger handwriting styles.
+    5. *Dotted Paper* (`dotted_paper`): 5mm dot grid matrix for bullet journaling and schematics.
+    6. *Square Grid* (`square_grid`): 5mm quad grid for mathematics, tables, and precision graphs.
+    7. *Graph Paper* (`graph_paper`): 1mm precision minor lines with 5mm accented major grid lines.
+    8. *Cornell Notes* (`cornell_notes`): Classic system with top title band, 2.5-inch left cue column, notes area, and 96pt bottom summary block.
+    9. *Meeting Notes* (`meeting_notes`): Header box with date/attendees/location, discussion ruled section, and bottom action items checklist grid.
+    10. *Daily Planner* (`daily_planner`): 06:00 to 21:00 hourly timetable, Top 3 Priorities box, and To-Do checklist.
+    11. *Weekly Planner* (`weekly_planner`): 7-day overview (Mon-Sun columns) with weekly goals banner.
+    12. *Monthly Planner* (`monthly_planner`): 5-row by 7-column calendar grid with notes sidebar.
+    13. *Study Planner* (`study_planner`): Subject/exam countdown header, topics revision table, and R/Y/G status pills.
+    14. *Engineering Paper* (`engineering_paper`): Top title block (Project, Date, Page, Engineer), border margins, pale green tint, and 5x5 quad grid.
+    15. *Isometric Paper* (`isometric_paper`): 60° triangular isometric grid for 3D technical drawing.
+    16. *Music Manuscript* (`music_manuscript`): Standard 5-line musical staves with end bar lines and clef spacing.
+    17. *Checklist* (`checklist`): Rounded checkbox squares with aligned ruled lines.
+    18. *Journal Pages* (`journal_pages`): Ornate double perimeter border with date/weather/mood prompt and faint ruled body lines.
+    19. *Custom Template* (`custom_template`): Fully user-configurable parameters.
+- **Configurable Paper Properties (`PaperProperties`)**:
+  - Paper background tones: Ivory Cream (`#FDFBF7`), Pure White (`#FFFFFF`), Vintage Sepia (`#F5EFEB`), Dark Slate (`#1E2022`), Sage Mint (`#F0F5F2`), and Blush Rose (`#FAF0F2`).
+  - Configurable line spacing (in points and real mm equivalents: 4mm to 15mm).
+  - Configurable grid size (in points and real mm equivalents: 3mm to 12mm).
+  - Margin presets: Narrow (36pt), Standard (56pt), Wide (80pt).
+  - Page size support: A4 (595.28 x 841.89 pt), Letter (612 x 792 pt), A5 (420.94 x 595.28 pt).
+  - Orientation: Portrait & Landscape.
+  - Page numbering toggle.
+- **Drift SQLite Schema v3 & Page Persistence**:
+  - Added `templatePropertiesJson` to `PagesTable` in `AppDatabase` (schema v3).
+  - Built `DriftPageRepository` supporting page creation, template updates, per-page custom properties, and mixing multiple different paper templates in one notebook.
+  - Built `NotebookPagesNotifier` and `CurrentPageNotifier` in `lib/features/notebooks/data/page_provider.dart`.
+- **Vector Rendering Engine (`PaperTemplatePainter`)**:
+  - Sub-millimeter accurate vector drawing in document coordinates via `CustomPainter`.
+  - Infinitely sharp rendering at any zoom level or screen DPI.
+  - `PaperTemplateView` widget with aspect-ratio constraint, paper drop shadows, and responsive scaling.
+- **Interactive Template Customizer (`TemplateCustomizerSheet`)**:
+  - Interactive split modal: Template catalog & sliders on the left, live miniature paper preview on the right.
+  - Live preview updates in real-time as sliders and background swatches change.
+  - Toggle to apply customizations to the current page or across all pages in the notebook.
+- **Notebook Viewer Workspace Integration (`NotebookViewScreen`)**:
+  - Embedded vector `PaperTemplateView` inside an `InteractiveViewer` supporting smooth zoom (0.4x - 3.5x) and pan navigation.
+  - Top bar "Paper Template & Style" button for instant customization.
+  - Bottom page navigation bar with `< Previous`, `Page X of Y`, `Next >`, and `+ Add Page` button with template selection popup.
 
 ### 2. Files Created & Modified
-- `lib/data/local/app_database.dart` (Schema version 2: FoldersTable, SectionsTable, isArchived column)
+- `lib/data/local/app_database.dart` (Schema version 3 with `templatePropertiesJson` on `PagesTable`)
 - `lib/data/local/app_database.g.dart` (Generated Drift code)
-- `lib/data/local/database_provider.dart` (Added `folderRepositoryProvider`)
-- `lib/data/models/folder_model.dart` (Folder domain model)
-- `lib/data/models/section_model.dart` (Section domain model)
-- `lib/data/models/notebook_model.dart` (Added `folderId`, `isArchived`)
-- `lib/data/models/cover_template_model.dart` (Cover registry across 10 categories)
-- `lib/data/repositories/folder_repository.dart` (Drift SQLite Folder persistence)
-- `lib/data/repositories/notebook_repository.dart` (Rename, duplicate, move, archive, folder queries)
-- `lib/features/folders/data/folder_provider.dart` (Folder state management)
-- `lib/features/folders/presentation/widgets/create_folder_dialog.dart` (Create folder dialog)
-- `lib/features/notebooks/data/notebook_provider.dart` (State management with folder & CRUD support)
-- `lib/features/notebooks/presentation/widgets/create_notebook_dialog.dart` (Folder selection & cover picker)
-- `lib/features/notebooks/presentation/widgets/rename_notebook_dialog.dart` (Rename modal)
-- `lib/features/notebooks/presentation/widgets/move_to_folder_dialog.dart` (Move to folder modal)
-- `lib/features/dashboard/presentation/screens/dashboard_screen.dart` (Folder bar, context menus, archive tab)
-- `lib/features/dashboard/presentation/widgets/notebook_card.dart` (Context actions menu, archived badge)
-- `lib/features/templates/presentation/screens/template_gallery_screen.dart` (Cover gallery, customizer & preview)
-- `test/unit/folder_model_and_repo_test.dart` (Folder model & SQLite CRUD tests)
-- `test/unit/notebook_crud_test.dart` (Notebook CRUD, duplicate, move, archive tests)
-- `test/widget/folder_and_actions_test.dart` (Folder chips, dialogs, context menu widget tests)
+- `lib/data/local/database_provider.dart` (Added `pageRepositoryProvider`)
+- `lib/data/models/paper_template_model.dart` (19 templates catalog, default generators, PaperProperties, document dimension math)
+- `lib/data/models/page_model.dart` (NotebookPage entity with template and PaperProperties)
+- `lib/data/repositories/page_repository.dart` (DriftPageRepository with SQLite persistence)
+- `lib/features/notebooks/data/page_provider.dart` (State management for notebook pages & active page index)
+- `lib/features/templates/presentation/painters/paper_template_painter.dart` (Vector CustomPainter for all 19 templates)
+- `lib/features/templates/presentation/widgets/paper_template_view.dart` (Paper canvas widget)
+- `lib/features/templates/presentation/widgets/template_customizer_sheet.dart` (Deep customization modal with live preview)
+- `lib/features/notebooks/presentation/screens/notebook_view_screen.dart` (Workspace with zoom, page navigation, and template customizer)
+- `lib/features/templates/presentation/screens/template_gallery_screen.dart` (Catalog with all 19 templates and customizer dialog)
+- `test/unit/paper_template_model_test.dart` (All 19 templates, default generators, JSON serialization, dimension math)
+- `test/unit/page_repository_test.dart` (SQLite page CRUD, template updates, multiple template mixing)
+- `test/widget/paper_template_view_test.dart` (Vector rendering, customizer sheet interactions, notebook view navigation)
 
 ### 3. Verification & Test Results
-- `dart format lib test`: **100% formatted** (46 files verified, 17 updated).
-- `flutter analyze`: **0 issues found** (Clean, zero warnings/errors).
-- `flutter test`: **41 of 41 tests passed (100%)**:
-  - `folder_model_and_repo_test.dart` (5 tests): Serialization, copyWith, save/retrieve, rename, cascade unfile on delete, sample folders.
-  - `notebook_crud_test.dart` (5 tests): Renaming, duplicate with suffix and fresh ID, moving/unfiling folders, archive/unarchive, folder queries.
-  - `folder_and_actions_test.dart` (5 tests): Folder chips on dashboard, CreateFolderDialog validation, notebook context menu actions, rename dialog, move dialog.
-  - `user_model_test.dart` (4 tests): User serialization, guest factory, copyWith.
-  - `auth_provider_test.dart` (5 tests): Guest session, login, invalid credentials, register, logout.
-  - `auth_screens_test.dart` (4 tests): Login UI, guest button, register UI, mismatch validation.
-  - `drift_persistence_test.dart` (3 tests): SQLite persistence, favorite toggle, sample seeding.
-  - `notebook_model_test.dart` (3 tests): Serialization, copyWith, defaults.
-  - `notebook_provider_test.dart` (4 tests): Provider state, add, toggle favorite, delete.
-  - `app_smoke_test.dart` (3 tests): Smoke tests, create dialog validation, grid layout.
-- `python -m pytest backend/tests -v`: **3 of 3 tests passed (100%)**:
-  - `test_register_and_login_flow`: Auth API register/login.
-  - `test_health_check`: Backend health endpoint.
-  - `test_list_notebooks`: Sample listing.
-- `flutter build web --release`: **SUCCESS** (`build\web` generated in 103.7s).
+- `dart format lib test`: **100% formatted** (56 files verified).
+- `flutter analyze`: **0 issues found** (Clean, 0 warnings, 0 errors).
+- `flutter test`: **52 of 52 tests passed (100%)**:
+  - `paper_template_model_test.dart` (4 tests): 19 template types, default generators, JSON serialization, dimension math.
+  - `page_repository_test.dart` (4 tests): SQLite page CRUD, template updates, deletion, multiple template mixing.
+  - `paper_template_view_test.dart` (3 tests): Vector canvas rendering across templates, customizer sheet interactions, notebook navigation.
+  - `folder_model_and_repo_test.dart` (5 tests): Folder SQLite CRUD, cascading unfiling.
+  - `notebook_crud_test.dart` (5 tests): Rename, duplicate, move, archive, folder queries.
+  - `folder_and_actions_test.dart` (5 tests): Dashboard folder chips, dialogs, notebook actions.
+  - Plus all user, auth, drift persistence, and smoke tests (31 tests).
+- `python -m pytest backend/tests -v`: **3 of 3 tests passed (100%)**.
+- `flutter build web --release`: **SUCCESS** (`build\web` generated).
 
 ### 4. Known Limitations
-- Vector strokes and bezier smoothing engine will be connected to pages in Phase 5.
-- Multi-device sync queue will connect to remote Firestore/Storage in Phase 7.
+- Vector stroke capture and bezier smoothing will be connected to pages in Phase 5.
+- Stylus tilt/pressure hardware integration will be layered onto the vector strokes in Phase 5.
 
 ### 5. Next Tasks
-- Proceed to Phase 4: Paper Template Engine & Custom Background Properties (19 paper templates, custom line spacing, grid sizes, margins, custom background colors, and template mixing per notebook).
+- Proceed to Phase 5: Advanced Handwriting Engine (Ballpoint, fountain pen, pencil, highlighter, eraser, lasso selection, vector stroke persistence, pressure/tilt adapters, and undo/redo history).
+
+---
+
+## Phase 5: Advanced Vector Handwriting Engine (Completed)
+
+### 1. Implemented Features
+- **Vector Stroke Data Model (`lib/data/models/stroke_model.dart`)**:
+  - `StrokePoint`: Encapsulates `(x, y)` in resolution-independent document space, `pressure` (0.0 to 1.0), `tilt` (radians), and millisecond timestamp.
+  - `Stroke`: Immutable entity representing a completed vector stroke with `id`, `pageId`, `tool` (`ToolType`), `colorValue`, `width`, `opacity`, `points`, `boundingBox`, `revision`, `createdAt`, and optional `deletedAt` for soft-deletion.
+  - Vector bounding box computation with stroke-width padding.
+  - Geometry utilities: Segment hit-testing (`containsPoint`) with distance threshold and lasso containment (`isInsidePolygon`) using ray-casting.
+  - Non-destructive vector geometric transformations: `translated(Offset delta)` and `scaled(scaleX, scaleY, origin)`.
+  - JSON serialization and deserialization.
+- **Mathematical Curve Smoothing & Multi-Tool Path Generator (`lib/features/canvas/rendering/stroke_path_builder.dart`)**:
+  - `StrokePathBuilder`: Converts raw sampled points into optimized Flutter `Path` and `Paint` configurations for every tool:
+    - *Ballpoint Pen*: Midpoint quadratic Bezier curve interpolation with uniform stroke width and round caps.
+    - *Fountain Pen*: Authentic calligraphic dynamic-width extruded outline ribbon modulated by pressure, velocity, and a 45° nib angle.
+    - *Brush Pen*: Wide dynamic pressure sensitivity (0.2x to 2.4x) with elastic Bezier tapering.
+    - *Highlighter*: Chisel profile with flat caps, rendered in a dedicated underlay pass so highlighters sit naturally underneath ink.
+    - *Pencil*: Pressure-sensitive opacity and width modulation mimicking graphite pencil texture.
+    - *Laser Pointer*: High-visibility neon glowing pointer trail with solid blur mask filter.
+    - *Shape Tool*: Auto-fits rough geometric hand-drawn loops and lines into sharp geometric primitives (circles, rounded rectangles, lines).
+    - *Lasso Tool*: Dashed selection loop for grouping and manipulating vector handwriting.
+    - *Pan Tool*: Navigation mode allowing mouse/touch panning across the document.
+- **Multi-Layer Hardware-Accelerated Canvas Painters**:
+  - `StrokePainter` (`lib/features/canvas/rendering/stroke_painter.dart`): Two-pass vector renderer with viewport culling to avoid drawing off-screen strokes.
+  - `ActiveStrokePainter` (`lib/features/canvas/rendering/active_stroke_painter.dart`): Direct painter dedicated to zero-latency rendering of in-flight strokes.
+  - `LassoPainter` (`lib/features/canvas/rendering/lasso_painter.dart`): Dashed marquee loop, animated selection bounding box, and corner transformation handles.
+- **Persistent SQLite Vector Storage (`lib/data/repositories/stroke_repository.dart`)**:
+  - Drift schema v4: `StrokesTable` with `id`, `pageId`, `toolType`, `colorValue`, `width`, `opacity`, `pointsJson`, `boundingBoxJson`, `createdAt`, `deletedAt`, `revision`.
+  - `DriftStrokeRepository`: Full CRUD, batch inserts, soft deletion, and page-scoped stroke clearing.
+- **Handwriting State Management & Undo/Redo Engine (`lib/features/canvas/data/stroke_provider.dart`)**:
+  - `StrokesNotifier` with undo/redo stack (`AddStrokeAction`, `DeleteStrokesAction`, `TransformStrokesAction`, `ClearPageAction`).
+  - Object and spatial erasing with configurable hit-test radius.
+  - Lasso selection, translation, scaling, duplication, copy & paste across pages.
+  - Hardware palm rejection: filters single-finger drawing when stylus is active.
+  - Inverted stylus detection: automatically activates eraser when digitizer is flipped.
+- **UI Workspace Integration**:
+  - `HandwritingCanvas` (`lib/features/canvas/presentation/widgets/handwriting_canvas.dart`): Interactive vector canvas mapped 1:1 to document points over `PaperTemplateView`.
+  - `HandwritingToolbar` (`lib/features/canvas/presentation/widgets/handwriting_toolbar.dart`): Floating tool palette with tool pickers, quick ink colors, highlighter swatches, width presets, undo/redo controls, and palm rejection indicator.
+  - Integrated with `NotebookViewScreen`'s `InteractiveViewer` for pinch-to-zoom and pan navigation.
+
+### 2. Files Created & Modified
+- `lib/data/local/app_database.dart` (Schema v4 with `StrokesTable` & `deletedAt`)
+- `lib/data/local/app_database.g.dart` (Generated Drift code)
+- `lib/data/local/database_provider.dart` (Exposed `strokeRepositoryProvider`)
+- `lib/data/models/stroke_model.dart` (`ToolType`, `StrokePoint`, `Stroke`, hit-testing, polygon containment, transformations)
+- `lib/data/repositories/stroke_repository.dart` (`StrokeRepository` & `DriftStrokeRepository`)
+- `lib/features/canvas/rendering/stroke_path_builder.dart` (Catmull-Rom/Bezier smoothing, variable-width extrusion, chisel tip, shapes)
+- `lib/features/canvas/rendering/stroke_painter.dart` (Two-pass stroke painter with viewport culling)
+- `lib/features/canvas/rendering/active_stroke_painter.dart` (Zero-latency active stroke painter)
+- `lib/features/canvas/rendering/lasso_painter.dart` (Lasso loop, dashed selection box, corner handles)
+- `lib/features/canvas/data/stroke_provider.dart` (State management, undo/redo, lasso, clipboard, palm rejection)
+- `lib/features/canvas/presentation/widgets/handwriting_canvas.dart` (Pointer event listener, document-space coordinate mapping, layered canvas)
+- `lib/features/canvas/presentation/widgets/handwriting_toolbar.dart` (Tool buttons, ink palettes, width chips, undo/redo controls)
+- `lib/features/notebooks/presentation/screens/notebook_view_screen.dart` (Integrated `HandwritingCanvas` and `HandwritingToolbar`)
+- `test/unit/stroke_model_test.dart` (Point serialization, bounding box, hit-testing, polygon containment, transformations)
+- `test/unit/stroke_path_builder_test.dart` (Smoothing and path generation across all tool types)
+- `test/unit/stroke_repository_test.dart` (Drift SQLite persistence, batch saving, soft deletion, restore, clear page)
+- `test/unit/stroke_provider_test.dart` (StrokesNotifier, undo/redo, erase hit test, lasso selection, translation, duplicate, paste)
+- `test/widget/handwriting_canvas_test.dart` (Toolbar rendering, tool switching, pointer stroke drawing, undo action)
+
+### 3. Verification & Test Results
+- `dart format lib test`: **100% formatted** (57 files checked).
+- `flutter analyze`: **0 issues found** (Clean, 0 warnings, 0 errors).
+- `flutter test`: **80 of 80 tests passed (100%)**:
+  - `stroke_model_test.dart` (6 tests): Instantiation, serialization, bounding box, containsPoint, isInsidePolygon, translated, scaled.
+  - `stroke_path_builder_test.dart` (7 tests): Ballpoint, fountain, brush, highlighter, pencil, laser pointer, single-point stroke.
+  - `stroke_repository_test.dart` (4 tests): SQLite stroke CRUD, batch saving, soft-delete & restore, page-scoped clear.
+  - `stroke_provider_test.dart` (6 tests): Add stroke, undo/redo, eraseAt, lasso translate/deselect, duplicate, copy & paste.
+  - `handwriting_canvas_test.dart` (3 tests): Toolbar rendering, tool & width switching, pointer drawing and undo on canvas.
+  - Plus all paper template, page, folder, notebook CRUD, user, auth, and smoke tests (54 tests).
+- `python -m pytest backend/tests -v`: **3 of 3 tests passed (100%)**.
+- `flutter build web --release`: **SUCCESS** (`build\web` generated).
+
+### 4. Known Limitations
+- Native Apple Pencil double-tap and Android digitizer side-button platform channels will be connected with native Swift/Kotlin plugins in Phase 8.
+- PDF rendering and stroke overlay layer will be integrated in Phase 6.
+
+### 5. Next Tasks
+- Proceed to Phase 6: PDF Reader & Annotation Engine (PDF import, high-performance page rendering, PDF thumbnail sidebar, custom annotation layer, and PDF export).
