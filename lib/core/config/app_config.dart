@@ -15,6 +15,7 @@ class AppConfig {
   static const bool enableAudioRecording = true;
   static const bool enableCloudSync = true;
   static const bool enableVectorSmoothing = true;
+  static bool enablePeriodicSync = false;
 
   // Defaults
   static const double defaultPageWidth = 595.28; // Standard A4 points (72 DPI)

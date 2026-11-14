@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../data/local/database_provider.dart';
 import '../../../services/sync/sync_service.dart';
 
@@ -74,27 +75,11 @@ final syncServiceProvider = Provider<SyncService>((ref) {
 /// Riverpod notifier managing synchronization state, triggers, and auto-sync timer.
 class SyncNotifier extends Notifier<SyncState> {
   Timer? _autoSyncTimer;
-  StreamSubscription<int>? _queueSub;
 
   @override
   SyncState build() {
-    final queueRepo = ref.watch(syncQueueRepositoryProvider);
-
-    // Subscribe to pending queue count changes
-    _queueSub?.cancel();
-    _queueSub = queueRepo.watchPendingCount().listen((count) {
-      state = state.copyWith(pendingCount: count);
-      // Auto-trigger sync if autoSync is on and pending count increases
-      if (state.autoSyncEnabled &&
-          count > 0 &&
-          state.status != SyncUiStatus.syncing) {
-        syncNow();
-      }
-    });
-
     ref.onDispose(() {
       _autoSyncTimer?.cancel();
-      _queueSub?.cancel();
     });
 
     _startPeriodicSync();
@@ -104,6 +89,7 @@ class SyncNotifier extends Notifier<SyncState> {
 
   void _startPeriodicSync() {
     _autoSyncTimer?.cancel();
+    if (!AppConfig.enablePeriodicSync) return;
     // Periodic poll every 45 seconds
     _autoSyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
       if (state.autoSyncEnabled && state.status != SyncUiStatus.syncing) {
@@ -115,11 +101,20 @@ class SyncNotifier extends Notifier<SyncState> {
   void toggleAutoSync(bool enabled) {
     state = state.copyWith(autoSyncEnabled: enabled);
     if (enabled) {
-      _startPeriodicSync();
-      syncNow();
+      if (AppConfig.enablePeriodicSync) {
+        _startPeriodicSync();
+      }
     } else {
       _autoSyncTimer?.cancel();
     }
+  }
+
+  Future<void> updatePendingCount() async {
+    try {
+      final queueRepo = ref.read(syncQueueRepositoryProvider);
+      final count = await queueRepo.getPendingCount();
+      state = state.copyWith(pendingCount: count);
+    } catch (_) {}
   }
 
   Future<SyncResult> syncNow({String ownerId = 'local_user'}) async {
@@ -131,7 +126,10 @@ class SyncNotifier extends Notifier<SyncState> {
       );
     }
 
-    state = state.copyWith(status: SyncUiStatus.syncing, clearError: true);
+    state = state.copyWith(
+      status: SyncUiStatus.syncing,
+      clearError: true,
+    );
 
     final syncService = ref.read(syncServiceProvider);
     final result = await syncService.syncAll(ownerId: ownerId);
@@ -151,9 +149,10 @@ class SyncNotifier extends Notifier<SyncState> {
       );
     } else {
       state = state.copyWith(
-        status: result.errorMessage?.contains('offline') == true
-            ? SyncUiStatus.offline
-            : SyncUiStatus.error,
+        status:
+            result.errorMessage?.contains('offline') == true
+                ? SyncUiStatus.offline
+                : SyncUiStatus.error,
         lastError: result.errorMessage,
       );
     }
