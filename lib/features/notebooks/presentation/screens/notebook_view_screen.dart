@@ -9,7 +9,12 @@ import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_canv
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_toolbar.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/notebooks/data/page_provider.dart';
+import 'package:naik_notes/features/pdf/data/sticky_note_provider.dart';
+import 'package:naik_notes/features/pdf/presentation/widgets/pdf_document_search_bar.dart';
+import 'package:naik_notes/features/pdf/presentation/widgets/pdf_thumbnail_sidebar.dart';
+import 'package:naik_notes/features/pdf/presentation/widgets/sticky_note_widget.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
+import 'package:naik_notes/services/pdf/pdf_service.dart';
 
 /// Notebook reader & writing canvas workspace.
 class NotebookViewScreen extends ConsumerStatefulWidget {
@@ -22,6 +27,11 @@ class NotebookViewScreen extends ConsumerStatefulWidget {
 }
 
 class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
+  bool _showThumbnails = false;
+  bool _showSearch = false;
+  bool _isContinuousScroll = false;
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +49,14 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
             pageSize: nb.pageSize,
             orientation: nb.orientation,
             count: nb.pageCount,
-          );
+          )
+          .then((_) {
+            final loaded =
+                ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+            for (final p in loaded) {
+              ref.read(stickyNotesProvider.notifier).loadStickyNotes(p.id);
+            }
+          });
     });
   }
 
@@ -225,7 +242,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              notebook.title,
+              _searchQuery.isNotEmpty
+                  ? '${notebook.title} (Search: "$_searchQuery")'
+                  : notebook.title,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
             Text(
@@ -235,6 +254,77 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
           ],
         ),
         actions: [
+          // Thumbnail Sidebar Toggle
+          IconButton(
+            icon: Icon(
+              _showThumbnails
+                  ? Icons.view_sidebar
+                  : Icons.view_sidebar_outlined,
+            ),
+            tooltip: 'Page Thumbnails',
+            onPressed: () => setState(() => _showThumbnails = !_showThumbnails),
+          ),
+
+          // Bookmark Page Toggle
+          if (activePage != null)
+            IconButton(
+              icon: Icon(
+                activePage.isBookmarked
+                    ? Icons.bookmark
+                    : Icons.bookmark_border,
+                color: activePage.isBookmarked ? Colors.amber[700] : null,
+              ),
+              tooltip: activePage.isBookmarked
+                  ? 'Remove Bookmark'
+                  : 'Bookmark Page',
+              onPressed: () {
+                ref
+                    .read(notebookPagesProvider.notifier)
+                    .toggleBookmark(widget.notebookId, activePage.id);
+              },
+            ),
+
+          // Add Sticky Note
+          if (activePage != null)
+            IconButton(
+              icon: const Icon(Icons.note_add_outlined),
+              tooltip: 'Add Sticky Note',
+              onPressed: () async {
+                await ref
+                    .read(stickyNotesProvider.notifier)
+                    .addStickyNote(activePage.id, x: 80.0, y: 100.0);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Sticky Note added! Drag to move, tap to edit.',
+                      ),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+
+          // View Mode Toggle (Single vs Continuous Scroll)
+          IconButton(
+            icon: Icon(
+              _isContinuousScroll ? Icons.view_stream : Icons.crop_portrait,
+            ),
+            tooltip: _isContinuousScroll
+                ? 'Single Page View'
+                : 'Continuous Scroll View',
+            onPressed: () =>
+                setState(() => _isContinuousScroll = !_isContinuousScroll),
+          ),
+
+          // Search in Document
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search Document',
+            onPressed: () => setState(() => _showSearch = !_showSearch),
+          ),
+
           // Template / Paper Customizer Button
           IconButton(
             icon: const Icon(Icons.tune_rounded),
@@ -295,159 +385,287 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
             },
           ),
 
-          // Export
+          // Export Flattened PDF
           IconButton(
             icon: const Icon(Icons.share_outlined),
-            tooltip: 'Export Notebook',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Exporting notebook to PDF...')),
+            tooltip: 'Export Flattened PDF',
+            onPressed: () async {
+              final pdfService = ref.read(pdfServiceProvider);
+              final strokesState = ref.read(strokesNotifierProvider);
+              final stickyNotesState = ref.read(stickyNotesProvider);
+
+              final bytes = await pdfService.exportFlattenedPdf(
+                notebook: notebook,
+                pages: pages,
+                strokesPerPage: strokesState.pageStrokes,
+                stickyNotesPerPage: stickyNotesState,
               );
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Flattened PDF generated (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB, ${pages.length} pages)!',
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
             },
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
+      body: Row(
         children: [
-          // Dynamic Vector Handwriting & Inking Toolbar
-          if (activePage != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: HandwritingToolbar(pageId: activePage.id),
+          // Collapsible PDF / Document Thumbnail Sidebar
+          if (_showThumbnails)
+            PdfThumbnailSidebar(
+              notebookId: widget.notebookId,
+              pages: pages,
+              currentPageIndex: clampedIndex,
+              onSelectPage: (pageIndex) {
+                ref.read(currentPageIndexProvider.notifier).setPage(pageIndex);
+              },
+              onClose: () => setState(() => _showThumbnails = false),
             ),
 
-          // Paper Page Canvas with Vector Strokes & Interactive Zoom & Pan
           Expanded(
-            child: activePage == null
-                ? const Center(child: CircularProgressIndicator())
-                : InteractiveViewer(
-                    minScale: 0.4,
-                    maxScale: 3.5,
-                    boundaryMargin: const EdgeInsets.all(80),
-                    panEnabled: ref.watch(activeToolProvider) == ToolType.pan,
-                    scaleEnabled: true,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: HandwritingCanvas(
-                            pageId: activePage.id,
-                            type: activeType,
-                            properties: activeProps,
-                            width: activePage.width,
-                            height: activePage.height,
-                            readOnly:
-                                ref.watch(activeToolProvider) == ToolType.pan,
-                          ),
-                        ),
-                      ),
+            child: Column(
+              children: [
+                // In-Document Search Bar
+                if (_showSearch)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    child: PdfDocumentSearchBar(
+                      onSearch: (q) => setState(() => _searchQuery = q),
+                      onNextMatch: () {},
+                      onPreviousMatch: () {},
+                      onClose: () => setState(() => _showSearch = false),
                     ),
                   ),
-          ),
 
-          // Bottom Page Navigation Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 6,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Previous Page Button
-                IconButton.filledTonal(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
-                  tooltip: 'Previous Page',
-                  onPressed: clampedIndex > 1
-                      ? () {
-                          ref
-                              .read(currentPageIndexProvider.notifier)
-                              .prevPage();
-                        }
-                      : null,
-                ),
-
-                // Page indicator & Template summary
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Page $clampedIndex / ${pages.isEmpty ? 1 : pages.length}',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                // Dynamic Vector Handwriting & Inking Toolbar
+                if (activePage != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
                     ),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        activeType.displayName,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onPrimaryContainer,
+                    child: HandwritingToolbar(pageId: activePage.id),
+                  ),
+
+                // Workspace: Continuous Scroll vs. Interactive Single Page
+                Expanded(
+                  child: activePage == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : _isContinuousScroll
+                      ? ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          itemCount: pages.length,
+                          itemBuilder: (ctx, idx) {
+                            final p = pages[idx];
+                            final pType = p.templateType;
+                            final pProps = p.properties;
+                            final stickyNotes = ref.watch(
+                              pageStickyNotesProvider(p.id),
+                            );
+
+                            return Center(
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    HandwritingCanvas(
+                                      pageId: p.id,
+                                      type: pType,
+                                      properties: pProps,
+                                      width: p.width,
+                                      height: p.height,
+                                      readOnly:
+                                          ref.watch(activeToolProvider) ==
+                                          ToolType.pan,
+                                    ),
+                                    ...stickyNotes.map(
+                                      (note) => StickyNoteWidget(note: note),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : InteractiveViewer(
+                          minScale: 0.4,
+                          maxScale: 3.5,
+                          boundaryMargin: const EdgeInsets.all(80),
+                          panEnabled:
+                              ref.watch(activeToolProvider) == ToolType.pan,
+                          scaleEnabled: true,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    HandwritingCanvas(
+                                      pageId: activePage.id,
+                                      type: activeType,
+                                      properties: activeProps,
+                                      width: activePage.width,
+                                      height: activePage.height,
+                                      readOnly:
+                                          ref.watch(activeToolProvider) ==
+                                          ToolType.pan,
+                                    ),
+                                    ...ref
+                                        .watch(
+                                          pageStickyNotesProvider(
+                                            activePage.id,
+                                          ),
+                                        )
+                                        .map(
+                                          (note) =>
+                                              StickyNoteWidget(note: note),
+                                        ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
                 ),
 
-                // Next Page & Add Page Buttons
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton.filledTonal(
-                      icon: const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 16,
+                // Bottom Page Navigation Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 6,
+                        offset: const Offset(0, -2),
                       ),
-                      tooltip: 'Next Page',
-                      onPressed: clampedIndex < pages.length
-                          ? () {
-                              ref
-                                  .read(currentPageIndexProvider.notifier)
-                                  .nextPage(pages.length);
-                            }
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Add Page'),
-                      onPressed: _showAddPageDialog,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Previous Page Button
+                      IconButton.filledTonal(
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 16,
                         ),
+                        tooltip: 'Previous Page',
+                        onPressed: clampedIndex > 1
+                            ? () {
+                                ref
+                                    .read(currentPageIndexProvider.notifier)
+                                    .prevPage();
+                              }
+                            : null,
                       ),
-                    ),
-                  ],
+
+                      // Page indicator & Template summary
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Page $clampedIndex / ${pages.isEmpty ? 1 : pages.length}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              activeType.displayName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Next Page & Add Page Buttons
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton.filledTonal(
+                            icon: const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                            ),
+                            tooltip: 'Next Page',
+                            onPressed: clampedIndex < pages.length
+                                ? () {
+                                    ref
+                                        .read(currentPageIndexProvider.notifier)
+                                        .nextPage(pages.length);
+                                  }
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Add Page'),
+                            onPressed: _showAddPageDialog,
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

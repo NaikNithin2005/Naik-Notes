@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/create_notebook_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/move_to_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/rename_notebook_dialog.dart';
+import 'package:naik_notes/services/pdf/pdf_service.dart';
 
 import '../widgets/notebook_card.dart';
 import '../widgets/sync_status_badge.dart';
@@ -86,13 +88,50 @@ class DashboardScreen extends ConsumerWidget {
     }
   }
 
-  void _importPdf(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('PDF Import selected. Opening document picker...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+  Future<void> _importPdf(BuildContext context, WidgetRef ref) async {
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (files.isNotEmpty) {
+        final file = files.first;
+        final bytes = await file.readAsBytes();
+        final name = file.name;
+
+        if (bytes.isNotEmpty) {
+          final pdfService = ref.read(pdfServiceProvider);
+          final newNotebook = await pdfService.importPdfFromBytes(
+            bytes: bytes,
+            filename: name,
+          );
+
+          await ref.read(notebooksProvider.notifier).loadNotebooks();
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Imported "${newNotebook.title}" (${newNotebook.pageCount} pages)',
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            context.go('${RouteNames.notebookView}?id=${newNotebook.id}');
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not import PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Color _parseColor(String hex) {
@@ -327,7 +366,7 @@ class DashboardScreen extends ConsumerWidget {
 
                       // Import PDF button
                       OutlinedButton.icon(
-                        onPressed: () => _importPdf(context),
+                        onPressed: () => _importPdf(context, ref),
                         icon: const Icon(
                           Icons.picture_as_pdf_outlined,
                           size: 18,

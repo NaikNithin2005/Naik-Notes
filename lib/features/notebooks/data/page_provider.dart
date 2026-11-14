@@ -111,6 +111,19 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
     await _repository.updatePageTemplate(pageId, templateId, properties);
   }
 
+  Future<void> toggleBookmark(String notebookId, String pageId) async {
+    final currentPages = state[notebookId] ?? [];
+    final updatedList = [
+      for (final p in currentPages)
+        if (p.id == pageId)
+          p.copyWith(isBookmarked: !p.isBookmarked, updatedAt: DateTime.now())
+        else
+          p,
+    ];
+    state = {...state, notebookId: updatedList};
+    await _repository.toggleBookmark(pageId);
+  }
+
   Future<void> deletePage(String notebookId, String pageId) async {
     final currentPages = state[notebookId] ?? [];
     if (currentPages.length <= 1) return; // Keep at least one page

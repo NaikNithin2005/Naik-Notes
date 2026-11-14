@@ -13,6 +13,8 @@ class Notebook {
   final int pageCount;
   final bool isFavorite;
   final bool isArchived;
+  final bool isPdf;
+  final String? pdfPath;
   final int revision;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -32,6 +34,8 @@ class Notebook {
     this.pageCount = 1,
     this.isFavorite = false,
     this.isArchived = false,
+    this.isPdf = false,
+    this.pdfPath,
     this.revision = 1,
     required this.createdAt,
     required this.updatedAt,
@@ -52,6 +56,8 @@ class Notebook {
     int? pageCount,
     bool? isFavorite,
     bool? isArchived,
+    bool? isPdf,
+    String? pdfPath,
     int? revision,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -72,6 +78,8 @@ class Notebook {
       pageCount: pageCount ?? this.pageCount,
       isFavorite: isFavorite ?? this.isFavorite,
       isArchived: isArchived ?? this.isArchived,
+      isPdf: isPdf ?? this.isPdf,
+      pdfPath: pdfPath ?? this.pdfPath,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -94,6 +102,8 @@ class Notebook {
       'pageCount': pageCount,
       'isFavorite': isFavorite,
       'isArchived': isArchived,
+      'isPdf': isPdf,
+      'pdfPath': pdfPath,
       'revision': revision,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -116,6 +126,8 @@ class Notebook {
       pageCount: json['pageCount'] as int? ?? 1,
       isFavorite: json['isFavorite'] as bool? ?? false,
       isArchived: json['isArchived'] as bool? ?? false,
+      isPdf: json['isPdf'] as bool? ?? false,
+      pdfPath: json['pdfPath'] as String?,
       revision: json['revision'] as int? ?? 1,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),

@@ -673,6 +673,30 @@ class $NotebooksTableTable extends NotebooksTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isPdfMeta = const VerificationMeta('isPdf');
+  @override
+  late final GeneratedColumn<bool> isPdf = GeneratedColumn<bool>(
+    'is_pdf',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_pdf" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _pdfPathMeta = const VerificationMeta(
+    'pdfPath',
+  );
+  @override
+  late final GeneratedColumn<String> pdfPath = GeneratedColumn<String>(
+    'pdf_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -745,6 +769,8 @@ class $NotebooksTableTable extends NotebooksTable
     pageCount,
     isFavorite,
     isArchived,
+    isPdf,
+    pdfPath,
     revision,
     createdAt,
     updatedAt,
@@ -854,6 +880,18 @@ class $NotebooksTableTable extends NotebooksTable
         isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
       );
     }
+    if (data.containsKey('is_pdf')) {
+      context.handle(
+        _isPdfMeta,
+        isPdf.isAcceptableOrUnknown(data['is_pdf']!, _isPdfMeta),
+      );
+    }
+    if (data.containsKey('pdf_path')) {
+      context.handle(
+        _pdfPathMeta,
+        pdfPath.isAcceptableOrUnknown(data['pdf_path']!, _pdfPathMeta),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -949,6 +987,14 @@ class $NotebooksTableTable extends NotebooksTable
         DriftSqlType.bool,
         data['${effectivePrefix}is_archived'],
       )!,
+      isPdf: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_pdf'],
+      )!,
+      pdfPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pdf_path'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -993,6 +1039,8 @@ class NotebooksTableData extends DataClass
   final int pageCount;
   final bool isFavorite;
   final bool isArchived;
+  final bool isPdf;
+  final String? pdfPath;
   final int revision;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1012,6 +1060,8 @@ class NotebooksTableData extends DataClass
     required this.pageCount,
     required this.isFavorite,
     required this.isArchived,
+    required this.isPdf,
+    this.pdfPath,
     required this.revision,
     required this.createdAt,
     required this.updatedAt,
@@ -1036,6 +1086,10 @@ class NotebooksTableData extends DataClass
     map['page_count'] = Variable<int>(pageCount);
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_archived'] = Variable<bool>(isArchived);
+    map['is_pdf'] = Variable<bool>(isPdf);
+    if (!nullToAbsent || pdfPath != null) {
+      map['pdf_path'] = Variable<String>(pdfPath);
+    }
     map['revision'] = Variable<int>(revision);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1063,6 +1117,10 @@ class NotebooksTableData extends DataClass
       pageCount: Value(pageCount),
       isFavorite: Value(isFavorite),
       isArchived: Value(isArchived),
+      isPdf: Value(isPdf),
+      pdfPath: pdfPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pdfPath),
       revision: Value(revision),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1092,6 +1150,8 @@ class NotebooksTableData extends DataClass
       pageCount: serializer.fromJson<int>(json['pageCount']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
+      isPdf: serializer.fromJson<bool>(json['isPdf']),
+      pdfPath: serializer.fromJson<String?>(json['pdfPath']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1116,6 +1176,8 @@ class NotebooksTableData extends DataClass
       'pageCount': serializer.toJson<int>(pageCount),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isArchived': serializer.toJson<bool>(isArchived),
+      'isPdf': serializer.toJson<bool>(isPdf),
+      'pdfPath': serializer.toJson<String?>(pdfPath),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1138,6 +1200,8 @@ class NotebooksTableData extends DataClass
     int? pageCount,
     bool? isFavorite,
     bool? isArchived,
+    bool? isPdf,
+    Value<String?> pdfPath = const Value.absent(),
     int? revision,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1157,6 +1221,8 @@ class NotebooksTableData extends DataClass
     pageCount: pageCount ?? this.pageCount,
     isFavorite: isFavorite ?? this.isFavorite,
     isArchived: isArchived ?? this.isArchived,
+    isPdf: isPdf ?? this.isPdf,
+    pdfPath: pdfPath.present ? pdfPath.value : this.pdfPath,
     revision: revision ?? this.revision,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1190,6 +1256,8 @@ class NotebooksTableData extends DataClass
       isArchived: data.isArchived.present
           ? data.isArchived.value
           : this.isArchived,
+      isPdf: data.isPdf.present ? data.isPdf.value : this.isPdf,
+      pdfPath: data.pdfPath.present ? data.pdfPath.value : this.pdfPath,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -1216,6 +1284,8 @@ class NotebooksTableData extends DataClass
           ..write('pageCount: $pageCount, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isArchived: $isArchived, ')
+          ..write('isPdf: $isPdf, ')
+          ..write('pdfPath: $pdfPath, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1240,6 +1310,8 @@ class NotebooksTableData extends DataClass
     pageCount,
     isFavorite,
     isArchived,
+    isPdf,
+    pdfPath,
     revision,
     createdAt,
     updatedAt,
@@ -1263,6 +1335,8 @@ class NotebooksTableData extends DataClass
           other.pageCount == this.pageCount &&
           other.isFavorite == this.isFavorite &&
           other.isArchived == this.isArchived &&
+          other.isPdf == this.isPdf &&
+          other.pdfPath == this.pdfPath &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -1284,6 +1358,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
   final Value<int> pageCount;
   final Value<bool> isFavorite;
   final Value<bool> isArchived;
+  final Value<bool> isPdf;
+  final Value<String?> pdfPath;
   final Value<int> revision;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1304,6 +1380,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     this.pageCount = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isArchived = const Value.absent(),
+    this.isPdf = const Value.absent(),
+    this.pdfPath = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1325,6 +1403,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     this.pageCount = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isArchived = const Value.absent(),
+    this.isPdf = const Value.absent(),
+    this.pdfPath = const Value.absent(),
     this.revision = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -1349,6 +1429,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Expression<int>? pageCount,
     Expression<bool>? isFavorite,
     Expression<bool>? isArchived,
+    Expression<bool>? isPdf,
+    Expression<String>? pdfPath,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1370,6 +1452,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       if (pageCount != null) 'page_count': pageCount,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isArchived != null) 'is_archived': isArchived,
+      if (isPdf != null) 'is_pdf': isPdf,
+      if (pdfPath != null) 'pdf_path': pdfPath,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1393,6 +1477,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Value<int>? pageCount,
     Value<bool>? isFavorite,
     Value<bool>? isArchived,
+    Value<bool>? isPdf,
+    Value<String?>? pdfPath,
     Value<int>? revision,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1414,6 +1500,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       pageCount: pageCount ?? this.pageCount,
       isFavorite: isFavorite ?? this.isFavorite,
       isArchived: isArchived ?? this.isArchived,
+      isPdf: isPdf ?? this.isPdf,
+      pdfPath: pdfPath ?? this.pdfPath,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1465,6 +1553,12 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     if (isArchived.present) {
       map['is_archived'] = Variable<bool>(isArchived.value);
     }
+    if (isPdf.present) {
+      map['is_pdf'] = Variable<bool>(isPdf.value);
+    }
+    if (pdfPath.present) {
+      map['pdf_path'] = Variable<String>(pdfPath.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -1502,6 +1596,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
           ..write('pageCount: $pageCount, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isArchived: $isArchived, ')
+          ..write('isPdf: $isPdf, ')
+          ..write('pdfPath: $pdfPath, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2010,6 +2106,32 @@ class $PagesTableTable extends PagesTable
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _isBookmarkedMeta = const VerificationMeta(
+    'isBookmarked',
+  );
+  @override
+  late final GeneratedColumn<bool> isBookmarked = GeneratedColumn<bool>(
+    'is_bookmarked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_bookmarked" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _pdfPageIndexMeta = const VerificationMeta(
+    'pdfPageIndex',
+  );
+  @override
+  late final GeneratedColumn<int> pdfPageIndex = GeneratedColumn<int>(
+    'pdf_page_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _widthMeta = const VerificationMeta('width');
   @override
   late final GeneratedColumn<double> width = GeneratedColumn<double>(
@@ -2073,6 +2195,8 @@ class $PagesTableTable extends PagesTable
     templateId,
     backgroundColor,
     templatePropertiesJson,
+    isBookmarked,
+    pdfPageIndex,
     width,
     height,
     revision,
@@ -2139,6 +2263,24 @@ class $PagesTableTable extends PagesTable
         templatePropertiesJson.isAcceptableOrUnknown(
           data['template_properties_json']!,
           _templatePropertiesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_bookmarked')) {
+      context.handle(
+        _isBookmarkedMeta,
+        isBookmarked.isAcceptableOrUnknown(
+          data['is_bookmarked']!,
+          _isBookmarkedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pdf_page_index')) {
+      context.handle(
+        _pdfPageIndexMeta,
+        pdfPageIndex.isAcceptableOrUnknown(
+          data['pdf_page_index']!,
+          _pdfPageIndexMeta,
         ),
       );
     }
@@ -2213,6 +2355,14 @@ class $PagesTableTable extends PagesTable
         DriftSqlType.string,
         data['${effectivePrefix}template_properties_json'],
       ),
+      isBookmarked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_bookmarked'],
+      )!,
+      pdfPageIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pdf_page_index'],
+      ),
       width: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}width'],
@@ -2250,6 +2400,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
   final String templateId;
   final String? backgroundColor;
   final String? templatePropertiesJson;
+  final bool isBookmarked;
+  final int? pdfPageIndex;
   final double width;
   final double height;
   final int revision;
@@ -2263,6 +2415,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
     required this.templateId,
     this.backgroundColor,
     this.templatePropertiesJson,
+    required this.isBookmarked,
+    this.pdfPageIndex,
     required this.width,
     required this.height,
     required this.revision,
@@ -2287,6 +2441,10 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
         templatePropertiesJson,
       );
     }
+    map['is_bookmarked'] = Variable<bool>(isBookmarked);
+    if (!nullToAbsent || pdfPageIndex != null) {
+      map['pdf_page_index'] = Variable<int>(pdfPageIndex);
+    }
     map['width'] = Variable<double>(width);
     map['height'] = Variable<double>(height);
     map['revision'] = Variable<int>(revision);
@@ -2310,6 +2468,10 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
       templatePropertiesJson: templatePropertiesJson == null && nullToAbsent
           ? const Value.absent()
           : Value(templatePropertiesJson),
+      isBookmarked: Value(isBookmarked),
+      pdfPageIndex: pdfPageIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pdfPageIndex),
       width: Value(width),
       height: Value(height),
       revision: Value(revision),
@@ -2333,6 +2495,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
       templatePropertiesJson: serializer.fromJson<String?>(
         json['templatePropertiesJson'],
       ),
+      isBookmarked: serializer.fromJson<bool>(json['isBookmarked']),
+      pdfPageIndex: serializer.fromJson<int?>(json['pdfPageIndex']),
       width: serializer.fromJson<double>(json['width']),
       height: serializer.fromJson<double>(json['height']),
       revision: serializer.fromJson<int>(json['revision']),
@@ -2353,6 +2517,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
       'templatePropertiesJson': serializer.toJson<String?>(
         templatePropertiesJson,
       ),
+      'isBookmarked': serializer.toJson<bool>(isBookmarked),
+      'pdfPageIndex': serializer.toJson<int?>(pdfPageIndex),
       'width': serializer.toJson<double>(width),
       'height': serializer.toJson<double>(height),
       'revision': serializer.toJson<int>(revision),
@@ -2369,6 +2535,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
     String? templateId,
     Value<String?> backgroundColor = const Value.absent(),
     Value<String?> templatePropertiesJson = const Value.absent(),
+    bool? isBookmarked,
+    Value<int?> pdfPageIndex = const Value.absent(),
     double? width,
     double? height,
     int? revision,
@@ -2386,6 +2554,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
     templatePropertiesJson: templatePropertiesJson.present
         ? templatePropertiesJson.value
         : this.templatePropertiesJson,
+    isBookmarked: isBookmarked ?? this.isBookmarked,
+    pdfPageIndex: pdfPageIndex.present ? pdfPageIndex.value : this.pdfPageIndex,
     width: width ?? this.width,
     height: height ?? this.height,
     revision: revision ?? this.revision,
@@ -2411,6 +2581,12 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
       templatePropertiesJson: data.templatePropertiesJson.present
           ? data.templatePropertiesJson.value
           : this.templatePropertiesJson,
+      isBookmarked: data.isBookmarked.present
+          ? data.isBookmarked.value
+          : this.isBookmarked,
+      pdfPageIndex: data.pdfPageIndex.present
+          ? data.pdfPageIndex.value
+          : this.pdfPageIndex,
       width: data.width.present ? data.width.value : this.width,
       height: data.height.present ? data.height.value : this.height,
       revision: data.revision.present ? data.revision.value : this.revision,
@@ -2429,6 +2605,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
           ..write('templateId: $templateId, ')
           ..write('backgroundColor: $backgroundColor, ')
           ..write('templatePropertiesJson: $templatePropertiesJson, ')
+          ..write('isBookmarked: $isBookmarked, ')
+          ..write('pdfPageIndex: $pdfPageIndex, ')
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('revision: $revision, ')
@@ -2447,6 +2625,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
     templateId,
     backgroundColor,
     templatePropertiesJson,
+    isBookmarked,
+    pdfPageIndex,
     width,
     height,
     revision,
@@ -2464,6 +2644,8 @@ class PagesTableData extends DataClass implements Insertable<PagesTableData> {
           other.templateId == this.templateId &&
           other.backgroundColor == this.backgroundColor &&
           other.templatePropertiesJson == this.templatePropertiesJson &&
+          other.isBookmarked == this.isBookmarked &&
+          other.pdfPageIndex == this.pdfPageIndex &&
           other.width == this.width &&
           other.height == this.height &&
           other.revision == this.revision &&
@@ -2479,6 +2661,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
   final Value<String> templateId;
   final Value<String?> backgroundColor;
   final Value<String?> templatePropertiesJson;
+  final Value<bool> isBookmarked;
+  final Value<int?> pdfPageIndex;
   final Value<double> width;
   final Value<double> height;
   final Value<int> revision;
@@ -2493,6 +2677,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
     this.templateId = const Value.absent(),
     this.backgroundColor = const Value.absent(),
     this.templatePropertiesJson = const Value.absent(),
+    this.isBookmarked = const Value.absent(),
+    this.pdfPageIndex = const Value.absent(),
     this.width = const Value.absent(),
     this.height = const Value.absent(),
     this.revision = const Value.absent(),
@@ -2508,6 +2694,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
     this.templateId = const Value.absent(),
     this.backgroundColor = const Value.absent(),
     this.templatePropertiesJson = const Value.absent(),
+    this.isBookmarked = const Value.absent(),
+    this.pdfPageIndex = const Value.absent(),
     this.width = const Value.absent(),
     this.height = const Value.absent(),
     this.revision = const Value.absent(),
@@ -2527,6 +2715,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
     Expression<String>? templateId,
     Expression<String>? backgroundColor,
     Expression<String>? templatePropertiesJson,
+    Expression<bool>? isBookmarked,
+    Expression<int>? pdfPageIndex,
     Expression<double>? width,
     Expression<double>? height,
     Expression<int>? revision,
@@ -2543,6 +2733,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
       if (backgroundColor != null) 'background_color': backgroundColor,
       if (templatePropertiesJson != null)
         'template_properties_json': templatePropertiesJson,
+      if (isBookmarked != null) 'is_bookmarked': isBookmarked,
+      if (pdfPageIndex != null) 'pdf_page_index': pdfPageIndex,
       if (width != null) 'width': width,
       if (height != null) 'height': height,
       if (revision != null) 'revision': revision,
@@ -2560,6 +2752,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
     Value<String>? templateId,
     Value<String?>? backgroundColor,
     Value<String?>? templatePropertiesJson,
+    Value<bool>? isBookmarked,
+    Value<int?>? pdfPageIndex,
     Value<double>? width,
     Value<double>? height,
     Value<int>? revision,
@@ -2576,6 +2770,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
       backgroundColor: backgroundColor ?? this.backgroundColor,
       templatePropertiesJson:
           templatePropertiesJson ?? this.templatePropertiesJson,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
+      pdfPageIndex: pdfPageIndex ?? this.pdfPageIndex,
       width: width ?? this.width,
       height: height ?? this.height,
       revision: revision ?? this.revision,
@@ -2611,6 +2807,12 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
         templatePropertiesJson.value,
       );
     }
+    if (isBookmarked.present) {
+      map['is_bookmarked'] = Variable<bool>(isBookmarked.value);
+    }
+    if (pdfPageIndex.present) {
+      map['pdf_page_index'] = Variable<int>(pdfPageIndex.value);
+    }
     if (width.present) {
       map['width'] = Variable<double>(width.value);
     }
@@ -2642,6 +2844,8 @@ class PagesTableCompanion extends UpdateCompanion<PagesTableData> {
           ..write('templateId: $templateId, ')
           ..write('backgroundColor: $backgroundColor, ')
           ..write('templatePropertiesJson: $templatePropertiesJson, ')
+          ..write('isBookmarked: $isBookmarked, ')
+          ..write('pdfPageIndex: $pdfPageIndex, ')
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('revision: $revision, ')
@@ -3317,6 +3521,596 @@ class StrokesTableCompanion extends UpdateCompanion<StrokesTableData> {
   }
 }
 
+class $StickyNotesTableTable extends StickyNotesTable
+    with TableInfo<$StickyNotesTableTable, StickyNotesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StickyNotesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pageIdMeta = const VerificationMeta('pageId');
+  @override
+  late final GeneratedColumn<String> pageId = GeneratedColumn<String>(
+    'page_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES pages_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _xMeta = const VerificationMeta('x');
+  @override
+  late final GeneratedColumn<double> x = GeneratedColumn<double>(
+    'x',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yMeta = const VerificationMeta('y');
+  @override
+  late final GeneratedColumn<double> y = GeneratedColumn<double>(
+    'y',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _widthMeta = const VerificationMeta('width');
+  @override
+  late final GeneratedColumn<double> width = GeneratedColumn<double>(
+    'width',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(160.0),
+  );
+  static const VerificationMeta _heightMeta = const VerificationMeta('height');
+  @override
+  late final GeneratedColumn<double> height = GeneratedColumn<double>(
+    'height',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(140.0),
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorHexMeta = const VerificationMeta(
+    'colorHex',
+  );
+  @override
+  late final GeneratedColumn<String> colorHex = GeneratedColumn<String>(
+    'color_hex',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('#FEF08A'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    pageId,
+    x,
+    y,
+    width,
+    height,
+    content,
+    colorHex,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sticky_notes_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StickyNotesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('page_id')) {
+      context.handle(
+        _pageIdMeta,
+        pageId.isAcceptableOrUnknown(data['page_id']!, _pageIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pageIdMeta);
+    }
+    if (data.containsKey('x')) {
+      context.handle(_xMeta, x.isAcceptableOrUnknown(data['x']!, _xMeta));
+    } else if (isInserting) {
+      context.missing(_xMeta);
+    }
+    if (data.containsKey('y')) {
+      context.handle(_yMeta, y.isAcceptableOrUnknown(data['y']!, _yMeta));
+    } else if (isInserting) {
+      context.missing(_yMeta);
+    }
+    if (data.containsKey('width')) {
+      context.handle(
+        _widthMeta,
+        width.isAcceptableOrUnknown(data['width']!, _widthMeta),
+      );
+    }
+    if (data.containsKey('height')) {
+      context.handle(
+        _heightMeta,
+        height.isAcceptableOrUnknown(data['height']!, _heightMeta),
+      );
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('color_hex')) {
+      context.handle(
+        _colorHexMeta,
+        colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StickyNotesTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StickyNotesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      pageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}page_id'],
+      )!,
+      x: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}x'],
+      )!,
+      y: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}y'],
+      )!,
+      width: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}width'],
+      )!,
+      height: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}height'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      colorHex: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color_hex'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StickyNotesTableTable createAlias(String alias) {
+    return $StickyNotesTableTable(attachedDatabase, alias);
+  }
+}
+
+class StickyNotesTableData extends DataClass
+    implements Insertable<StickyNotesTableData> {
+  final String id;
+  final String pageId;
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+  final String content;
+  final String colorHex;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const StickyNotesTableData({
+    required this.id,
+    required this.pageId,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    required this.content,
+    required this.colorHex,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['page_id'] = Variable<String>(pageId);
+    map['x'] = Variable<double>(x);
+    map['y'] = Variable<double>(y);
+    map['width'] = Variable<double>(width);
+    map['height'] = Variable<double>(height);
+    map['content'] = Variable<String>(content);
+    map['color_hex'] = Variable<String>(colorHex);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  StickyNotesTableCompanion toCompanion(bool nullToAbsent) {
+    return StickyNotesTableCompanion(
+      id: Value(id),
+      pageId: Value(pageId),
+      x: Value(x),
+      y: Value(y),
+      width: Value(width),
+      height: Value(height),
+      content: Value(content),
+      colorHex: Value(colorHex),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StickyNotesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StickyNotesTableData(
+      id: serializer.fromJson<String>(json['id']),
+      pageId: serializer.fromJson<String>(json['pageId']),
+      x: serializer.fromJson<double>(json['x']),
+      y: serializer.fromJson<double>(json['y']),
+      width: serializer.fromJson<double>(json['width']),
+      height: serializer.fromJson<double>(json['height']),
+      content: serializer.fromJson<String>(json['content']),
+      colorHex: serializer.fromJson<String>(json['colorHex']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'pageId': serializer.toJson<String>(pageId),
+      'x': serializer.toJson<double>(x),
+      'y': serializer.toJson<double>(y),
+      'width': serializer.toJson<double>(width),
+      'height': serializer.toJson<double>(height),
+      'content': serializer.toJson<String>(content),
+      'colorHex': serializer.toJson<String>(colorHex),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  StickyNotesTableData copyWith({
+    String? id,
+    String? pageId,
+    double? x,
+    double? y,
+    double? width,
+    double? height,
+    String? content,
+    String? colorHex,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => StickyNotesTableData(
+    id: id ?? this.id,
+    pageId: pageId ?? this.pageId,
+    x: x ?? this.x,
+    y: y ?? this.y,
+    width: width ?? this.width,
+    height: height ?? this.height,
+    content: content ?? this.content,
+    colorHex: colorHex ?? this.colorHex,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  StickyNotesTableData copyWithCompanion(StickyNotesTableCompanion data) {
+    return StickyNotesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      pageId: data.pageId.present ? data.pageId.value : this.pageId,
+      x: data.x.present ? data.x.value : this.x,
+      y: data.y.present ? data.y.value : this.y,
+      width: data.width.present ? data.width.value : this.width,
+      height: data.height.present ? data.height.value : this.height,
+      content: data.content.present ? data.content.value : this.content,
+      colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StickyNotesTableData(')
+          ..write('id: $id, ')
+          ..write('pageId: $pageId, ')
+          ..write('x: $x, ')
+          ..write('y: $y, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('content: $content, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    pageId,
+    x,
+    y,
+    width,
+    height,
+    content,
+    colorHex,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StickyNotesTableData &&
+          other.id == this.id &&
+          other.pageId == this.pageId &&
+          other.x == this.x &&
+          other.y == this.y &&
+          other.width == this.width &&
+          other.height == this.height &&
+          other.content == this.content &&
+          other.colorHex == this.colorHex &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class StickyNotesTableCompanion extends UpdateCompanion<StickyNotesTableData> {
+  final Value<String> id;
+  final Value<String> pageId;
+  final Value<double> x;
+  final Value<double> y;
+  final Value<double> width;
+  final Value<double> height;
+  final Value<String> content;
+  final Value<String> colorHex;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const StickyNotesTableCompanion({
+    this.id = const Value.absent(),
+    this.pageId = const Value.absent(),
+    this.x = const Value.absent(),
+    this.y = const Value.absent(),
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.content = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StickyNotesTableCompanion.insert({
+    required String id,
+    required String pageId,
+    required double x,
+    required double y,
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    required String content,
+    this.colorHex = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       pageId = Value(pageId),
+       x = Value(x),
+       y = Value(y),
+       content = Value(content),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<StickyNotesTableData> custom({
+    Expression<String>? id,
+    Expression<String>? pageId,
+    Expression<double>? x,
+    Expression<double>? y,
+    Expression<double>? width,
+    Expression<double>? height,
+    Expression<String>? content,
+    Expression<String>? colorHex,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (pageId != null) 'page_id': pageId,
+      if (x != null) 'x': x,
+      if (y != null) 'y': y,
+      if (width != null) 'width': width,
+      if (height != null) 'height': height,
+      if (content != null) 'content': content,
+      if (colorHex != null) 'color_hex': colorHex,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StickyNotesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? pageId,
+    Value<double>? x,
+    Value<double>? y,
+    Value<double>? width,
+    Value<double>? height,
+    Value<String>? content,
+    Value<String>? colorHex,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return StickyNotesTableCompanion(
+      id: id ?? this.id,
+      pageId: pageId ?? this.pageId,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      content: content ?? this.content,
+      colorHex: colorHex ?? this.colorHex,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (pageId.present) {
+      map['page_id'] = Variable<String>(pageId.value);
+    }
+    if (x.present) {
+      map['x'] = Variable<double>(x.value);
+    }
+    if (y.present) {
+      map['y'] = Variable<double>(y.value);
+    }
+    if (width.present) {
+      map['width'] = Variable<double>(width.value);
+    }
+    if (height.present) {
+      map['height'] = Variable<double>(height.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (colorHex.present) {
+      map['color_hex'] = Variable<String>(colorHex.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StickyNotesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('pageId: $pageId, ')
+          ..write('x: $x, ')
+          ..write('y: $y, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('content: $content, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3325,6 +4119,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SectionsTableTable sectionsTable = $SectionsTableTable(this);
   late final $PagesTableTable pagesTable = $PagesTableTable(this);
   late final $StrokesTableTable strokesTable = $StrokesTableTable(this);
+  late final $StickyNotesTableTable stickyNotesTable = $StickyNotesTableTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3335,6 +4132,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sectionsTable,
     pagesTable,
     strokesTable,
+    stickyNotesTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3358,6 +4156,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('strokes_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pages_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sticky_notes_table', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -3643,6 +4448,8 @@ typedef $$NotebooksTableTableCreateCompanionBuilder =
       Value<int> pageCount,
       Value<bool> isFavorite,
       Value<bool> isArchived,
+      Value<bool> isPdf,
+      Value<String?> pdfPath,
       Value<int> revision,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -3665,6 +4472,8 @@ typedef $$NotebooksTableTableUpdateCompanionBuilder =
       Value<int> pageCount,
       Value<bool> isFavorite,
       Value<bool> isArchived,
+      Value<bool> isPdf,
+      Value<String?> pdfPath,
       Value<int> revision,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -3794,6 +4603,16 @@ class $$NotebooksTableTableFilterComposer
 
   ColumnFilters<bool> get isArchived => $composableBuilder(
     column: $table.isArchived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPdf => $composableBuilder(
+    column: $table.isPdf,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pdfPath => $composableBuilder(
+    column: $table.pdfPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3947,6 +4766,16 @@ class $$NotebooksTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isPdf => $composableBuilder(
+    column: $table.isPdf,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pdfPath => $composableBuilder(
+    column: $table.pdfPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -4032,6 +4861,12 @@ class $$NotebooksTableTableAnnotationComposer
     column: $table.isArchived,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isPdf =>
+      $composableBuilder(column: $table.isPdf, builder: (column) => column);
+
+  GeneratedColumn<String> get pdfPath =>
+      $composableBuilder(column: $table.pdfPath, builder: (column) => column);
 
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
@@ -4144,6 +4979,8 @@ class $$NotebooksTableTableTableManager
                 Value<int> pageCount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
+                Value<bool> isPdf = const Value.absent(),
+                Value<String?> pdfPath = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -4164,6 +5001,8 @@ class $$NotebooksTableTableTableManager
                 pageCount: pageCount,
                 isFavorite: isFavorite,
                 isArchived: isArchived,
+                isPdf: isPdf,
+                pdfPath: pdfPath,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4186,6 +5025,8 @@ class $$NotebooksTableTableTableManager
                 Value<int> pageCount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
+                Value<bool> isPdf = const Value.absent(),
+                Value<String?> pdfPath = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -4206,6 +5047,8 @@ class $$NotebooksTableTableTableManager
                 pageCount: pageCount,
                 isFavorite: isFavorite,
                 isArchived: isArchived,
+                isPdf: isPdf,
+                pdfPath: pdfPath,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4644,6 +5487,8 @@ typedef $$PagesTableTableCreateCompanionBuilder = PagesTableCompanion Function({
   Value<String> templateId,
   Value<String?> backgroundColor,
   Value<String?> templatePropertiesJson,
+  Value<bool> isBookmarked,
+  Value<int?> pdfPageIndex,
   Value<double> width,
   Value<double> height,
   Value<int> revision,
@@ -4659,6 +5504,8 @@ typedef $$PagesTableTableUpdateCompanionBuilder = PagesTableCompanion Function({
   Value<String> templateId,
   Value<String?> backgroundColor,
   Value<String?> templatePropertiesJson,
+  Value<bool> isBookmarked,
+  Value<int?> pdfPageIndex,
   Value<double> width,
   Value<double> height,
   Value<int> revision,
@@ -4706,6 +5553,26 @@ final class $$PagesTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$StickyNotesTableTable, List<StickyNotesTableData>>
+  _stickyNotesTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.stickyNotesTable,
+    aliasName: 'pages_table__id__sticky_notes_table__page_id',
+  );
+
+  $$StickyNotesTableTableProcessedTableManager get stickyNotesTableRefs {
+    final manager = $$StickyNotesTableTableTableManager(
+      $_db,
+      $_db.stickyNotesTable,
+    ).filter((f) => f.pageId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _stickyNotesTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PagesTableTableFilterComposer
@@ -4744,6 +5611,16 @@ class $$PagesTableTableFilterComposer
 
   ColumnFilters<String> get templatePropertiesJson => $composableBuilder(
     column: $table.templatePropertiesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBookmarked => $composableBuilder(
+    column: $table.isBookmarked,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pdfPageIndex => $composableBuilder(
+    column: $table.pdfPageIndex,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4819,6 +5696,31 @@ class $$PagesTableTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> stickyNotesTableRefs(
+    Expression<bool> Function($$StickyNotesTableTableFilterComposer f) f,
+  ) {
+    final $$StickyNotesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.stickyNotesTable,
+      getReferencedColumn: (t) => t.pageId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StickyNotesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.stickyNotesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$PagesTableTableOrderingComposer
@@ -4857,6 +5759,16 @@ class $$PagesTableTableOrderingComposer
 
   ColumnOrderings<String> get templatePropertiesJson => $composableBuilder(
     column: $table.templatePropertiesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isBookmarked => $composableBuilder(
+    column: $table.isBookmarked,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pdfPageIndex => $composableBuilder(
+    column: $table.pdfPageIndex,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4944,6 +5856,16 @@ class $$PagesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get isBookmarked => $composableBuilder(
+    column: $table.isBookmarked,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get pdfPageIndex => $composableBuilder(
+    column: $table.pdfPageIndex,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<double> get width =>
       $composableBuilder(column: $table.width, builder: (column) => column);
 
@@ -5006,6 +5928,31 @@ class $$PagesTableTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> stickyNotesTableRefs<T extends Object>(
+    Expression<T> Function($$StickyNotesTableTableAnnotationComposer a) f,
+  ) {
+    final $$StickyNotesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.stickyNotesTable,
+      getReferencedColumn: (t) => t.pageId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StickyNotesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.stickyNotesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$PagesTableTableTableManager
@@ -5021,7 +5968,11 @@ class $$PagesTableTableTableManager
           $$PagesTableTableUpdateCompanionBuilder,
           (PagesTableData, $$PagesTableTableReferences),
           PagesTableData,
-          PrefetchHooks Function({bool notebookId, bool strokesTableRefs})
+          PrefetchHooks Function({
+            bool notebookId,
+            bool strokesTableRefs,
+            bool stickyNotesTableRefs,
+          })
         > {
   $$PagesTableTableTableManager(_$AppDatabase db, $PagesTableTable table)
     : super(
@@ -5043,6 +5994,8 @@ class $$PagesTableTableTableManager
                 Value<String> templateId = const Value.absent(),
                 Value<String?> backgroundColor = const Value.absent(),
                 Value<String?> templatePropertiesJson = const Value.absent(),
+                Value<bool> isBookmarked = const Value.absent(),
+                Value<int?> pdfPageIndex = const Value.absent(),
                 Value<double> width = const Value.absent(),
                 Value<double> height = const Value.absent(),
                 Value<int> revision = const Value.absent(),
@@ -5057,6 +6010,8 @@ class $$PagesTableTableTableManager
                 templateId: templateId,
                 backgroundColor: backgroundColor,
                 templatePropertiesJson: templatePropertiesJson,
+                isBookmarked: isBookmarked,
+                pdfPageIndex: pdfPageIndex,
                 width: width,
                 height: height,
                 revision: revision,
@@ -5073,6 +6028,8 @@ class $$PagesTableTableTableManager
                 Value<String> templateId = const Value.absent(),
                 Value<String?> backgroundColor = const Value.absent(),
                 Value<String?> templatePropertiesJson = const Value.absent(),
+                Value<bool> isBookmarked = const Value.absent(),
+                Value<int?> pdfPageIndex = const Value.absent(),
                 Value<double> width = const Value.absent(),
                 Value<double> height = const Value.absent(),
                 Value<int> revision = const Value.absent(),
@@ -5087,6 +6044,8 @@ class $$PagesTableTableTableManager
                 templateId: templateId,
                 backgroundColor: backgroundColor,
                 templatePropertiesJson: templatePropertiesJson,
+                isBookmarked: isBookmarked,
+                pdfPageIndex: pdfPageIndex,
                 width: width,
                 height: height,
                 revision: revision,
@@ -5103,11 +6062,16 @@ class $$PagesTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({notebookId = false, strokesTableRefs = false}) {
+              ({
+                notebookId = false,
+                strokesTableRefs = false,
+                stickyNotesTableRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (strokesTableRefs) db.strokesTable,
+                    if (stickyNotesTableRefs) db.stickyNotesTable,
                   ],
                   addJoins:
                       <
@@ -5161,6 +6125,26 @@ class $$PagesTableTableTableManager
                           referencedColumn: 'page_id',
                           typedResults: items,
                         ),
+                      if (stickyNotesTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          PagesTableData,
+                          $PagesTableTable,
+                          StickyNotesTableData,
+                          $StickyNotesTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PagesTableTableReferences
+                              ._stickyNotesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PagesTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).stickyNotesTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'page_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5181,7 +6165,11 @@ typedef $$PagesTableTableProcessedTableManager =
       $$PagesTableTableUpdateCompanionBuilder,
       (PagesTableData, $$PagesTableTableReferences),
       PagesTableData,
-      PrefetchHooks Function({bool notebookId, bool strokesTableRefs})
+      PrefetchHooks Function({
+        bool notebookId,
+        bool strokesTableRefs,
+        bool stickyNotesTableRefs,
+      })
     >;
 typedef $$StrokesTableTableCreateCompanionBuilder =
     StrokesTableCompanion Function({
@@ -5619,6 +6607,429 @@ typedef $$StrokesTableTableProcessedTableManager =
       StrokesTableData,
       PrefetchHooks Function({bool pageId})
     >;
+typedef $$StickyNotesTableTableCreateCompanionBuilder =
+    StickyNotesTableCompanion Function({
+      required String id,
+      required String pageId,
+      required double x,
+      required double y,
+      Value<double> width,
+      Value<double> height,
+      required String content,
+      Value<String> colorHex,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$StickyNotesTableTableUpdateCompanionBuilder =
+    StickyNotesTableCompanion Function({
+      Value<String> id,
+      Value<String> pageId,
+      Value<double> x,
+      Value<double> y,
+      Value<double> width,
+      Value<double> height,
+      Value<String> content,
+      Value<String> colorHex,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$StickyNotesTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $StickyNotesTableTable,
+          StickyNotesTableData
+        > {
+  $$StickyNotesTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PagesTableTable _pageIdTable(_$AppDatabase db) =>
+      db.pagesTable.createAlias('sticky_notes_table__page_id__pages_table__id');
+
+  $$PagesTableTableProcessedTableManager get pageId {
+    final $_column = $_itemColumn<String>('page_id')!;
+
+    final manager = $$PagesTableTableTableManager(
+      $_db,
+      $_db.pagesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_pageIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$StickyNotesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $StickyNotesTableTable> {
+  $$StickyNotesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get x => $composableBuilder(
+    column: $table.x,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get y => $composableBuilder(
+    column: $table.y,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get width => $composableBuilder(
+    column: $table.width,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get height => $composableBuilder(
+    column: $table.height,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get colorHex => $composableBuilder(
+    column: $table.colorHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PagesTableTableFilterComposer get pageId {
+    final $$PagesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StickyNotesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $StickyNotesTableTable> {
+  $$StickyNotesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get x => $composableBuilder(
+    column: $table.x,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get y => $composableBuilder(
+    column: $table.y,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get width => $composableBuilder(
+    column: $table.width,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get height => $composableBuilder(
+    column: $table.height,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get colorHex => $composableBuilder(
+    column: $table.colorHex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PagesTableTableOrderingComposer get pageId {
+    final $$PagesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StickyNotesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StickyNotesTableTable> {
+  $$StickyNotesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get x =>
+      $composableBuilder(column: $table.x, builder: (column) => column);
+
+  GeneratedColumn<double> get y =>
+      $composableBuilder(column: $table.y, builder: (column) => column);
+
+  GeneratedColumn<double> get width =>
+      $composableBuilder(column: $table.width, builder: (column) => column);
+
+  GeneratedColumn<double> get height =>
+      $composableBuilder(column: $table.height, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get colorHex =>
+      $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$PagesTableTableAnnotationComposer get pageId {
+    final $$PagesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StickyNotesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StickyNotesTableTable,
+          StickyNotesTableData,
+          $$StickyNotesTableTableFilterComposer,
+          $$StickyNotesTableTableOrderingComposer,
+          $$StickyNotesTableTableAnnotationComposer,
+          $$StickyNotesTableTableCreateCompanionBuilder,
+          $$StickyNotesTableTableUpdateCompanionBuilder,
+          (StickyNotesTableData, $$StickyNotesTableTableReferences),
+          StickyNotesTableData,
+          PrefetchHooks Function({bool pageId})
+        > {
+  $$StickyNotesTableTableTableManager(
+    _$AppDatabase db,
+    $StickyNotesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StickyNotesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StickyNotesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StickyNotesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> pageId = const Value.absent(),
+                Value<double> x = const Value.absent(),
+                Value<double> y = const Value.absent(),
+                Value<double> width = const Value.absent(),
+                Value<double> height = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<String> colorHex = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StickyNotesTableCompanion(
+                id: id,
+                pageId: pageId,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                content: content,
+                colorHex: colorHex,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String pageId,
+                required double x,
+                required double y,
+                Value<double> width = const Value.absent(),
+                Value<double> height = const Value.absent(),
+                required String content,
+                Value<String> colorHex = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => StickyNotesTableCompanion.insert(
+                id: id,
+                pageId: pageId,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                content: content,
+                colorHex: colorHex,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$StickyNotesTableTable, StickyNotesTableData>(
+                    table,
+                  ),
+                  $$StickyNotesTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({pageId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (pageId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.pageId,
+                        referencedTable: $$StickyNotesTableTableReferences
+                            ._pageIdTable(db),
+                        referencedColumn: $$StickyNotesTableTableReferences
+                            ._pageIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StickyNotesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StickyNotesTableTable,
+      StickyNotesTableData,
+      $$StickyNotesTableTableFilterComposer,
+      $$StickyNotesTableTableOrderingComposer,
+      $$StickyNotesTableTableAnnotationComposer,
+      $$StickyNotesTableTableCreateCompanionBuilder,
+      $$StickyNotesTableTableUpdateCompanionBuilder,
+      (StickyNotesTableData, $$StickyNotesTableTableReferences),
+      StickyNotesTableData,
+      PrefetchHooks Function({bool pageId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5633,4 +7044,6 @@ class $AppDatabaseManager {
       $$PagesTableTableTableManager(_db, _db.pagesTable);
   $$StrokesTableTableTableManager get strokesTable =>
       $$StrokesTableTableTableManager(_db, _db.strokesTable);
+  $$StickyNotesTableTableTableManager get stickyNotesTable =>
+      $$StickyNotesTableTableTableManager(_db, _db.stickyNotesTable);
 }

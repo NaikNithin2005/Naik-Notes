@@ -26,6 +26,8 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     }
   }
 
+  Future<void> loadNotebooks() => loadFromDatabase();
+
   List<Notebook> _initialSampleNotebooks() {
     final now = DateTime.now();
     return [

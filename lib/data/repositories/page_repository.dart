@@ -17,6 +17,7 @@ abstract class PageRepository {
     String templateId,
     PaperProperties properties,
   );
+  Future<void> toggleBookmark(String pageId);
   Future<List<NotebookPage>> ensurePagesExist(
     String notebookId, {
     String templateId = 'college_ruled',
@@ -48,6 +49,8 @@ class DriftPageRepository implements PageRepository {
       properties: props,
       width: row.width,
       height: row.height,
+      isBookmarked: row.isBookmarked,
+      pdfPageIndex: row.pdfPageIndex,
       revision: row.revision,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -65,6 +68,8 @@ class DriftPageRepository implements PageRepository {
       templatePropertiesJson: Value(domain.properties.toJsonString()),
       width: Value(domain.width),
       height: Value(domain.height),
+      isBookmarked: Value(domain.isBookmarked),
+      pdfPageIndex: Value(domain.pdfPageIndex),
       revision: Value(domain.revision),
       createdAt: Value(domain.createdAt),
       updatedAt: Value(domain.updatedAt),
@@ -119,6 +124,18 @@ class DriftPageRepository implements PageRepository {
       final updated = existing.copyWith(
         templateId: templateId,
         properties: properties,
+        updatedAt: DateTime.now(),
+      );
+      await savePage(updated);
+    }
+  }
+
+  @override
+  Future<void> toggleBookmark(String pageId) async {
+    final existing = await getPageById(pageId);
+    if (existing != null) {
+      final updated = existing.copyWith(
+        isBookmarked: !existing.isBookmarked,
         updatedAt: DateTime.now(),
       );
       await savePage(updated);

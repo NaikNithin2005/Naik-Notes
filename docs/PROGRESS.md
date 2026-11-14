@@ -16,7 +16,8 @@
 | **Phase 3** | Notebook Library & Dashboard | **VERIFIED & COMPLETE** | 41 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 4** | Paper Template Engine & Custom Backgrounds | **VERIFIED & COMPLETE** | 52 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 5** | Vector Handwriting Engine | **VERIFIED & COMPLETE** | 80 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
-| **Phase 6** | PDF Reader & Annotation Engine | Scheduled | - | - |
+| **Phase 6** | PDF Reader & Annotation Engine | **VERIFIED & COMPLETE** | 93 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
+| **Phase 7** | Cloud Synchronization & Offline DB | Scheduled | - | - |
 | **Phase 7** | Cloud Synchronization & Offline DB | Scheduled | - | - |
 | **Phase 8** | Cross-Platform Optimization | Scheduled | - | - |
 | **Phase 9** | Handwriting Recognition & Search | Scheduled | - | - |
@@ -193,3 +194,81 @@
 
 ### 5. Next Tasks
 - Proceed to Phase 6: PDF Reader & Annotation Engine (PDF import, high-performance page rendering, PDF thumbnail sidebar, custom annotation layer, and PDF export).
+
+---
+
+## Phase 6: PDF Reader & Annotation Engine (Completed)
+
+### 1. Implemented Features
+- **PDF Import & Automatic Provisioning (`lib/services/pdf/pdf_service.dart`)**:
+  - `PdfService`: Native cross-platform PDF parsing and extraction.
+  - Page count estimation by analyzing raw PDF stream objects.
+  - Native file picker integration via `FilePicker.pickFiles` on Dashboard with `.pdf` filtering.
+  - Automatically provisions dedicated PDF notebooks (`isPdf: true`, `pdfPath`) and creates individual `NotebookPage` entities with `pdfPageIndex`.
+- **Thumbnail Sidebar & Jump Navigation (`lib/features/pdf/presentation/widgets/pdf_thumbnail_sidebar.dart`)**:
+  - Collapsible 260pt drawer/sidebar displaying miniature page representations and page number badges.
+  - Filter toggle: "All (N)" vs. "Bookmarks (M)".
+  - Bookmark star toggle directly on each thumbnail.
+  - Instant page jumping upon thumbnail selection.
+- **Draggable Sticky Notes & Text Annotations (`lib/features/pdf/presentation/widgets/sticky_note_widget.dart`)**:
+  - `StickyNote` data model with `x`, `y`, `width`, `height`, `content`, `colorHex`.
+  - Palette of 6 stationery pastel tones: Canary Yellow, Sky Blue, Pastel Pink, Mint Green, Lavender, Peach Orange.
+  - Interactive repositioning with real-time gesture dragging (`onPanUpdate` -> updates `(x, y)` in SQLite).
+  - In-place editable text area with auto-wrap and markdown support.
+  - Color palette selection menu and one-click note deletion.
+- **In-Document Text Search (`lib/features/pdf/presentation/widgets/pdf_document_search_bar.dart`)**:
+  - Floating search bar with real-time text query input.
+  - Match navigation with previous/next buttons (`<`, `>`).
+  - Active search indicator in AppBar title.
+- **Dual View Modes (Single Page View vs. Continuous Vertical Scrolling)**:
+  - Toggle between single-page interactive zoom/pan mode and continuous vertical scrolling mode.
+  - Lazy-rendered multi-page list with independent vector handwriting and sticky note layers per page.
+- **Page Bookmarking**:
+  - Schema v5 support for `isBookmarked` on `PagesTable`.
+  - Instant bookmark toggling in top AppBar and thumbnail sidebar with persistence to Drift SQLite.
+- **Vector Flattened PDF Export (`PdfService.exportFlattenedPdf`)**:
+  - Combines page dimensions, background tones, vector handwriting strokes (with inverted Y coordinate mapping for PDF space, stroke width, and colors), and positioned sticky notes into a standard binary PDF document.
+  - Exports standard, shareable `.pdf` documents retaining original vector fidelity without pixelation.
+
+### 2. Files Created & Modified
+- `lib/data/local/app_database.dart` (Schema v5: `StickyNotesTable`, `isPdf` & `pdfPath` on `NotebooksTable`, `isBookmarked` & `pdfPageIndex` on `PagesTable`)
+- `lib/data/local/app_database.g.dart` (Regenerated Drift code via `build_runner`)
+- `lib/data/local/database_provider.dart` (Exposed `stickyNoteRepositoryProvider`)
+- `lib/data/models/notebook_model.dart` (Added `isPdf` and `pdfPath`)
+- `lib/data/models/page_model.dart` (Added `isBookmarked` and `pdfPageIndex`)
+- `lib/data/models/sticky_note_model.dart` (Domain model & color palette for sticky notes)
+- `lib/data/models/pdf_document_model.dart` (Table of contents, outline items, and metadata models)
+- `lib/data/repositories/notebook_repository.dart` (Mapped `isPdf` and `pdfPath`)
+- `lib/data/repositories/page_repository.dart` (Mapped `isBookmarked`, `pdfPageIndex`, and `toggleBookmark`)
+- `lib/data/repositories/sticky_note_repository.dart` (Drift SQLite persistence for sticky notes)
+- `lib/features/notebooks/data/page_provider.dart` (Added `toggleBookmark`)
+- `lib/features/pdf/data/sticky_note_provider.dart` (State notifier for sticky notes)
+- `lib/services/pdf/pdf_service.dart` (PDF page estimation, importing, outline extraction, and flattened PDF export)
+- `lib/features/pdf/presentation/widgets/sticky_note_widget.dart` (Draggable sticky note component)
+- `lib/features/pdf/presentation/widgets/pdf_thumbnail_sidebar.dart` (Collapsible sidebar with page thumbnails and bookmark filters)
+- `lib/features/pdf/presentation/widgets/pdf_document_search_bar.dart` (In-document search bar with match counter)
+- `lib/features/dashboard/presentation/screens/dashboard_screen.dart` (Connected native PDF file picker & import pipeline)
+- `lib/features/notebooks/presentation/screens/notebook_view_screen.dart` (Integrated thumbnail sidebar, search bar, sticky notes, view mode toggle, and PDF export)
+- `test/unit/pdf_service_test.dart` (Page estimation, import, outline extraction, and binary flattened PDF export)
+- `test/unit/sticky_note_repository_test.dart` (SQLite CRUD, position update, content/color update, deletion)
+- `test/unit/sticky_note_provider_test.dart` (State management for sticky notes)
+- `test/widget/pdf_features_test.dart` (Thumbnail sidebar interactions, sticky note editing, and document search)
+
+### 3. Verification & Test Results
+- `dart format lib test`: **100% formatted** (64 files checked).
+- `flutter analyze`: **0 issues found** (Clean, 0 warnings, 0 errors).
+- `flutter test`: **93 of 93 tests passed (100%)**:
+  - `pdf_service_test.dart` (4 tests): Page estimation, PDF import to SQLite, TOC extraction, binary flattened PDF export.
+  - `sticky_note_repository_test.dart` (3 tests): SQLite sticky note CRUD, updates, deletion.
+  - `sticky_note_provider_test.dart` (3 tests): State management, repositioning, content editing, deletion.
+  - `pdf_features_test.dart` (3 tests): Thumbnail sidebar filtering/selection, sticky note editing/deletion, search bar.
+  - Plus all vector stroke, smoothing, paper template, page, folder, notebook CRUD, user, auth, and smoke tests (80 tests).
+- `python -m pytest backend/tests -v`: **3 of 3 tests passed (100%)**.
+- `flutter build web --release`: **SUCCESS** (`build\web` generated).
+
+### 4. Known Limitations
+- Direct text layer selection (selecting text characters within text-based PDFs) will be enriched with OS-native PDF text extractors in Phase 8.
+- Cloud synchronization of large PDF binary files will be integrated in Phase 7.
+
+### 5. Next Tasks
+- Proceed to Phase 7: Cloud Synchronization & Offline-First Database (FastAPI backend sync endpoints, delta synchronization, conflict resolution, offline queue, and revision tracking).

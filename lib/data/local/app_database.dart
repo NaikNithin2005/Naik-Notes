@@ -37,6 +37,8 @@ class NotebooksTable extends Table {
   IntColumn get pageCount => integer().withDefault(const Constant(1))();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  BoolColumn get isPdf => boolean().withDefault(const Constant(false))();
+  TextColumn get pdfPath => text().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(1))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -72,6 +74,8 @@ class PagesTable extends Table {
       text().withDefault(const Constant('college_ruled'))();
   TextColumn get backgroundColor => text().nullable()();
   TextColumn get templatePropertiesJson => text().nullable()();
+  BoolColumn get isBookmarked => boolean().withDefault(const Constant(false))();
+  IntColumn get pdfPageIndex => integer().nullable()();
   RealColumn get width => real().withDefault(const Constant(595.28))();
   RealColumn get height => real().withDefault(const Constant(841.89))();
   IntColumn get revision => integer().withDefault(const Constant(1))();
@@ -101,6 +105,26 @@ class StrokesTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Table representing sticky note and text annotations on notebook/PDF pages.
+class StickyNotesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get pageId =>
+      text().references(PagesTable, #id, onDelete: KeyAction.cascade)();
+  RealColumn get x => real()();
+  RealColumn get y => real()();
+  RealColumn get width => real().withDefault(const Constant(160.0))();
+  RealColumn get height => real().withDefault(const Constant(140.0))();
+  TextColumn get content => text()();
+  TextColumn get colorHex => text().withDefault(
+    const Constant('#FEF08A'),
+  )(); // Classic soft canary yellow
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     FoldersTable,
@@ -108,13 +132,14 @@ class StrokesTable extends Table {
     SectionsTable,
     PagesTable,
     StrokesTable,
+    StickyNotesTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'naik_notes_local');
