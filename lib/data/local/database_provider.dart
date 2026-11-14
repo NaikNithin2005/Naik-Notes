@@ -5,6 +5,7 @@ import '../repositories/notebook_repository.dart';
 import '../repositories/page_repository.dart';
 import '../repositories/sticky_note_repository.dart';
 import '../repositories/stroke_repository.dart';
+import '../repositories/sync_queue_repository.dart';
 import 'app_database.dart';
 
 /// Global provider for the Drift AppDatabase singleton.
@@ -42,4 +43,10 @@ final strokeRepositoryProvider = Provider<StrokeRepository>((ref) {
 final stickyNoteRepositoryProvider = Provider<StickyNoteRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   return DriftStickyNoteRepository(db);
+});
+
+/// Global provider for SyncQueueRepository.
+final syncQueueRepositoryProvider = Provider<SyncQueueRepository>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return DriftSyncQueueRepository(db);
 });

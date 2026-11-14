@@ -125,6 +125,26 @@ class StickyNotesTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Table representing local offline sync queue operations awaiting push to backend.
+class SyncQueueTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get entityType =>
+      text()(); // notebook, folder, page, stroke, sticky_note
+  TextColumn get entityId => text()();
+  TextColumn get operationType => text()(); // insert, update, delete
+  TextColumn get payloadJson => text()();
+  IntColumn get revision => integer().withDefault(const Constant(1))();
+  DateTimeColumn get createdAt => dateTime()();
+  TextColumn get status => text().withDefault(
+    const Constant('pending'),
+  )(); // pending, syncing, synced, failed
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+  TextColumn get lastError => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     FoldersTable,
@@ -133,13 +153,14 @@ class StickyNotesTable extends Table {
     PagesTable,
     StrokesTable,
     StickyNotesTable,
+    SyncQueueTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'naik_notes_local');

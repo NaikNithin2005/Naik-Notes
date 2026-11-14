@@ -1,0 +1,167 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../data/local/database_provider.dart';
+import '../../../services/sync/sync_service.dart';
+
+enum SyncUiStatus { synced, syncing, offline, error }
+
+class SyncState {
+  final SyncUiStatus status;
+  final DateTime? lastSyncedAt;
+  final int pendingCount;
+  final String? lastError;
+  final bool autoSyncEnabled;
+  final int lastPushed;
+  final int lastPulled;
+  final int lastConflicts;
+
+  const SyncState({
+    this.status = SyncUiStatus.synced,
+    this.lastSyncedAt,
+    this.pendingCount = 0,
+    this.lastError,
+    this.autoSyncEnabled = true,
+    this.lastPushed = 0,
+    this.lastPulled = 0,
+    this.lastConflicts = 0,
+  });
+
+  SyncState copyWith({
+    SyncUiStatus? status,
+    DateTime? lastSyncedAt,
+    int? pendingCount,
+    String? lastError,
+    bool? autoSyncEnabled,
+    int? lastPushed,
+    int? lastPulled,
+    int? lastConflicts,
+    bool clearError = false,
+  }) {
+    return SyncState(
+      status: status ?? this.status,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      pendingCount: pendingCount ?? this.pendingCount,
+      lastError: clearError ? null : (lastError ?? this.lastError),
+      autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
+      lastPushed: lastPushed ?? this.lastPushed,
+      lastPulled: lastPulled ?? this.lastPulled,
+      lastConflicts: lastConflicts ?? this.lastConflicts,
+    );
+  }
+}
+
+/// Global provider for [SyncService].
+final syncServiceProvider = Provider<SyncService>((ref) {
+  final queueRepo = ref.watch(syncQueueRepositoryProvider);
+  final notebookRepo = ref.watch(notebookRepositoryProvider);
+  final folderRepo = ref.watch(folderRepositoryProvider);
+  final pageRepo = ref.watch(pageRepositoryProvider);
+  final strokeRepo = ref.watch(strokeRepositoryProvider);
+  final stickyNoteRepo = ref.watch(stickyNoteRepositoryProvider);
+
+  return SyncService(
+    queueRepo: queueRepo,
+    notebookRepo: notebookRepo,
+    folderRepo: folderRepo,
+    pageRepo: pageRepo,
+    strokeRepo: strokeRepo,
+    stickyNoteRepo: stickyNoteRepo,
+  );
+});
+
+/// Riverpod notifier managing synchronization state, triggers, and auto-sync timer.
+class SyncNotifier extends Notifier<SyncState> {
+  Timer? _autoSyncTimer;
+  StreamSubscription<int>? _queueSub;
+
+  @override
+  SyncState build() {
+    final queueRepo = ref.watch(syncQueueRepositoryProvider);
+
+    // Subscribe to pending queue count changes
+    _queueSub?.cancel();
+    _queueSub = queueRepo.watchPendingCount().listen((count) {
+      state = state.copyWith(pendingCount: count);
+      // Auto-trigger sync if autoSync is on and pending count increases
+      if (state.autoSyncEnabled &&
+          count > 0 &&
+          state.status != SyncUiStatus.syncing) {
+        syncNow();
+      }
+    });
+
+    ref.onDispose(() {
+      _autoSyncTimer?.cancel();
+      _queueSub?.cancel();
+    });
+
+    _startPeriodicSync();
+
+    return const SyncState();
+  }
+
+  void _startPeriodicSync() {
+    _autoSyncTimer?.cancel();
+    // Periodic poll every 45 seconds
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (state.autoSyncEnabled && state.status != SyncUiStatus.syncing) {
+        syncNow();
+      }
+    });
+  }
+
+  void toggleAutoSync(bool enabled) {
+    state = state.copyWith(autoSyncEnabled: enabled);
+    if (enabled) {
+      _startPeriodicSync();
+      syncNow();
+    } else {
+      _autoSyncTimer?.cancel();
+    }
+  }
+
+  Future<SyncResult> syncNow({String ownerId = 'local_user'}) async {
+    if (state.status == SyncUiStatus.syncing) {
+      return SyncResult(
+        isSuccess: false,
+        errorMessage: 'Sync already in progress',
+        timestamp: DateTime.now(),
+      );
+    }
+
+    state = state.copyWith(status: SyncUiStatus.syncing, clearError: true);
+
+    final syncService = ref.read(syncServiceProvider);
+    final result = await syncService.syncAll(ownerId: ownerId);
+
+    if (result.isSuccess) {
+      final queueRepo = ref.read(syncQueueRepositoryProvider);
+      final remainingCount = await queueRepo.getPendingCount();
+
+      state = state.copyWith(
+        status: SyncUiStatus.synced,
+        lastSyncedAt: result.timestamp,
+        pendingCount: remainingCount,
+        lastPushed: result.pushedCount,
+        lastPulled: result.pulledCount,
+        lastConflicts: result.conflictCount,
+        clearError: true,
+      );
+    } else {
+      state = state.copyWith(
+        status: result.errorMessage?.contains('offline') == true
+            ? SyncUiStatus.offline
+            : SyncUiStatus.error,
+        lastError: result.errorMessage,
+      );
+    }
+
+    return result;
+  }
+}
+
+final syncProvider = NotifierProvider<SyncNotifier, SyncState>(() {
+  return SyncNotifier();
+});

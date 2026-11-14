@@ -1,43 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../sync/data/sync_provider.dart';
+import '../../../sync/presentation/widgets/sync_details_dialog.dart';
 
-enum SyncStatusState { synced, syncing, offline, error }
+/// Backward compatibility alias
+typedef SyncStatusState = SyncUiStatus;
 
-/// Pill indicator displaying cloud synchronization status.
-class SyncStatusBadge extends StatelessWidget {
-  final SyncStatusState status;
+/// Pill indicator displaying cloud synchronization status with interactive diagnostics dialog.
+class SyncStatusBadge extends ConsumerWidget {
+  final SyncUiStatus? status;
   final VoidCallback? onTap;
 
-  const SyncStatusBadge({
-    super.key,
-    this.status = SyncStatusState.synced,
-    this.onTap,
-  });
+  const SyncStatusBadge({super.key, this.status, this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final effectiveStatus = status ?? ref.watch(syncProvider).status;
+
     Color badgeColor;
     IconData badgeIcon;
     String label;
 
-    switch (status) {
-      case SyncStatusState.synced:
+    switch (effectiveStatus) {
+      case SyncUiStatus.synced:
         badgeColor = AppColors.syncSuccess;
         badgeIcon = Icons.cloud_done_rounded;
         label = 'Synced';
         break;
-      case SyncStatusState.syncing:
+      case SyncUiStatus.syncing:
         badgeColor = AppColors.syncPending;
         badgeIcon = Icons.sync_rounded;
         label = 'Syncing...';
         break;
-      case SyncStatusState.offline:
+      case SyncUiStatus.offline:
         badgeColor = AppColors.syncOffline;
         badgeIcon = Icons.cloud_off_rounded;
         label = 'Offline';
         break;
-      case SyncStatusState.error:
+      case SyncUiStatus.error:
         badgeColor = AppColors.syncError;
         badgeIcon = Icons.sync_problem_rounded;
         label = 'Sync Error';
@@ -45,9 +47,9 @@ class SyncStatusBadge extends StatelessWidget {
     }
 
     return Tooltip(
-      message: 'Cloud Sync Status: $label',
+      message: 'Cloud Sync: $label (Tap for details)',
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap ?? () => SyncDetailsDialog.show(context),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

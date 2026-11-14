@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth
+from app.api import auth, sync
 
 app = FastAPI(
     title="Naik Notes Backend API",
@@ -17,6 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(sync.router)
 
 @app.get("/health")
 def health_check():

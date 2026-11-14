@@ -262,7 +262,7 @@ class DashboardScreen extends ConsumerWidget {
                       // Sync Status Badge, User Profile & Settings
                       Row(
                         children: [
-                          const SyncStatusBadge(status: SyncStatusState.synced),
+                          const SyncStatusBadge(),
                           const SizedBox(width: 10),
                           InkWell(
                             onTap: () {

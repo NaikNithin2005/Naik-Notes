@@ -3,7 +3,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../../data/local/database_provider.dart';
 import '../../../data/models/notebook_model.dart';
+import '../../../data/models/sync_operation_model.dart';
 import '../../../data/repositories/notebook_repository.dart';
+import '../../sync/data/sync_provider.dart';
 
 /// State notifier managing the reactive list of notebooks, backed by Drift SQLite.
 class NotebooksNotifier extends Notifier<List<Notebook>> {
@@ -126,6 +128,11 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
 
     state = [newNotebook, ...state];
     await _repository.saveNotebook(newNotebook);
+    try {
+      await ref
+          .read(syncServiceProvider)
+          .enqueueNotebookMutation(newNotebook, SyncOperationType.insert);
+    } catch (_) {}
     return newNotebook;
   }
 
@@ -150,12 +157,23 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
       newTitle,
       newDescription: newDescription,
     );
+    try {
+      final updated = state.firstWhere((n) => n.id == id);
+      await ref
+          .read(syncServiceProvider)
+          .enqueueNotebookMutation(updated, SyncOperationType.update);
+    } catch (_) {}
   }
 
   Future<Notebook?> duplicateNotebook(String id) async {
     final duplicated = await _repository.duplicateNotebook(id);
     if (duplicated != null) {
       state = [duplicated, ...state];
+      try {
+        await ref
+            .read(syncServiceProvider)
+            .enqueueNotebookMutation(duplicated, SyncOperationType.insert);
+      } catch (_) {}
     }
     return duplicated;
   }
@@ -173,6 +191,12 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.moveNotebookToFolder(notebookId, folderId);
+    try {
+      final nb = state.firstWhere((n) => n.id == notebookId);
+      await ref
+          .read(syncServiceProvider)
+          .enqueueNotebookMutation(nb, SyncOperationType.update);
+    } catch (_) {}
   }
 
   Future<void> archiveNotebook(String notebookId) async {
@@ -184,6 +208,12 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.archiveNotebook(notebookId);
+    try {
+      final nb = state.firstWhere((n) => n.id == notebookId);
+      await ref
+          .read(syncServiceProvider)
+          .enqueueNotebookMutation(nb, SyncOperationType.update);
+    } catch (_) {}
   }
 
   Future<void> unarchiveNotebook(String notebookId) async {
@@ -195,6 +225,12 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.unarchiveNotebook(notebookId);
+    try {
+      final nb = state.firstWhere((n) => n.id == notebookId);
+      await ref
+          .read(syncServiceProvider)
+          .enqueueNotebookMutation(nb, SyncOperationType.update);
+    } catch (_) {}
   }
 
   Future<void> toggleFavorite(String notebookId) async {
@@ -206,11 +242,35 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.toggleFavorite(notebookId);
+    try {
+      final nb = state.firstWhere((n) => n.id == notebookId);
+      await ref
+          .read(syncServiceProvider)
+          .enqueueNotebookMutation(nb, SyncOperationType.update);
+    } catch (_) {}
   }
 
   Future<void> deleteNotebook(String notebookId) async {
+    final toDelete = state.firstWhere(
+      (nb) => nb.id == notebookId,
+      orElse: () => Notebook(
+        id: notebookId,
+        ownerId: 'local_user',
+        title: 'Deleted Notebook',
+        coverId: '',
+        coverColorHex: '',
+        paperTemplateId: '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
     state = state.where((nb) => nb.id != notebookId).toList();
     await _repository.deleteNotebook(notebookId);
+    try {
+      await ref
+          .read(syncServiceProvider)
+          .enqueueNotebookMutation(toDelete, SyncOperationType.delete);
+    } catch (_) {}
   }
 
   void reorderNotebooks(int oldIndex, int newIndex) {
