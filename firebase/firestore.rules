@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to verify document ownership
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profile documents
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      // User registered devices
+      match /devices/{deviceId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Notebooks
+      match /notebooks/{notebookId} {
+        allow read, write: if isOwner(userId);
+
+        // Sections
+        match /sections/{sectionId} {
+          allow read, write: if isOwner(userId);
+        }
+
+        // Pages
+        match /pages/{pageId} {
+          allow read, write: if isOwner(userId);
+
+          // Strokes
+          match /strokes/{strokeId} {
+            allow read, write: if isOwner(userId);
+          }
+
+          // Annotations
+          match /annotations/{annotationId} {
+            allow read, write: if isOwner(userId);
+          }
+        }
+      }
+
+      // Folders
+      match /folders/{folderId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Default deny for all other paths
+    match /{document=**} {
+      allow read, write: false;
+    }
+  }
+}
+
