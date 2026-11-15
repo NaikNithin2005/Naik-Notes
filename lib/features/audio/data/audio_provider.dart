@@ -3,11 +3,34 @@ import 'package:naik_notes/data/local/database_provider.dart';
 import 'package:naik_notes/data/models/audio_model.dart';
 import 'package:naik_notes/services/audio/audio_service.dart';
 
+/// Active recording flag notifier to avoid eager initialization of AudioService.
+class IsAudioRecordingNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setRecording(bool value) {
+    state = value;
+  }
+}
+
+final isAudioRecordingActiveProvider =
+    NotifierProvider<IsAudioRecordingNotifier, bool>(
+      IsAudioRecordingNotifier.new,
+    );
+
 /// Global provider for the AudioService singleton.
 final audioServiceProvider = Provider<AudioService>((ref) {
   final repo = ref.watch(audioRepositoryProvider);
   final service = AudioService(repository: repo);
-  ref.onDispose(() => service.dispose());
+  final sub = service.recordStateStream.listen((recordState) {
+    ref
+        .read(isAudioRecordingActiveProvider.notifier)
+        .setRecording(recordState.isRecording);
+  });
+  ref.onDispose(() {
+    sub.cancel();
+    service.dispose();
+  });
   return service;
 });
 

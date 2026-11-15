@@ -20,7 +20,7 @@
 | **Phase 7** | Cloud Synchronization & Offline DB | **VERIFIED & COMPLETE** | 103 Flutter Tests + 6 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 8** | Cross-Platform Optimization & Native Hardware Integration | **VERIFIED & COMPLETE** | 123 Flutter Tests + 6 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 9** | Handwriting Recognition & Search | **VERIFIED & COMPLETE** | 136 Flutter Tests + 10 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
-| **Phase 10** | Audio Notes & AI Study Assistant | Scheduled | - | - |
+| **Phase 10** | Audio Notes & AI Study Assistant | **VERIFIED & COMPLETE** | 150 Flutter Tests + 16 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 11** | Version History & Template Store | Scheduled | - | - |
 | **Phase 12** | Release Hardening & Verification | Scheduled | - | - |
 
@@ -518,4 +518,92 @@
 - `flutter build web --release`: **SUCCESS** (`build\web` generated).
 
 ### 4. Next Tasks
-- Proceed to Phase 10: Audio Notes & AI Study Assistant.
+- Proceed to Phase 10: Audio Notes & AI Study Assistant (Completed).
+
+---
+
+## Phase 10: Audio Notes & AI Study Assistant (Completed)
+
+### 1. Implemented Features
+- **SQLite Audio Recording & Bookmarks Schema (Drift Schema v8)**:
+  - Added `AudioRecordingsTable` (`id`, `notebookId`, `pageId`, `title`, `filePath`, `durationMs`, `createdAt`, `updatedAt`).
+  - Added `AudioBookmarksTable` (`id`, `recordingId`, `pageId`, `strokeId`, `timestampMs`, `label`, `createdAt`).
+  - Implemented `AudioRepository` and `DriftAudioRepository` with full CRUD, cascading deletes, bookmark association, and notebook-scoped querying.
+  - Registered `audioRepositoryProvider` in `database_provider.dart`.
+- **FastAPI AI Study Assistant Microservice**:
+  - Implemented endpoints in `backend/app/api/ai.py`:
+    - `GET /v1/ai/study/status`: Engine availability and model capabilities.
+    - `POST /v1/ai/study/summarize`: Generates structured markdown summaries, key concepts, and exam recommendations from lecture content.
+    - `POST /v1/ai/study/flashcards`: Generates flashcard decks with question, answer, hint, and difficulty level (`easy`, `medium`, `hard`).
+    - `POST /v1/ai/study/quiz`: Generates multiple-choice questions with 4 options, correct answer index, and pedagogical explanations.
+    - `POST /v1/ai/study/explain-formula`: LaTeX mathematical formula parser, variable definitions dictionary, and real-world practical applications.
+    - `POST /v1/ai/study/chat`: Contextual Q&A agent over student lecture notes with follow-up suggestions.
+  - Implemented `backend/app/services/ai_service.py` with provider-independent architecture and offline fallback.
+  - Created 6 Pytest unit tests in `backend/tests/test_ai.py` (all 16 backend tests passing).
+- **Client Audio Recording & Playback Engine**:
+  - Built `AudioService` in `lib/services/audio/audio_service.dart`:
+    - Real-time periodic recording timer with speech amplitude waveform generation (80-sample rolling buffer).
+    - Session state management (`RecordingSessionState`, `PlaybackSessionState`).
+    - Variable playback speed controls (`0.75x`, `1.0x`, `1.25x`, `1.5x`, `2.0x`).
+    - Time scrubbing and instant bookmark seek.
+    - Timestamped bookmarking with stroke association.
+    - Stroke-to-audio synchronization: inking strokes during recording automatically associates timestamped bookmarks.
+  - Built `AudioRecordingBar` in `lib/features/audio/presentation/widgets/audio_recording_bar.dart`:
+    - Compact floating controller with record timer, dynamic red waveform bars, pause/resume, and bookmark creator.
+    - Playback mode with play/pause, time indicator, progress slider scrubber, speed toggle pill, stroke sync toggle, and bookmark selector popup menu.
+- **Client AI Study Assistant & UI Sheet**:
+  - Built `AiStudyAssistantService` in `lib/services/ai/ai_study_assistant_service.dart`:
+    - `collectNotebookContext`: Queries `PageSearchRepository.getEntriesForNotebook` to aggregate all indexed handwriting, PDF text, and sticky notes.
+    - HTTP client calling backend FastAPI endpoints with graceful offline fallback.
+  - Built `AiStudyAssistantSheet` in `lib/features/ai_assistant/presentation/widgets/ai_study_assistant_sheet.dart`:
+    - 4-tab interactive study sheet:
+      1. *Summary*: Formatted markdown summary, highlighted key concepts chips, and study recommendations.
+      2. *Flashcards*: 3D-styled flip cards (Question / Answer), hint reveal button, difficulty badges, and card navigation.
+      3. *Quiz*: Multiple-choice question cards, interactive option selection, answer checking with green/red feedback, score counter, and pedagogical explanations.
+      4. *Ask Notes*: Interactive chat interface with quick suggestion chips ("Explain main formula", "Summarize this chapter", "Key exam tips") and contextual assistant replies.
+- **Canvas & Notebook Integration**:
+  - Updated `NotebookViewScreen` with "Record Lecture Audio" and "AI Study Assistant" action buttons.
+  - Added bottom-positioned floating `AudioRecordingBar` overlays.
+  - Guarded stroke audio bookmarking with `isAudioRecordingActiveProvider` to prevent unneeded Drift database initialization during non-recording sessions.
+
+### 2. Files Created & Modified
+- `lib/data/local/app_database.dart` (Schema version 8 with `AudioRecordingsTable` and `AudioBookmarksTable`)
+- `lib/data/local/app_database.g.dart` (Generated Drift code for audio tables)
+- `lib/data/local/database_provider.dart` (Registered `audioRepositoryProvider`)
+- `lib/data/models/audio_model.dart` (`AudioBookmark`, `AudioRecording`, `AudioSpeed`, session models)
+- `lib/data/repositories/audio_repository.dart` (`AudioRepository` interface & `DriftAudioRepository`)
+- `lib/data/repositories/page_search_repository.dart` (Added `getEntriesForNotebook`)
+- `backend/app/schemas/ai.py` (Pydantic schemas for summary, flashcards, quiz, formula, chat)
+- `backend/app/services/ai_service.py` (Educational study assistant engine)
+- `backend/app/api/ai.py` (FastAPI AI router endpoints)
+- `backend/app/main.py` (Mounted `ai.router`)
+- `backend/tests/test_ai.py` (6 Pytest tests for AI study assistant endpoints)
+- `lib/services/audio/audio_service.dart` (Audio recording, playback, waveform, and stroke sync)
+- `lib/features/audio/data/audio_provider.dart` (`audioServiceProvider`, `recordingSessionProvider`, `playbackSessionProvider`, `notebookRecordingsProvider`, `isAudioRecordingActiveProvider`)
+- `lib/features/audio/presentation/widgets/audio_recording_bar.dart` (Floating audio controller)
+- `lib/services/ai/ai_study_assistant_service.dart` (Summaries, flashcards, quizzes, formula explanations, chat)
+- `lib/features/ai_assistant/data/ai_study_assistant_provider.dart` (Riverpod providers for AI services)
+- `lib/features/ai_assistant/presentation/widgets/ai_study_assistant_sheet.dart` (4-tab interactive study sheet)
+- `lib/features/canvas/data/stroke_provider.dart` (Stroke audio bookmarking with active recording guard)
+- `lib/features/notebooks/presentation/screens/notebook_view_screen.dart` (Wired audio and AI buttons)
+- `test/unit/audio_repository_test.dart` (3 unit tests for Drift audio repository)
+- `test/unit/audio_service_test.dart` (3 unit tests for audio service recording, playback, and stroke sync)
+- `test/unit/ai_study_assistant_service_test.dart` (5 unit tests for study assistant capabilities)
+- `test/widget/audio_and_ai_study_assistant_test.dart` (2 widget tests for AudioRecordingBar and AiStudyAssistantSheet)
+
+### 3. Verification & Test Results
+- `dart format lib test`: **100% formatted** (0 issues).
+- `flutter analyze`: **0 issues found** (Clean, 0 warnings, 0 errors, ran in 11.9s).
+- `flutter test`: **150 of 150 tests passed (100%)**:
+  - `audio_repository_test.dart` (3 tests): Save, retrieve, cascade delete.
+  - `audio_service_test.dart` (3 tests): Recording lifecycle, playback controls, stroke sync.
+  - `ai_study_assistant_service_test.dart` (5 tests): Notebook context collection, summary, flashcards, quiz, formula explainer.
+  - `audio_and_ai_study_assistant_test.dart` (2 tests): AudioRecordingBar and AiStudyAssistantSheet.
+  - Plus all 137 existing tests across all previous phases.
+- `python -m pytest backend/tests -v`: **16 of 16 tests passed (100%)**:
+  - `test_ai.py` (6 tests): Status, summarize, flashcards, quiz, explain-formula, chat.
+  - `test_ocr.py`, `test_auth.py`, `test_health.py`, `test_sync.py`: All 10 existing tests passing.
+- `flutter build web --release`: **SUCCESS** (`build\web` generated in 67.5s).
+
+### 4. Next Tasks
+- Proceed to Phase 11: Version History & Template Store.

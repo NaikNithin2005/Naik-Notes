@@ -291,16 +291,19 @@ class StrokesNotifier extends Notifier<StrokesState> {
     await _repo.saveStroke(stroke);
 
     // Synchronize stroke with active audio recording session
-    try {
-      final audioService = ref.read(audioServiceProvider);
-      if (audioService.recordState.isRecording) {
-        audioService.addBookmark(
-          'Stroke #${currentList.length}',
-          pageId: pageId,
-          strokeId: stroke.id,
-        );
-      }
-    } catch (_) {}
+    final isRecordingActive = ref.read(isAudioRecordingActiveProvider);
+    if (isRecordingActive) {
+      try {
+        final audioService = ref.read(audioServiceProvider);
+        if (audioService.recordState.isRecording) {
+          audioService.addBookmark(
+            'Stroke #${currentList.length}',
+            pageId: pageId,
+            strokeId: stroke.id,
+          );
+        }
+      } catch (_) {}
+    }
   }
 
   /// Indexes handwriting strokes for full-text search recognition.
