@@ -6272,6 +6272,1473 @@ class AudioBookmarksTableCompanion
   }
 }
 
+class $PageSnapshotsTableTable extends PageSnapshotsTable
+    with TableInfo<$PageSnapshotsTableTable, PageSnapshotsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PageSnapshotsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pageIdMeta = const VerificationMeta('pageId');
+  @override
+  late final GeneratedColumn<String> pageId = GeneratedColumn<String>(
+    'page_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES pages_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _versionNumberMeta = const VerificationMeta(
+    'versionNumber',
+  );
+  @override
+  late final GeneratedColumn<int> versionNumber = GeneratedColumn<int>(
+    'version_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Snapshot'),
+  );
+  static const VerificationMeta _strokesJsonMeta = const VerificationMeta(
+    'strokesJson',
+  );
+  @override
+  late final GeneratedColumn<String> strokesJson = GeneratedColumn<String>(
+    'strokes_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stickyNotesJsonMeta = const VerificationMeta(
+    'stickyNotesJson',
+  );
+  @override
+  late final GeneratedColumn<String> stickyNotesJson = GeneratedColumn<String>(
+    'sticky_notes_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _templateIdMeta = const VerificationMeta(
+    'templateId',
+  );
+  @override
+  late final GeneratedColumn<String> templateId = GeneratedColumn<String>(
+    'template_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('college_ruled'),
+  );
+  static const VerificationMeta _templatePropertiesJsonMeta =
+      const VerificationMeta('templatePropertiesJson');
+  @override
+  late final GeneratedColumn<String> templatePropertiesJson =
+      GeneratedColumn<String>(
+        'template_properties_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _deviceInfoMeta = const VerificationMeta(
+    'deviceInfo',
+  );
+  @override
+  late final GeneratedColumn<String> deviceInfo = GeneratedColumn<String>(
+    'device_info',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Local Device'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    pageId,
+    notebookId,
+    versionNumber,
+    label,
+    strokesJson,
+    stickyNotesJson,
+    templateId,
+    templatePropertiesJson,
+    deviceInfo,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'page_snapshots_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PageSnapshotsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('page_id')) {
+      context.handle(
+        _pageIdMeta,
+        pageId.isAcceptableOrUnknown(data['page_id']!, _pageIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pageIdMeta);
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('version_number')) {
+      context.handle(
+        _versionNumberMeta,
+        versionNumber.isAcceptableOrUnknown(
+          data['version_number']!,
+          _versionNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    }
+    if (data.containsKey('strokes_json')) {
+      context.handle(
+        _strokesJsonMeta,
+        strokesJson.isAcceptableOrUnknown(
+          data['strokes_json']!,
+          _strokesJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_strokesJsonMeta);
+    }
+    if (data.containsKey('sticky_notes_json')) {
+      context.handle(
+        _stickyNotesJsonMeta,
+        stickyNotesJson.isAcceptableOrUnknown(
+          data['sticky_notes_json']!,
+          _stickyNotesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('template_id')) {
+      context.handle(
+        _templateIdMeta,
+        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
+      );
+    }
+    if (data.containsKey('template_properties_json')) {
+      context.handle(
+        _templatePropertiesJsonMeta,
+        templatePropertiesJson.isAcceptableOrUnknown(
+          data['template_properties_json']!,
+          _templatePropertiesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('device_info')) {
+      context.handle(
+        _deviceInfoMeta,
+        deviceInfo.isAcceptableOrUnknown(data['device_info']!, _deviceInfoMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PageSnapshotsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PageSnapshotsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      pageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}page_id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      versionNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version_number'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      strokesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}strokes_json'],
+      )!,
+      stickyNotesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sticky_notes_json'],
+      )!,
+      templateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template_id'],
+      )!,
+      templatePropertiesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template_properties_json'],
+      ),
+      deviceInfo: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_info'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PageSnapshotsTableTable createAlias(String alias) {
+    return $PageSnapshotsTableTable(attachedDatabase, alias);
+  }
+}
+
+class PageSnapshotsTableData extends DataClass
+    implements Insertable<PageSnapshotsTableData> {
+  final String id;
+  final String pageId;
+  final String notebookId;
+  final int versionNumber;
+  final String label;
+  final String strokesJson;
+  final String stickyNotesJson;
+  final String templateId;
+  final String? templatePropertiesJson;
+  final String deviceInfo;
+  final DateTime createdAt;
+  const PageSnapshotsTableData({
+    required this.id,
+    required this.pageId,
+    required this.notebookId,
+    required this.versionNumber,
+    required this.label,
+    required this.strokesJson,
+    required this.stickyNotesJson,
+    required this.templateId,
+    this.templatePropertiesJson,
+    required this.deviceInfo,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['page_id'] = Variable<String>(pageId);
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['version_number'] = Variable<int>(versionNumber);
+    map['label'] = Variable<String>(label);
+    map['strokes_json'] = Variable<String>(strokesJson);
+    map['sticky_notes_json'] = Variable<String>(stickyNotesJson);
+    map['template_id'] = Variable<String>(templateId);
+    if (!nullToAbsent || templatePropertiesJson != null) {
+      map['template_properties_json'] = Variable<String>(
+        templatePropertiesJson,
+      );
+    }
+    map['device_info'] = Variable<String>(deviceInfo);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PageSnapshotsTableCompanion toCompanion(bool nullToAbsent) {
+    return PageSnapshotsTableCompanion(
+      id: Value(id),
+      pageId: Value(pageId),
+      notebookId: Value(notebookId),
+      versionNumber: Value(versionNumber),
+      label: Value(label),
+      strokesJson: Value(strokesJson),
+      stickyNotesJson: Value(stickyNotesJson),
+      templateId: Value(templateId),
+      templatePropertiesJson: templatePropertiesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(templatePropertiesJson),
+      deviceInfo: Value(deviceInfo),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PageSnapshotsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PageSnapshotsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      pageId: serializer.fromJson<String>(json['pageId']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      versionNumber: serializer.fromJson<int>(json['versionNumber']),
+      label: serializer.fromJson<String>(json['label']),
+      strokesJson: serializer.fromJson<String>(json['strokesJson']),
+      stickyNotesJson: serializer.fromJson<String>(json['stickyNotesJson']),
+      templateId: serializer.fromJson<String>(json['templateId']),
+      templatePropertiesJson: serializer.fromJson<String?>(
+        json['templatePropertiesJson'],
+      ),
+      deviceInfo: serializer.fromJson<String>(json['deviceInfo']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'pageId': serializer.toJson<String>(pageId),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'versionNumber': serializer.toJson<int>(versionNumber),
+      'label': serializer.toJson<String>(label),
+      'strokesJson': serializer.toJson<String>(strokesJson),
+      'stickyNotesJson': serializer.toJson<String>(stickyNotesJson),
+      'templateId': serializer.toJson<String>(templateId),
+      'templatePropertiesJson': serializer.toJson<String?>(
+        templatePropertiesJson,
+      ),
+      'deviceInfo': serializer.toJson<String>(deviceInfo),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PageSnapshotsTableData copyWith({
+    String? id,
+    String? pageId,
+    String? notebookId,
+    int? versionNumber,
+    String? label,
+    String? strokesJson,
+    String? stickyNotesJson,
+    String? templateId,
+    Value<String?> templatePropertiesJson = const Value.absent(),
+    String? deviceInfo,
+    DateTime? createdAt,
+  }) => PageSnapshotsTableData(
+    id: id ?? this.id,
+    pageId: pageId ?? this.pageId,
+    notebookId: notebookId ?? this.notebookId,
+    versionNumber: versionNumber ?? this.versionNumber,
+    label: label ?? this.label,
+    strokesJson: strokesJson ?? this.strokesJson,
+    stickyNotesJson: stickyNotesJson ?? this.stickyNotesJson,
+    templateId: templateId ?? this.templateId,
+    templatePropertiesJson: templatePropertiesJson.present
+        ? templatePropertiesJson.value
+        : this.templatePropertiesJson,
+    deviceInfo: deviceInfo ?? this.deviceInfo,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PageSnapshotsTableData copyWithCompanion(PageSnapshotsTableCompanion data) {
+    return PageSnapshotsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      pageId: data.pageId.present ? data.pageId.value : this.pageId,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      versionNumber: data.versionNumber.present
+          ? data.versionNumber.value
+          : this.versionNumber,
+      label: data.label.present ? data.label.value : this.label,
+      strokesJson: data.strokesJson.present
+          ? data.strokesJson.value
+          : this.strokesJson,
+      stickyNotesJson: data.stickyNotesJson.present
+          ? data.stickyNotesJson.value
+          : this.stickyNotesJson,
+      templateId: data.templateId.present
+          ? data.templateId.value
+          : this.templateId,
+      templatePropertiesJson: data.templatePropertiesJson.present
+          ? data.templatePropertiesJson.value
+          : this.templatePropertiesJson,
+      deviceInfo: data.deviceInfo.present
+          ? data.deviceInfo.value
+          : this.deviceInfo,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PageSnapshotsTableData(')
+          ..write('id: $id, ')
+          ..write('pageId: $pageId, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('versionNumber: $versionNumber, ')
+          ..write('label: $label, ')
+          ..write('strokesJson: $strokesJson, ')
+          ..write('stickyNotesJson: $stickyNotesJson, ')
+          ..write('templateId: $templateId, ')
+          ..write('templatePropertiesJson: $templatePropertiesJson, ')
+          ..write('deviceInfo: $deviceInfo, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    pageId,
+    notebookId,
+    versionNumber,
+    label,
+    strokesJson,
+    stickyNotesJson,
+    templateId,
+    templatePropertiesJson,
+    deviceInfo,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PageSnapshotsTableData &&
+          other.id == this.id &&
+          other.pageId == this.pageId &&
+          other.notebookId == this.notebookId &&
+          other.versionNumber == this.versionNumber &&
+          other.label == this.label &&
+          other.strokesJson == this.strokesJson &&
+          other.stickyNotesJson == this.stickyNotesJson &&
+          other.templateId == this.templateId &&
+          other.templatePropertiesJson == this.templatePropertiesJson &&
+          other.deviceInfo == this.deviceInfo &&
+          other.createdAt == this.createdAt);
+}
+
+class PageSnapshotsTableCompanion
+    extends UpdateCompanion<PageSnapshotsTableData> {
+  final Value<String> id;
+  final Value<String> pageId;
+  final Value<String> notebookId;
+  final Value<int> versionNumber;
+  final Value<String> label;
+  final Value<String> strokesJson;
+  final Value<String> stickyNotesJson;
+  final Value<String> templateId;
+  final Value<String?> templatePropertiesJson;
+  final Value<String> deviceInfo;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const PageSnapshotsTableCompanion({
+    this.id = const Value.absent(),
+    this.pageId = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.versionNumber = const Value.absent(),
+    this.label = const Value.absent(),
+    this.strokesJson = const Value.absent(),
+    this.stickyNotesJson = const Value.absent(),
+    this.templateId = const Value.absent(),
+    this.templatePropertiesJson = const Value.absent(),
+    this.deviceInfo = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PageSnapshotsTableCompanion.insert({
+    required String id,
+    required String pageId,
+    required String notebookId,
+    this.versionNumber = const Value.absent(),
+    this.label = const Value.absent(),
+    required String strokesJson,
+    this.stickyNotesJson = const Value.absent(),
+    this.templateId = const Value.absent(),
+    this.templatePropertiesJson = const Value.absent(),
+    this.deviceInfo = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       pageId = Value(pageId),
+       notebookId = Value(notebookId),
+       strokesJson = Value(strokesJson),
+       createdAt = Value(createdAt);
+  static Insertable<PageSnapshotsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? pageId,
+    Expression<String>? notebookId,
+    Expression<int>? versionNumber,
+    Expression<String>? label,
+    Expression<String>? strokesJson,
+    Expression<String>? stickyNotesJson,
+    Expression<String>? templateId,
+    Expression<String>? templatePropertiesJson,
+    Expression<String>? deviceInfo,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (pageId != null) 'page_id': pageId,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (versionNumber != null) 'version_number': versionNumber,
+      if (label != null) 'label': label,
+      if (strokesJson != null) 'strokes_json': strokesJson,
+      if (stickyNotesJson != null) 'sticky_notes_json': stickyNotesJson,
+      if (templateId != null) 'template_id': templateId,
+      if (templatePropertiesJson != null)
+        'template_properties_json': templatePropertiesJson,
+      if (deviceInfo != null) 'device_info': deviceInfo,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PageSnapshotsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? pageId,
+    Value<String>? notebookId,
+    Value<int>? versionNumber,
+    Value<String>? label,
+    Value<String>? strokesJson,
+    Value<String>? stickyNotesJson,
+    Value<String>? templateId,
+    Value<String?>? templatePropertiesJson,
+    Value<String>? deviceInfo,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return PageSnapshotsTableCompanion(
+      id: id ?? this.id,
+      pageId: pageId ?? this.pageId,
+      notebookId: notebookId ?? this.notebookId,
+      versionNumber: versionNumber ?? this.versionNumber,
+      label: label ?? this.label,
+      strokesJson: strokesJson ?? this.strokesJson,
+      stickyNotesJson: stickyNotesJson ?? this.stickyNotesJson,
+      templateId: templateId ?? this.templateId,
+      templatePropertiesJson:
+          templatePropertiesJson ?? this.templatePropertiesJson,
+      deviceInfo: deviceInfo ?? this.deviceInfo,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (pageId.present) {
+      map['page_id'] = Variable<String>(pageId.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (versionNumber.present) {
+      map['version_number'] = Variable<int>(versionNumber.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (strokesJson.present) {
+      map['strokes_json'] = Variable<String>(strokesJson.value);
+    }
+    if (stickyNotesJson.present) {
+      map['sticky_notes_json'] = Variable<String>(stickyNotesJson.value);
+    }
+    if (templateId.present) {
+      map['template_id'] = Variable<String>(templateId.value);
+    }
+    if (templatePropertiesJson.present) {
+      map['template_properties_json'] = Variable<String>(
+        templatePropertiesJson.value,
+      );
+    }
+    if (deviceInfo.present) {
+      map['device_info'] = Variable<String>(deviceInfo.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PageSnapshotsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('pageId: $pageId, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('versionNumber: $versionNumber, ')
+          ..write('label: $label, ')
+          ..write('strokesJson: $strokesJson, ')
+          ..write('stickyNotesJson: $stickyNotesJson, ')
+          ..write('templateId: $templateId, ')
+          ..write('templatePropertiesJson: $templatePropertiesJson, ')
+          ..write('deviceInfo: $deviceInfo, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CustomTemplatesTableTable extends CustomTemplatesTable
+    with TableInfo<$CustomTemplatesTableTable, CustomTemplatesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CustomTemplatesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('General'),
+  );
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
+  @override
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+    'author',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Community'),
+  );
+  static const VerificationMeta _paperPropertiesJsonMeta =
+      const VerificationMeta('paperPropertiesJson');
+  @override
+  late final GeneratedColumn<String> paperPropertiesJson =
+      GeneratedColumn<String>(
+        'paper_properties_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _thumbnailBase64Meta = const VerificationMeta(
+    'thumbnailBase64',
+  );
+  @override
+  late final GeneratedColumn<String> thumbnailBase64 = GeneratedColumn<String>(
+    'thumbnail_base64',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isInstalledMeta = const VerificationMeta(
+    'isInstalled',
+  );
+  @override
+  late final GeneratedColumn<bool> isInstalled = GeneratedColumn<bool>(
+    'is_installed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_installed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _isBuiltInMeta = const VerificationMeta(
+    'isBuiltIn',
+  );
+  @override
+  late final GeneratedColumn<bool> isBuiltIn = GeneratedColumn<bool>(
+    'is_built_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_built_in" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _downloadCountMeta = const VerificationMeta(
+    'downloadCount',
+  );
+  @override
+  late final GeneratedColumn<int> downloadCount = GeneratedColumn<int>(
+    'download_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _ratingMeta = const VerificationMeta('rating');
+  @override
+  late final GeneratedColumn<double> rating = GeneratedColumn<double>(
+    'rating',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(5.0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    description,
+    category,
+    author,
+    paperPropertiesJson,
+    thumbnailBase64,
+    isInstalled,
+    isBuiltIn,
+    downloadCount,
+    rating,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'custom_templates_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CustomTemplatesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('author')) {
+      context.handle(
+        _authorMeta,
+        author.isAcceptableOrUnknown(data['author']!, _authorMeta),
+      );
+    }
+    if (data.containsKey('paper_properties_json')) {
+      context.handle(
+        _paperPropertiesJsonMeta,
+        paperPropertiesJson.isAcceptableOrUnknown(
+          data['paper_properties_json']!,
+          _paperPropertiesJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_paperPropertiesJsonMeta);
+    }
+    if (data.containsKey('thumbnail_base64')) {
+      context.handle(
+        _thumbnailBase64Meta,
+        thumbnailBase64.isAcceptableOrUnknown(
+          data['thumbnail_base64']!,
+          _thumbnailBase64Meta,
+        ),
+      );
+    }
+    if (data.containsKey('is_installed')) {
+      context.handle(
+        _isInstalledMeta,
+        isInstalled.isAcceptableOrUnknown(
+          data['is_installed']!,
+          _isInstalledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_built_in')) {
+      context.handle(
+        _isBuiltInMeta,
+        isBuiltIn.isAcceptableOrUnknown(data['is_built_in']!, _isBuiltInMeta),
+      );
+    }
+    if (data.containsKey('download_count')) {
+      context.handle(
+        _downloadCountMeta,
+        downloadCount.isAcceptableOrUnknown(
+          data['download_count']!,
+          _downloadCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rating')) {
+      context.handle(
+        _ratingMeta,
+        rating.isAcceptableOrUnknown(data['rating']!, _ratingMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CustomTemplatesTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CustomTemplatesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      author: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author'],
+      )!,
+      paperPropertiesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}paper_properties_json'],
+      )!,
+      thumbnailBase64: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}thumbnail_base64'],
+      ),
+      isInstalled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_installed'],
+      )!,
+      isBuiltIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_built_in'],
+      )!,
+      downloadCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}download_count'],
+      )!,
+      rating: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}rating'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CustomTemplatesTableTable createAlias(String alias) {
+    return $CustomTemplatesTableTable(attachedDatabase, alias);
+  }
+}
+
+class CustomTemplatesTableData extends DataClass
+    implements Insertable<CustomTemplatesTableData> {
+  final String id;
+  final String title;
+  final String description;
+  final String category;
+  final String author;
+  final String paperPropertiesJson;
+  final String? thumbnailBase64;
+  final bool isInstalled;
+  final bool isBuiltIn;
+  final int downloadCount;
+  final double rating;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CustomTemplatesTableData({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.author,
+    required this.paperPropertiesJson,
+    this.thumbnailBase64,
+    required this.isInstalled,
+    required this.isBuiltIn,
+    required this.downloadCount,
+    required this.rating,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['description'] = Variable<String>(description);
+    map['category'] = Variable<String>(category);
+    map['author'] = Variable<String>(author);
+    map['paper_properties_json'] = Variable<String>(paperPropertiesJson);
+    if (!nullToAbsent || thumbnailBase64 != null) {
+      map['thumbnail_base64'] = Variable<String>(thumbnailBase64);
+    }
+    map['is_installed'] = Variable<bool>(isInstalled);
+    map['is_built_in'] = Variable<bool>(isBuiltIn);
+    map['download_count'] = Variable<int>(downloadCount);
+    map['rating'] = Variable<double>(rating);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CustomTemplatesTableCompanion toCompanion(bool nullToAbsent) {
+    return CustomTemplatesTableCompanion(
+      id: Value(id),
+      title: Value(title),
+      description: Value(description),
+      category: Value(category),
+      author: Value(author),
+      paperPropertiesJson: Value(paperPropertiesJson),
+      thumbnailBase64: thumbnailBase64 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbnailBase64),
+      isInstalled: Value(isInstalled),
+      isBuiltIn: Value(isBuiltIn),
+      downloadCount: Value(downloadCount),
+      rating: Value(rating),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CustomTemplatesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CustomTemplatesTableData(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String>(json['description']),
+      category: serializer.fromJson<String>(json['category']),
+      author: serializer.fromJson<String>(json['author']),
+      paperPropertiesJson: serializer.fromJson<String>(
+        json['paperPropertiesJson'],
+      ),
+      thumbnailBase64: serializer.fromJson<String?>(json['thumbnailBase64']),
+      isInstalled: serializer.fromJson<bool>(json['isInstalled']),
+      isBuiltIn: serializer.fromJson<bool>(json['isBuiltIn']),
+      downloadCount: serializer.fromJson<int>(json['downloadCount']),
+      rating: serializer.fromJson<double>(json['rating']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String>(description),
+      'category': serializer.toJson<String>(category),
+      'author': serializer.toJson<String>(author),
+      'paperPropertiesJson': serializer.toJson<String>(paperPropertiesJson),
+      'thumbnailBase64': serializer.toJson<String?>(thumbnailBase64),
+      'isInstalled': serializer.toJson<bool>(isInstalled),
+      'isBuiltIn': serializer.toJson<bool>(isBuiltIn),
+      'downloadCount': serializer.toJson<int>(downloadCount),
+      'rating': serializer.toJson<double>(rating),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CustomTemplatesTableData copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? category,
+    String? author,
+    String? paperPropertiesJson,
+    Value<String?> thumbnailBase64 = const Value.absent(),
+    bool? isInstalled,
+    bool? isBuiltIn,
+    int? downloadCount,
+    double? rating,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => CustomTemplatesTableData(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    category: category ?? this.category,
+    author: author ?? this.author,
+    paperPropertiesJson: paperPropertiesJson ?? this.paperPropertiesJson,
+    thumbnailBase64: thumbnailBase64.present
+        ? thumbnailBase64.value
+        : this.thumbnailBase64,
+    isInstalled: isInstalled ?? this.isInstalled,
+    isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+    downloadCount: downloadCount ?? this.downloadCount,
+    rating: rating ?? this.rating,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CustomTemplatesTableData copyWithCompanion(
+    CustomTemplatesTableCompanion data,
+  ) {
+    return CustomTemplatesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      category: data.category.present ? data.category.value : this.category,
+      author: data.author.present ? data.author.value : this.author,
+      paperPropertiesJson: data.paperPropertiesJson.present
+          ? data.paperPropertiesJson.value
+          : this.paperPropertiesJson,
+      thumbnailBase64: data.thumbnailBase64.present
+          ? data.thumbnailBase64.value
+          : this.thumbnailBase64,
+      isInstalled: data.isInstalled.present
+          ? data.isInstalled.value
+          : this.isInstalled,
+      isBuiltIn: data.isBuiltIn.present ? data.isBuiltIn.value : this.isBuiltIn,
+      downloadCount: data.downloadCount.present
+          ? data.downloadCount.value
+          : this.downloadCount,
+      rating: data.rating.present ? data.rating.value : this.rating,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomTemplatesTableData(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('category: $category, ')
+          ..write('author: $author, ')
+          ..write('paperPropertiesJson: $paperPropertiesJson, ')
+          ..write('thumbnailBase64: $thumbnailBase64, ')
+          ..write('isInstalled: $isInstalled, ')
+          ..write('isBuiltIn: $isBuiltIn, ')
+          ..write('downloadCount: $downloadCount, ')
+          ..write('rating: $rating, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    description,
+    category,
+    author,
+    paperPropertiesJson,
+    thumbnailBase64,
+    isInstalled,
+    isBuiltIn,
+    downloadCount,
+    rating,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CustomTemplatesTableData &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.category == this.category &&
+          other.author == this.author &&
+          other.paperPropertiesJson == this.paperPropertiesJson &&
+          other.thumbnailBase64 == this.thumbnailBase64 &&
+          other.isInstalled == this.isInstalled &&
+          other.isBuiltIn == this.isBuiltIn &&
+          other.downloadCount == this.downloadCount &&
+          other.rating == this.rating &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CustomTemplatesTableCompanion
+    extends UpdateCompanion<CustomTemplatesTableData> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> description;
+  final Value<String> category;
+  final Value<String> author;
+  final Value<String> paperPropertiesJson;
+  final Value<String?> thumbnailBase64;
+  final Value<bool> isInstalled;
+  final Value<bool> isBuiltIn;
+  final Value<int> downloadCount;
+  final Value<double> rating;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CustomTemplatesTableCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.category = const Value.absent(),
+    this.author = const Value.absent(),
+    this.paperPropertiesJson = const Value.absent(),
+    this.thumbnailBase64 = const Value.absent(),
+    this.isInstalled = const Value.absent(),
+    this.isBuiltIn = const Value.absent(),
+    this.downloadCount = const Value.absent(),
+    this.rating = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CustomTemplatesTableCompanion.insert({
+    required String id,
+    required String title,
+    this.description = const Value.absent(),
+    this.category = const Value.absent(),
+    this.author = const Value.absent(),
+    required String paperPropertiesJson,
+    this.thumbnailBase64 = const Value.absent(),
+    this.isInstalled = const Value.absent(),
+    this.isBuiltIn = const Value.absent(),
+    this.downloadCount = const Value.absent(),
+    this.rating = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       paperPropertiesJson = Value(paperPropertiesJson),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<CustomTemplatesTableData> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<String>? category,
+    Expression<String>? author,
+    Expression<String>? paperPropertiesJson,
+    Expression<String>? thumbnailBase64,
+    Expression<bool>? isInstalled,
+    Expression<bool>? isBuiltIn,
+    Expression<int>? downloadCount,
+    Expression<double>? rating,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (category != null) 'category': category,
+      if (author != null) 'author': author,
+      if (paperPropertiesJson != null)
+        'paper_properties_json': paperPropertiesJson,
+      if (thumbnailBase64 != null) 'thumbnail_base64': thumbnailBase64,
+      if (isInstalled != null) 'is_installed': isInstalled,
+      if (isBuiltIn != null) 'is_built_in': isBuiltIn,
+      if (downloadCount != null) 'download_count': downloadCount,
+      if (rating != null) 'rating': rating,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CustomTemplatesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<String>? description,
+    Value<String>? category,
+    Value<String>? author,
+    Value<String>? paperPropertiesJson,
+    Value<String?>? thumbnailBase64,
+    Value<bool>? isInstalled,
+    Value<bool>? isBuiltIn,
+    Value<int>? downloadCount,
+    Value<double>? rating,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CustomTemplatesTableCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      author: author ?? this.author,
+      paperPropertiesJson: paperPropertiesJson ?? this.paperPropertiesJson,
+      thumbnailBase64: thumbnailBase64 ?? this.thumbnailBase64,
+      isInstalled: isInstalled ?? this.isInstalled,
+      isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+      downloadCount: downloadCount ?? this.downloadCount,
+      rating: rating ?? this.rating,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (paperPropertiesJson.present) {
+      map['paper_properties_json'] = Variable<String>(
+        paperPropertiesJson.value,
+      );
+    }
+    if (thumbnailBase64.present) {
+      map['thumbnail_base64'] = Variable<String>(thumbnailBase64.value);
+    }
+    if (isInstalled.present) {
+      map['is_installed'] = Variable<bool>(isInstalled.value);
+    }
+    if (isBuiltIn.present) {
+      map['is_built_in'] = Variable<bool>(isBuiltIn.value);
+    }
+    if (downloadCount.present) {
+      map['download_count'] = Variable<int>(downloadCount.value);
+    }
+    if (rating.present) {
+      map['rating'] = Variable<double>(rating.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomTemplatesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('category: $category, ')
+          ..write('author: $author, ')
+          ..write('paperPropertiesJson: $paperPropertiesJson, ')
+          ..write('thumbnailBase64: $thumbnailBase64, ')
+          ..write('isInstalled: $isInstalled, ')
+          ..write('isBuiltIn: $isBuiltIn, ')
+          ..write('downloadCount: $downloadCount, ')
+          ..write('rating: $rating, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6290,6 +7757,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AudioRecordingsTableTable(this);
   late final $AudioBookmarksTableTable audioBookmarksTable =
       $AudioBookmarksTableTable(this);
+  late final $PageSnapshotsTableTable pageSnapshotsTable =
+      $PageSnapshotsTableTable(this);
+  late final $CustomTemplatesTableTable customTemplatesTable =
+      $CustomTemplatesTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6305,6 +7776,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pageSearchIndexTable,
     audioRecordingsTable,
     audioBookmarksTable,
+    pageSnapshotsTable,
+    customTemplatesTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -6370,6 +7843,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('audio_bookmarks_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pages_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('page_snapshots_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('page_snapshots_table', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -6787,6 +8274,30 @@ final class $$NotebooksTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $PageSnapshotsTableTable,
+    List<PageSnapshotsTableData>
+  >
+  _pageSnapshotsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pageSnapshotsTable,
+        aliasName: 'notebooks_table__id__page_snapshots_table__notebook_id',
+      );
+
+  $$PageSnapshotsTableTableProcessedTableManager get pageSnapshotsTableRefs {
+    final manager = $$PageSnapshotsTableTableTableManager(
+      $_db,
+      $_db.pageSnapshotsTable,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _pageSnapshotsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$NotebooksTableTableFilterComposer
@@ -6989,6 +8500,31 @@ class $$NotebooksTableTableFilterComposer
           }) => $$AudioRecordingsTableTableFilterComposer(
             $db: $db,
             $table: $db.audioRecordingsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> pageSnapshotsTableRefs(
+    Expression<bool> Function($$PageSnapshotsTableTableFilterComposer f) f,
+  ) {
+    final $$PageSnapshotsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.pageSnapshotsTable,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PageSnapshotsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pageSnapshotsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -7293,6 +8829,32 @@ class $$NotebooksTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> pageSnapshotsTableRefs<T extends Object>(
+    Expression<T> Function($$PageSnapshotsTableTableAnnotationComposer a) f,
+  ) {
+    final $$PageSnapshotsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.pageSnapshotsTable,
+          getReferencedColumn: (t) => t.notebookId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PageSnapshotsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pageSnapshotsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$NotebooksTableTableTableManager
@@ -7313,6 +8875,7 @@ class $$NotebooksTableTableTableManager
             bool pagesTableRefs,
             bool pageSearchIndexTableRefs,
             bool audioRecordingsTableRefs,
+            bool pageSnapshotsTableRefs,
           })
         > {
   $$NotebooksTableTableTableManager(
@@ -7434,6 +8997,7 @@ class $$NotebooksTableTableTableManager
                 pagesTableRefs = false,
                 pageSearchIndexTableRefs = false,
                 audioRecordingsTableRefs = false,
+                pageSnapshotsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -7442,6 +9006,7 @@ class $$NotebooksTableTableTableManager
                     if (pagesTableRefs) db.pagesTable,
                     if (pageSearchIndexTableRefs) db.pageSearchIndexTable,
                     if (audioRecordingsTableRefs) db.audioRecordingsTable,
+                    if (pageSnapshotsTableRefs) db.pageSnapshotsTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -7526,6 +9091,26 @@ class $$NotebooksTableTableTableManager
                           referencedColumn: 'notebook_id',
                           typedResults: items,
                         ),
+                      if (pageSnapshotsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          NotebooksTableData,
+                          $NotebooksTableTable,
+                          PageSnapshotsTableData,
+                          $PageSnapshotsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableTableReferences
+                              ._pageSnapshotsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pageSnapshotsTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'notebook_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7551,6 +9136,7 @@ typedef $$NotebooksTableTableProcessedTableManager =
         bool pagesTableRefs,
         bool pageSearchIndexTableRefs,
         bool audioRecordingsTableRefs,
+        bool pageSnapshotsTableRefs,
       })
     >;
 typedef $$SectionsTableTableCreateCompanionBuilder =
@@ -8039,6 +9625,30 @@ final class $$PagesTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $PageSnapshotsTableTable,
+    List<PageSnapshotsTableData>
+  >
+  _pageSnapshotsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pageSnapshotsTable,
+        aliasName: 'pages_table__id__page_snapshots_table__page_id',
+      );
+
+  $$PageSnapshotsTableTableProcessedTableManager get pageSnapshotsTableRefs {
+    final manager = $$PageSnapshotsTableTableTableManager(
+      $_db,
+      $_db.pageSnapshotsTable,
+    ).filter((f) => f.pageId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _pageSnapshotsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PagesTableTableFilterComposer
@@ -8229,6 +9839,31 @@ class $$PagesTableTableFilterComposer
           }) => $$AudioRecordingsTableTableFilterComposer(
             $db: $db,
             $table: $db.audioRecordingsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> pageSnapshotsTableRefs(
+    Expression<bool> Function($$PageSnapshotsTableTableFilterComposer f) f,
+  ) {
+    final $$PageSnapshotsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.pageSnapshotsTable,
+      getReferencedColumn: (t) => t.pageId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PageSnapshotsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pageSnapshotsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8521,6 +10156,32 @@ class $$PagesTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> pageSnapshotsTableRefs<T extends Object>(
+    Expression<T> Function($$PageSnapshotsTableTableAnnotationComposer a) f,
+  ) {
+    final $$PageSnapshotsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.pageSnapshotsTable,
+          getReferencedColumn: (t) => t.pageId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PageSnapshotsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pageSnapshotsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PagesTableTableTableManager
@@ -8542,6 +10203,7 @@ class $$PagesTableTableTableManager
             bool stickyNotesTableRefs,
             bool pageSearchIndexTableRefs,
             bool audioRecordingsTableRefs,
+            bool pageSnapshotsTableRefs,
           })
         > {
   $$PagesTableTableTableManager(_$AppDatabase db, $PagesTableTable table)
@@ -8638,6 +10300,7 @@ class $$PagesTableTableTableManager
                 stickyNotesTableRefs = false,
                 pageSearchIndexTableRefs = false,
                 audioRecordingsTableRefs = false,
+                pageSnapshotsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -8646,6 +10309,7 @@ class $$PagesTableTableTableManager
                     if (stickyNotesTableRefs) db.stickyNotesTable,
                     if (pageSearchIndexTableRefs) db.pageSearchIndexTable,
                     if (audioRecordingsTableRefs) db.audioRecordingsTable,
+                    if (pageSnapshotsTableRefs) db.pageSnapshotsTable,
                   ],
                   addJoins:
                       <
@@ -8759,6 +10423,26 @@ class $$PagesTableTableTableManager
                           referencedColumn: 'page_id',
                           typedResults: items,
                         ),
+                      if (pageSnapshotsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          PagesTableData,
+                          $PagesTableTable,
+                          PageSnapshotsTableData,
+                          $PageSnapshotsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PagesTableTableReferences
+                              ._pageSnapshotsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PagesTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pageSnapshotsTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'page_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -8785,6 +10469,7 @@ typedef $$PagesTableTableProcessedTableManager =
         bool stickyNotesTableRefs,
         bool pageSearchIndexTableRefs,
         bool audioRecordingsTableRefs,
+        bool pageSnapshotsTableRefs,
       })
     >;
 typedef $$StrokesTableTableCreateCompanionBuilder =
@@ -11421,6 +13106,938 @@ typedef $$AudioBookmarksTableTableProcessedTableManager =
       AudioBookmarksTableData,
       PrefetchHooks Function({bool recordingId})
     >;
+typedef $$PageSnapshotsTableTableCreateCompanionBuilder =
+    PageSnapshotsTableCompanion Function({
+      required String id,
+      required String pageId,
+      required String notebookId,
+      Value<int> versionNumber,
+      Value<String> label,
+      required String strokesJson,
+      Value<String> stickyNotesJson,
+      Value<String> templateId,
+      Value<String?> templatePropertiesJson,
+      Value<String> deviceInfo,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$PageSnapshotsTableTableUpdateCompanionBuilder =
+    PageSnapshotsTableCompanion Function({
+      Value<String> id,
+      Value<String> pageId,
+      Value<String> notebookId,
+      Value<int> versionNumber,
+      Value<String> label,
+      Value<String> strokesJson,
+      Value<String> stickyNotesJson,
+      Value<String> templateId,
+      Value<String?> templatePropertiesJson,
+      Value<String> deviceInfo,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$PageSnapshotsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PageSnapshotsTableTable,
+          PageSnapshotsTableData
+        > {
+  $$PageSnapshotsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PagesTableTable _pageIdTable(_$AppDatabase db) => db.pagesTable
+      .createAlias('page_snapshots_table__page_id__pages_table__id');
+
+  $$PagesTableTableProcessedTableManager get pageId {
+    final $_column = $_itemColumn<String>('page_id')!;
+
+    final manager = $$PagesTableTableTableManager(
+      $_db,
+      $_db.pagesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_pageIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $NotebooksTableTable _notebookIdTable(_$AppDatabase db) => db
+      .notebooksTable
+      .createAlias('page_snapshots_table__notebook_id__notebooks_table__id');
+
+  $$NotebooksTableTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableTableManager(
+      $_db,
+      $_db.notebooksTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PageSnapshotsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $PageSnapshotsTableTable> {
+  $$PageSnapshotsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get versionNumber => $composableBuilder(
+    column: $table.versionNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get strokesJson => $composableBuilder(
+    column: $table.strokesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stickyNotesJson => $composableBuilder(
+    column: $table.stickyNotesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get templateId => $composableBuilder(
+    column: $table.templateId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get templatePropertiesJson => $composableBuilder(
+    column: $table.templatePropertiesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceInfo => $composableBuilder(
+    column: $table.deviceInfo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PagesTableTableFilterComposer get pageId {
+    final $$PagesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$NotebooksTableTableFilterComposer get notebookId {
+    final $$NotebooksTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PageSnapshotsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $PageSnapshotsTableTable> {
+  $$PageSnapshotsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get versionNumber => $composableBuilder(
+    column: $table.versionNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get strokesJson => $composableBuilder(
+    column: $table.strokesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stickyNotesJson => $composableBuilder(
+    column: $table.stickyNotesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get templateId => $composableBuilder(
+    column: $table.templateId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get templatePropertiesJson => $composableBuilder(
+    column: $table.templatePropertiesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceInfo => $composableBuilder(
+    column: $table.deviceInfo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PagesTableTableOrderingComposer get pageId {
+    final $$PagesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$NotebooksTableTableOrderingComposer get notebookId {
+    final $$NotebooksTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PageSnapshotsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PageSnapshotsTableTable> {
+  $$PageSnapshotsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get versionNumber => $composableBuilder(
+    column: $table.versionNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get strokesJson => $composableBuilder(
+    column: $table.strokesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get stickyNotesJson => $composableBuilder(
+    column: $table.stickyNotesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get templateId => $composableBuilder(
+    column: $table.templateId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get templatePropertiesJson => $composableBuilder(
+    column: $table.templatePropertiesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deviceInfo => $composableBuilder(
+    column: $table.deviceInfo,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$PagesTableTableAnnotationComposer get pageId {
+    final $$PagesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$NotebooksTableTableAnnotationComposer get notebookId {
+    final $$NotebooksTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PageSnapshotsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PageSnapshotsTableTable,
+          PageSnapshotsTableData,
+          $$PageSnapshotsTableTableFilterComposer,
+          $$PageSnapshotsTableTableOrderingComposer,
+          $$PageSnapshotsTableTableAnnotationComposer,
+          $$PageSnapshotsTableTableCreateCompanionBuilder,
+          $$PageSnapshotsTableTableUpdateCompanionBuilder,
+          (PageSnapshotsTableData, $$PageSnapshotsTableTableReferences),
+          PageSnapshotsTableData,
+          PrefetchHooks Function({bool pageId, bool notebookId})
+        > {
+  $$PageSnapshotsTableTableTableManager(
+    _$AppDatabase db,
+    $PageSnapshotsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PageSnapshotsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PageSnapshotsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PageSnapshotsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> pageId = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<int> versionNumber = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> strokesJson = const Value.absent(),
+                Value<String> stickyNotesJson = const Value.absent(),
+                Value<String> templateId = const Value.absent(),
+                Value<String?> templatePropertiesJson = const Value.absent(),
+                Value<String> deviceInfo = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PageSnapshotsTableCompanion(
+                id: id,
+                pageId: pageId,
+                notebookId: notebookId,
+                versionNumber: versionNumber,
+                label: label,
+                strokesJson: strokesJson,
+                stickyNotesJson: stickyNotesJson,
+                templateId: templateId,
+                templatePropertiesJson: templatePropertiesJson,
+                deviceInfo: deviceInfo,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String pageId,
+                required String notebookId,
+                Value<int> versionNumber = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                required String strokesJson,
+                Value<String> stickyNotesJson = const Value.absent(),
+                Value<String> templateId = const Value.absent(),
+                Value<String?> templatePropertiesJson = const Value.absent(),
+                Value<String> deviceInfo = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PageSnapshotsTableCompanion.insert(
+                id: id,
+                pageId: pageId,
+                notebookId: notebookId,
+                versionNumber: versionNumber,
+                label: label,
+                strokesJson: strokesJson,
+                stickyNotesJson: stickyNotesJson,
+                templateId: templateId,
+                templatePropertiesJson: templatePropertiesJson,
+                deviceInfo: deviceInfo,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PageSnapshotsTableTable, PageSnapshotsTableData>(
+                    table,
+                  ),
+                  $$PageSnapshotsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({pageId = false, notebookId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (pageId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.pageId,
+                        referencedTable: $$PageSnapshotsTableTableReferences
+                            ._pageIdTable(db),
+                        referencedColumn: $$PageSnapshotsTableTableReferences
+                            ._pageIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+                    if (notebookId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.notebookId,
+                        referencedTable: $$PageSnapshotsTableTableReferences
+                            ._notebookIdTable(db),
+                        referencedColumn: $$PageSnapshotsTableTableReferences
+                            ._notebookIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PageSnapshotsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PageSnapshotsTableTable,
+      PageSnapshotsTableData,
+      $$PageSnapshotsTableTableFilterComposer,
+      $$PageSnapshotsTableTableOrderingComposer,
+      $$PageSnapshotsTableTableAnnotationComposer,
+      $$PageSnapshotsTableTableCreateCompanionBuilder,
+      $$PageSnapshotsTableTableUpdateCompanionBuilder,
+      (PageSnapshotsTableData, $$PageSnapshotsTableTableReferences),
+      PageSnapshotsTableData,
+      PrefetchHooks Function({bool pageId, bool notebookId})
+    >;
+typedef $$CustomTemplatesTableTableCreateCompanionBuilder =
+    CustomTemplatesTableCompanion Function({
+      required String id,
+      required String title,
+      Value<String> description,
+      Value<String> category,
+      Value<String> author,
+      required String paperPropertiesJson,
+      Value<String?> thumbnailBase64,
+      Value<bool> isInstalled,
+      Value<bool> isBuiltIn,
+      Value<int> downloadCount,
+      Value<double> rating,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CustomTemplatesTableTableUpdateCompanionBuilder =
+    CustomTemplatesTableCompanion Function({
+      Value<String> id,
+      Value<String> title,
+      Value<String> description,
+      Value<String> category,
+      Value<String> author,
+      Value<String> paperPropertiesJson,
+      Value<String?> thumbnailBase64,
+      Value<bool> isInstalled,
+      Value<bool> isBuiltIn,
+      Value<int> downloadCount,
+      Value<double> rating,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CustomTemplatesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $CustomTemplatesTableTable> {
+  $$CustomTemplatesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paperPropertiesJson => $composableBuilder(
+    column: $table.paperPropertiesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get thumbnailBase64 => $composableBuilder(
+    column: $table.thumbnailBase64,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isInstalled => $composableBuilder(
+    column: $table.isInstalled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBuiltIn => $composableBuilder(
+    column: $table.isBuiltIn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get downloadCount => $composableBuilder(
+    column: $table.downloadCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rating => $composableBuilder(
+    column: $table.rating,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CustomTemplatesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $CustomTemplatesTableTable> {
+  $$CustomTemplatesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paperPropertiesJson => $composableBuilder(
+    column: $table.paperPropertiesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get thumbnailBase64 => $composableBuilder(
+    column: $table.thumbnailBase64,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isInstalled => $composableBuilder(
+    column: $table.isInstalled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isBuiltIn => $composableBuilder(
+    column: $table.isBuiltIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get downloadCount => $composableBuilder(
+    column: $table.downloadCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rating => $composableBuilder(
+    column: $table.rating,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CustomTemplatesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CustomTemplatesTableTable> {
+  $$CustomTemplatesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get author =>
+      $composableBuilder(column: $table.author, builder: (column) => column);
+
+  GeneratedColumn<String> get paperPropertiesJson => $composableBuilder(
+    column: $table.paperPropertiesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get thumbnailBase64 => $composableBuilder(
+    column: $table.thumbnailBase64,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isInstalled => $composableBuilder(
+    column: $table.isInstalled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isBuiltIn =>
+      $composableBuilder(column: $table.isBuiltIn, builder: (column) => column);
+
+  GeneratedColumn<int> get downloadCount => $composableBuilder(
+    column: $table.downloadCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get rating =>
+      $composableBuilder(column: $table.rating, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CustomTemplatesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CustomTemplatesTableTable,
+          CustomTemplatesTableData,
+          $$CustomTemplatesTableTableFilterComposer,
+          $$CustomTemplatesTableTableOrderingComposer,
+          $$CustomTemplatesTableTableAnnotationComposer,
+          $$CustomTemplatesTableTableCreateCompanionBuilder,
+          $$CustomTemplatesTableTableUpdateCompanionBuilder,
+          (
+            CustomTemplatesTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $CustomTemplatesTableTable,
+              CustomTemplatesTableData
+            >,
+          ),
+          CustomTemplatesTableData,
+          PrefetchHooks Function()
+        > {
+  $$CustomTemplatesTableTableTableManager(
+    _$AppDatabase db,
+    $CustomTemplatesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CustomTemplatesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CustomTemplatesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CustomTemplatesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> author = const Value.absent(),
+                Value<String> paperPropertiesJson = const Value.absent(),
+                Value<String?> thumbnailBase64 = const Value.absent(),
+                Value<bool> isInstalled = const Value.absent(),
+                Value<bool> isBuiltIn = const Value.absent(),
+                Value<int> downloadCount = const Value.absent(),
+                Value<double> rating = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CustomTemplatesTableCompanion(
+                id: id,
+                title: title,
+                description: description,
+                category: category,
+                author: author,
+                paperPropertiesJson: paperPropertiesJson,
+                thumbnailBase64: thumbnailBase64,
+                isInstalled: isInstalled,
+                isBuiltIn: isBuiltIn,
+                downloadCount: downloadCount,
+                rating: rating,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                Value<String> description = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> author = const Value.absent(),
+                required String paperPropertiesJson,
+                Value<String?> thumbnailBase64 = const Value.absent(),
+                Value<bool> isInstalled = const Value.absent(),
+                Value<bool> isBuiltIn = const Value.absent(),
+                Value<int> downloadCount = const Value.absent(),
+                Value<double> rating = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CustomTemplatesTableCompanion.insert(
+                id: id,
+                title: title,
+                description: description,
+                category: category,
+                author: author,
+                paperPropertiesJson: paperPropertiesJson,
+                thumbnailBase64: thumbnailBase64,
+                isInstalled: isInstalled,
+                isBuiltIn: isBuiltIn,
+                downloadCount: downloadCount,
+                rating: rating,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $CustomTemplatesTableTable,
+                    CustomTemplatesTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CustomTemplatesTableTable,
+                    CustomTemplatesTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CustomTemplatesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CustomTemplatesTableTable,
+      CustomTemplatesTableData,
+      $$CustomTemplatesTableTableFilterComposer,
+      $$CustomTemplatesTableTableOrderingComposer,
+      $$CustomTemplatesTableTableAnnotationComposer,
+      $$CustomTemplatesTableTableCreateCompanionBuilder,
+      $$CustomTemplatesTableTableUpdateCompanionBuilder,
+      (
+        CustomTemplatesTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $CustomTemplatesTableTable,
+          CustomTemplatesTableData
+        >,
+      ),
+      CustomTemplatesTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11445,4 +14062,8 @@ class $AppDatabaseManager {
       $$AudioRecordingsTableTableTableManager(_db, _db.audioRecordingsTable);
   $$AudioBookmarksTableTableTableManager get audioBookmarksTable =>
       $$AudioBookmarksTableTableTableManager(_db, _db.audioBookmarksTable);
+  $$PageSnapshotsTableTableTableManager get pageSnapshotsTable =>
+      $$PageSnapshotsTableTableTableManager(_db, _db.pageSnapshotsTable);
+  $$CustomTemplatesTableTableTableManager get customTemplatesTable =>
+      $$CustomTemplatesTableTableTableManager(_db, _db.customTemplatesTable);
 }

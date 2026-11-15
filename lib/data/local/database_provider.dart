@@ -8,6 +8,8 @@ import '../repositories/page_search_repository.dart';
 import '../repositories/sticky_note_repository.dart';
 import '../repositories/stroke_repository.dart';
 import '../repositories/sync_queue_repository.dart';
+import '../repositories/template_store_repository.dart';
+import '../repositories/version_history_repository.dart';
 import 'app_database.dart';
 
 /// Global provider for the Drift AppDatabase singleton.
@@ -63,4 +65,20 @@ final pageSearchRepositoryProvider = Provider<PageSearchRepository>((ref) {
 final audioRepositoryProvider = Provider<AudioRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   return DriftAudioRepository(db);
+});
+
+/// Global provider for VersionHistoryRepository.
+final versionHistoryRepositoryProvider = Provider<VersionHistoryRepository>((
+  ref,
+) {
+  final db = ref.watch(appDatabaseProvider);
+  return DriftVersionHistoryRepository(db);
+});
+
+/// Global provider for TemplateStoreRepository.
+final templateStoreRepositoryProvider = Provider<TemplateStoreRepository>((
+  ref,
+) {
+  final db = ref.watch(appDatabaseProvider);
+  return DriftTemplateStoreRepository(db);
 });

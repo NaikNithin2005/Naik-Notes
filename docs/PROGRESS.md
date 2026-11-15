@@ -21,7 +21,7 @@
 | **Phase 8** | Cross-Platform Optimization & Native Hardware Integration | **VERIFIED & COMPLETE** | 123 Flutter Tests + 6 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 9** | Handwriting Recognition & Search | **VERIFIED & COMPLETE** | 136 Flutter Tests + 10 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 10** | Audio Notes & AI Study Assistant | **VERIFIED & COMPLETE** | 150 Flutter Tests + 16 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
-| **Phase 11** | Version History & Template Store | Scheduled | - | - |
+| **Phase 11** | Version History & Template Store | **VERIFIED & COMPLETE** | 159 Flutter Tests + 20 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 12** | Release Hardening & Verification | Scheduled | - | - |
 
 ---
@@ -606,4 +606,95 @@
 - `flutter build web --release`: **SUCCESS** (`build\web` generated in 67.5s).
 
 ### 4. Next Tasks
-- Proceed to Phase 11: Version History & Template Store.
+- Proceed to Phase 11: Version History & Template Store (Completed).
+
+---
+
+## Phase 11: Version History & Community Template Store (Completed)
+
+### 1. Implemented Features
+- **SQLite Page Snapshots & Custom Templates Schema (Drift Schema v9)**:
+  - Added `PageSnapshotsTable`: `id`, `pageId`, `notebookId`, `versionNumber`, `label`, `strokesJson`, `stickyNotesJson`, `templateId`, `templatePropertiesJson`, `deviceInfo`, `createdAt`.
+  - Added `CustomTemplatesTable`: `id`, `title`, `description`, `category`, `author`, `paperPropertiesJson`, `thumbnailBase64`, `isInstalled`, `isBuiltIn`, `downloadCount`, `rating`, `createdAt`, `updatedAt`.
+  - Implemented `VersionHistoryRepository` and `DriftVersionHistoryRepository` with chronological snapshot retrieval, cascading deletes, and atomic snapshot restoration replacing page strokes and sticky notes.
+  - Implemented `TemplateStoreRepository` and `DriftTemplateStoreRepository` supporting installation status toggling, category filtering, and custom template persistence.
+  - Registered `versionHistoryRepositoryProvider` and `templateStoreRepositoryProvider` in `database_provider.dart`.
+- **FastAPI Community Template Store Microservice**:
+  - Implemented template schemas in `backend/app/schemas/template.py` (`CommunityTemplateCreate`, `CommunityTemplateResponse`, `TemplateCatalogResponse`).
+  - Built `backend/app/services/template_service.py` seeded with curated community templates across disciplines (Engineering, Math & Science, Planning, Music, Language, Art & Design).
+  - Built FastAPI template endpoints in `backend/app/api/templates.py`:
+    - `GET /v1/templates/categories`: Returns catalog categories.
+    - `GET /v1/templates`: Search and category filtering with download sorting.
+    - `GET /v1/templates/{template_id}`: Detail view.
+    - `POST /v1/templates`: Community template submission.
+    - `POST /v1/templates/{template_id}/download`: Increments download counter.
+  - Mounted router in `backend/app/main.py`.
+  - Created 4 Pytest unit tests in `backend/tests/test_templates.py` (all 20 backend tests passing).
+- **Client Version History Engine**:
+  - Built `VersionHistoryService` in `lib/services/version_history/version_history_service.dart`:
+    - `captureSnapshot`: Captures current strokes, sticky notes, and paper properties with auto-incrementing version numbers.
+    - `getPageTimeline`: Retrieves historical snapshots ordered by version number descending.
+    - `calculateDiff`: Computes delta metrics between revisions (strokes added/removed, notes added/removed).
+    - `restoreSnapshot`: Atomically reverts page content and styling to chosen snapshot.
+  - Built `VersionHistorySheet` in `lib/features/version_history/presentation/widgets/version_history_sheet.dart`:
+    - Interactive modal sheet with snapshot cards, version badges (`v1`, `v2`), timestamps, device info, stroke/note counters, manual "Save Snapshot" action, and confirmation-guarded "Restore" action.
+- **Client Template Store & Marketplace Engine**:
+  - Built `TemplateStoreService` in `lib/services/template_store/template_store_service.dart`:
+    - HTTP client calling backend FastAPI template endpoints with offline fallback seed templates.
+    - `createCustomTemplate`: Saves user-configured paper parameters as reusable templates.
+    - `exportTemplateToJson` and `importTemplateFromJson`: Full JSON import/export capability for sharing templates.
+    - `publishToCommunity`: Publishes custom templates to the online backend.
+  - Built `TemplateCard` in `lib/features/template_store/presentation/widgets/template_card.dart`:
+    - Vector mini paper canvas preview rendering background color, margin lines, ruling/grid pattern, and header bar.
+    - Category tag, download counter, rating, one-tap "Install", and "Copy JSON" share button.
+  - Built `TemplateStoreSheet` in `lib/features/template_store/presentation/widgets/template_store_sheet.dart`:
+    - Full-screen modal with search bar, horizontal category filter chips (`All`, `Math & Science`, `Engineering`, `Planning`, `Music`, `Language`, `Art & Design`), responsive template card grid, and JSON import dialog.
+- **UI Integration**:
+  - `NotebookViewScreen`: Added "Page Version History" icon button and compact menu entry to open `VersionHistorySheet`. Added "Template Store" shortcut to open `TemplateStoreSheet`.
+  - `DashboardScreen`: Added "Community Template Store" action button in the main library header.
+
+### 2. Files Created & Modified
+- `lib/data/local/app_database.dart` (Schema version 9 with `PageSnapshotsTable` and `CustomTemplatesTable`)
+- `lib/data/local/app_database.g.dart` (Generated Drift code for version history and template tables)
+- `lib/data/local/database_provider.dart` (Registered `versionHistoryRepositoryProvider` and `templateStoreRepositoryProvider`)
+- `lib/data/models/version_history_model.dart` (`PageSnapshot`, `PageDiffSummary`)
+- `lib/data/models/template_store_model.dart` (`CustomTemplate`)
+- `lib/data/repositories/version_history_repository.dart` (`VersionHistoryRepository` interface & `DriftVersionHistoryRepository`)
+- `lib/data/repositories/template_store_repository.dart` (`TemplateStoreRepository` interface & `DriftTemplateStoreRepository`)
+- `backend/app/schemas/template.py` (Pydantic schemas for community templates)
+- `backend/app/services/template_service.py` (Catalog storage, categories, filtering, download tracking)
+- `backend/app/api/templates.py` (FastAPI templates router)
+- `backend/app/main.py` (Mounted `templates.router`)
+- `backend/tests/test_templates.py` (4 Pytest tests for template catalog, categories, search, publish, and downloads)
+- `lib/services/version_history/version_history_service.dart` (Snapshotting, timeline, diff metrics, restore)
+- `lib/features/version_history/data/version_history_provider.dart` (`versionHistoryServiceProvider`, `pageSnapshotsProvider`, `activePreviewSnapshotProvider`)
+- `lib/features/version_history/presentation/widgets/version_history_sheet.dart` (Interactive version history modal)
+- `lib/services/template_store/template_store_service.dart` (Community catalog client, JSON import/export, install/uninstall)
+- `lib/features/template_store/data/template_store_provider.dart` (`templateStoreServiceProvider`, `installedTemplatesProvider`, `selectedTemplateCategoryProvider`, `templateSearchQueryProvider`, `communityCatalogProvider`)
+- `lib/features/template_store/presentation/widgets/template_card.dart` (Card widget with vector paper preview)
+- `lib/features/template_store/presentation/widgets/template_store_sheet.dart` (Community template catalog sheet)
+- `lib/features/notebooks/presentation/screens/notebook_view_screen.dart` (Wired Version History and Template Store actions)
+- `lib/features/dashboard/presentation/screens/dashboard_screen.dart` (Wired Template Store button in dashboard header)
+- `test/unit/version_history_repository_test.dart` (3 unit tests for Drift version history repository)
+- `test/unit/template_store_repository_test.dart` (1 unit test for Drift template store repository)
+- `test/unit/version_history_service_test.dart` (1 unit test for version history service)
+- `test/unit/template_store_service_test.dart` (2 unit tests for template store service and JSON round-tripping)
+- `test/widget/version_history_and_template_store_test.dart` (2 widget tests for VersionHistorySheet and TemplateStoreSheet)
+
+### 3. Verification & Test Results
+- `dart format lib test`: **100% formatted** (0 issues).
+- `flutter analyze`: **0 issues found** (Clean, 0 warnings, 0 errors, ran in 2.5s).
+- `flutter test`: **159 of 159 tests passed (100%)**:
+  - `version_history_repository_test.dart` (3 tests): Save, retrieve, atomic restore, delete.
+  - `template_store_repository_test.dart` (1 test): Save, retrieve, category filter, install status.
+  - `version_history_service_test.dart` (1 test): Snapshotting, diff metrics, timeline.
+  - `template_store_service_test.dart` (2 tests): Offline catalog fallback, create custom template, JSON export/import.
+  - `version_history_and_template_store_test.dart` (2 tests): Version history sheet restore dialog, template store categories/search.
+  - Plus all 150 existing tests from Phases 1 through 10.
+- `python -m pytest backend/tests -v`: **20 of 20 tests passed (100%)**:
+  - `test_templates.py` (4 tests): Categories, list and filter, detail and 404, publish and download.
+  - `test_ai.py` (6 tests), `test_ocr.py` (4 tests), `test_auth.py` (1 test), `test_health.py` (2 tests), `test_sync.py` (3 tests).
+- `flutter build web --release`: **SUCCESS** (`build\web` generated in 69.9s).
+
+### 4. Next Tasks
+- Proceed to Phase 12: Release Hardening & Verification.

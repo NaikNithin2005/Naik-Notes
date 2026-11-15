@@ -15,6 +15,7 @@ import 'package:naik_notes/features/notebooks/presentation/widgets/create_notebo
 import 'package:naik_notes/features/notebooks/presentation/widgets/move_to_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/rename_notebook_dialog.dart';
 import 'package:naik_notes/features/search/data/search_provider.dart';
+import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
 import '../widgets/notebook_card.dart';
@@ -263,9 +264,22 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ),
 
-                      // Sync Status Badge, User Profile & Settings
+                      // Sync Status Badge, Template Store, User Profile & Settings
                       Row(
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.storefront_outlined),
+                            tooltip: 'Community Template Store',
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (ctx) => const TemplateStoreSheet(),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 4),
                           const SyncStatusBadge(),
                           const SizedBox(width: 10),
                           InkWell(

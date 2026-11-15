@@ -20,7 +20,9 @@ import 'package:naik_notes/features/pdf/presentation/widgets/pdf_document_search
 import 'package:naik_notes/features/pdf/presentation/widgets/pdf_thumbnail_sidebar.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/sticky_note_widget.dart';
 import 'package:naik_notes/features/search/data/search_provider.dart';
+import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
+import 'package:naik_notes/features/version_history/presentation/widgets/version_history_sheet.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
 /// Notebook reader & writing canvas workspace.
@@ -386,6 +388,27 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                           ),
                         );
                         break;
+                      case 'history':
+                        if (activePage != null) {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (ctx) => VersionHistorySheet(
+                              pageId: activePage.id,
+                              notebookId: widget.notebookId,
+                            ),
+                          );
+                        }
+                        break;
+                      case 'templateStore':
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => const TemplateStoreSheet(),
+                        );
+                        break;
                       case 'bookmark':
                         if (activePage != null) {
                           ref
@@ -463,6 +486,27 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                           ),
                           SizedBox(width: 12),
                           Text('AI Study Assistant'),
+                        ],
+                      ),
+                    ),
+                    if (activePage != null)
+                      const PopupMenuItem(
+                        value: 'history',
+                        child: Row(
+                          children: [
+                            Icon(Icons.history_rounded, size: 20),
+                            SizedBox(width: 12),
+                            Text('Page Version History'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'templateStore',
+                      child: Row(
+                        children: [
+                          Icon(Icons.storefront_outlined, size: 20),
+                          SizedBox(width: 12),
+                          Text('Community Template Store'),
                         ],
                       ),
                     ),
@@ -712,6 +756,38 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                         notebookId: widget.notebookId,
                         notebookTitle: notebook.title,
                       ),
+                    );
+                  },
+                ),
+
+                // Version History shortcut
+                if (activePage != null)
+                  IconButton(
+                    icon: const Icon(Icons.history_rounded),
+                    tooltip: 'Page Version History',
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (ctx) => VersionHistorySheet(
+                          pageId: activePage.id,
+                          notebookId: widget.notebookId,
+                        ),
+                      );
+                    },
+                  ),
+
+                // Template Store shortcut
+                IconButton(
+                  icon: const Icon(Icons.storefront_outlined),
+                  tooltip: 'Community Template Store',
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => const TemplateStoreSheet(),
                     );
                   },
                 ),

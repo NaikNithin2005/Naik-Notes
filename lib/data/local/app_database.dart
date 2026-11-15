@@ -200,6 +200,48 @@ class AudioBookmarksTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Table representing historical snapshots of notebook pages for version history and restore.
+class PageSnapshotsTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get pageId =>
+      text().references(PagesTable, #id, onDelete: KeyAction.cascade)();
+  TextColumn get notebookId =>
+      text().references(NotebooksTable, #id, onDelete: KeyAction.cascade)();
+  IntColumn get versionNumber => integer().withDefault(const Constant(1))();
+  TextColumn get label => text().withDefault(const Constant('Snapshot'))();
+  TextColumn get strokesJson => text()();
+  TextColumn get stickyNotesJson => text().withDefault(const Constant('[]'))();
+  TextColumn get templateId =>
+      text().withDefault(const Constant('college_ruled'))();
+  TextColumn get templatePropertiesJson => text().nullable()();
+  TextColumn get deviceInfo =>
+      text().withDefault(const Constant('Local Device'))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table representing custom user-created and downloaded community paper templates.
+class CustomTemplatesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  TextColumn get category => text().withDefault(const Constant('General'))();
+  TextColumn get author => text().withDefault(const Constant('Community'))();
+  TextColumn get paperPropertiesJson => text()();
+  TextColumn get thumbnailBase64 => text().nullable()();
+  BoolColumn get isInstalled => boolean().withDefault(const Constant(true))();
+  BoolColumn get isBuiltIn => boolean().withDefault(const Constant(false))();
+  IntColumn get downloadCount => integer().withDefault(const Constant(0))();
+  RealColumn get rating => real().withDefault(const Constant(5.0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     FoldersTable,
@@ -212,13 +254,15 @@ class AudioBookmarksTable extends Table {
     PageSearchIndexTable,
     AudioRecordingsTable,
     AudioBookmarksTable,
+    PageSnapshotsTable,
+    CustomTemplatesTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'naik_notes_local');
