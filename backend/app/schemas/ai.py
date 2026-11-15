@@ -96,3 +96,4 @@ class AiStudyStatusResponse(BaseModel):
             "interactive_chat",
         ]
     )
+

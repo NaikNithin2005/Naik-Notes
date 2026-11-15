@@ -54,3 +54,4 @@ async def download_template(template_id: str):
             detail=f"Template with id '{template_id}' was not found.",
         )
     return item
+

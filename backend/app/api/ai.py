@@ -81,3 +81,4 @@ def notebook_chat(request: AiChatRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"AI Chat error: {str(e)}",
         )
+

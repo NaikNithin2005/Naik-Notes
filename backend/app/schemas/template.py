@@ -28,3 +28,4 @@ class TemplateCatalogResponse(BaseModel):
     templates: List[CommunityTemplateResponse]
     total: int
     categories: List[str]
+

@@ -91,3 +91,4 @@ def test_publish_and_download_template():
     assert download_resp.status_code == 200
     updated = download_resp.json()
     assert updated["download_count"] == 2
+

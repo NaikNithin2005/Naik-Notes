@@ -252,3 +252,4 @@ class AiStudyService:
 
 
 ai_study_service = AiStudyService()
+

@@ -1,11 +1,11 @@
 {
-    "name": "naik_notes",
-    "short_name": "naik_notes",
+    "name": "Naik Notes - Digital Notebook & PDF Annotation",
+    "short_name": "Naik Notes",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FDFBF7",
+    "theme_color": "#1E2A38",
+    "description": "Cross-platform vector handwriting notebook, PDF annotator, lecture audio, and AI study assistant.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

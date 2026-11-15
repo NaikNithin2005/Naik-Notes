@@ -93,3 +93,4 @@ def test_ai_chat():
     data = response.json()
     assert len(data["reply"]) > 20
     assert len(data["suggested_followups"]) > 0
+
