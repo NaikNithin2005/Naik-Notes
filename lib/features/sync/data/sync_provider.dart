@@ -126,10 +126,7 @@ class SyncNotifier extends Notifier<SyncState> {
       );
     }
 
-    state = state.copyWith(
-      status: SyncUiStatus.syncing,
-      clearError: true,
-    );
+    state = state.copyWith(status: SyncUiStatus.syncing, clearError: true);
 
     final syncService = ref.read(syncServiceProvider);
     final result = await syncService.syncAll(ownerId: ownerId);
@@ -149,10 +146,9 @@ class SyncNotifier extends Notifier<SyncState> {
       );
     } else {
       state = state.copyWith(
-        status:
-            result.errorMessage?.contains('offline') == true
-                ? SyncUiStatus.offline
-                : SyncUiStatus.error,
+        status: result.errorMessage?.contains('offline') == true
+            ? SyncUiStatus.offline
+            : SyncUiStatus.error,
         lastError: result.errorMessage,
       );
     }

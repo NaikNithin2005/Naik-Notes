@@ -174,10 +174,9 @@ class SyncService {
           final entityType = opMap['entity_type'] as String;
           final entityId = opMap['entity_id'] as String;
           final opType = (opMap['operation_type'] as String).toLowerCase();
-          final payload =
-              opMap['payload'] is Map<String, dynamic>
-                  ? opMap['payload'] as Map<String, dynamic>
-                  : jsonDecode(opMap['payload'] as String);
+          final payload = opMap['payload'] is Map<String, dynamic>
+              ? opMap['payload'] as Map<String, dynamic>
+              : jsonDecode(opMap['payload'] as String);
 
           await _applyRemoteOperation(
             entityType: entityType,
