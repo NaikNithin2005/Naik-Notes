@@ -38,15 +38,94 @@ class PenColors {
 }
 
 class ActiveToolNotifier extends Notifier<ToolType> {
+  ToolType _previousTool = ToolType.fountainPen;
+
   @override
   ToolType build() => ToolType.fountainPen;
-  void setTool(ToolType tool) => state = tool;
+
+  void setTool(ToolType tool) {
+    if (state != tool && state != ToolType.eraser) {
+      _previousTool = state;
+    }
+    state = tool;
+  }
+
+  void toggleEraser() {
+    if (state == ToolType.eraser) {
+      state = _previousTool;
+    } else {
+      _previousTool = state;
+      state = ToolType.eraser;
+    }
+  }
+
+  void togglePreviousTool() {
+    final temp = state;
+    state = _previousTool;
+    _previousTool = temp;
+  }
 }
 
 /// Selected active tool provider.
 final activeToolProvider = NotifierProvider<ActiveToolNotifier, ToolType>(
   ActiveToolNotifier.new,
 );
+
+class StylusOnlyModeNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void toggle() => state = !state;
+  void setEnabled(bool enabled) => state = enabled;
+}
+
+/// Inking mode where finger touches only pan/zoom and only stylus draws ink.
+final stylusOnlyModeProvider = NotifierProvider<StylusOnlyModeNotifier, bool>(
+  StylusOnlyModeNotifier.new,
+);
+
+class StylusHoverState {
+  final bool isHovering;
+  final Offset position;
+  final double distance;
+  final double tilt;
+
+  const StylusHoverState({
+    this.isHovering = false,
+    this.position = Offset.zero,
+    this.distance = 0.0,
+    this.tilt = 0.0,
+  });
+}
+
+class StylusHoverNotifier extends Notifier<StylusHoverState> {
+  @override
+  StylusHoverState build() => const StylusHoverState();
+
+  void updateHover({
+    required Offset position,
+    double distance = 0.0,
+    double tilt = 0.0,
+  }) {
+    state = StylusHoverState(
+      isHovering: true,
+      position: position,
+      distance: distance,
+      tilt: tilt,
+    );
+  }
+
+  void clearHover() {
+    if (state.isHovering) {
+      state = const StylusHoverState();
+    }
+  }
+}
+
+/// Real-time hover cursor coordinates and distance above the digitizer.
+final stylusHoverProvider =
+    NotifierProvider<StylusHoverNotifier, StylusHoverState>(
+      StylusHoverNotifier.new,
+    );
 
 class StrokeColorNotifier extends Notifier<Color> {
   @override

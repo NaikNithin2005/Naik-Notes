@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,8 @@ import 'package:naik_notes/features/canvas/rendering/active_stroke_painter.dart'
 import 'package:naik_notes/features/canvas/rendering/lasso_painter.dart';
 import 'package:naik_notes/features/canvas/rendering/stroke_painter.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/paper_template_view.dart';
+import 'package:naik_notes/platform/models/stylus_event.dart';
+import 'package:naik_notes/platform/platform_input_adapter.dart';
 import 'package:uuid/uuid.dart';
 
 /// Interactive vector handwriting canvas.
@@ -42,6 +46,8 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   Stroke? _activeStroke;
   List<Offset> _lassoPoints = [];
   bool _isStylusDetected = false;
+  StreamSubscription<StylusEvent>? _stylusSub;
+  ToolType? _toolBeforeBarrelButton;
 
   @override
   void initState() {
@@ -51,6 +57,60 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
           .read(strokesNotifierProvider.notifier)
           .loadStrokesForPage(widget.pageId);
     });
+    _stylusSub = ref
+        .read(platformInputAdapterProvider)
+        .events
+        .listen(_onStylusEvent);
+  }
+
+  @override
+  void dispose() {
+    _stylusSub?.cancel();
+    super.dispose();
+  }
+
+  void _onStylusEvent(StylusEvent event) {
+    if (widget.readOnly || !mounted) return;
+    switch (event.type) {
+      case StylusEventType.doubleTap:
+        if (event.preferredAction == 'switchPrevious') {
+          ref.read(activeToolProvider.notifier).togglePreviousTool();
+        } else {
+          ref.read(activeToolProvider.notifier).toggleEraser();
+        }
+        break;
+      case StylusEventType.squeeze:
+        ref.read(activeToolProvider.notifier).togglePreviousTool();
+        break;
+      case StylusEventType.buttonDown:
+        _toolBeforeBarrelButton = ref.read(activeToolProvider);
+        ref.read(activeToolProvider.notifier).setTool(ToolType.eraser);
+        break;
+      case StylusEventType.buttonUp:
+        if (_toolBeforeBarrelButton != null) {
+          ref
+              .read(activeToolProvider.notifier)
+              .setTool(_toolBeforeBarrelButton!);
+          _toolBeforeBarrelButton = null;
+        }
+        break;
+      case StylusEventType.hoverMove:
+        if (event.position != null) {
+          ref
+              .read(stylusHoverProvider.notifier)
+              .updateHover(
+                position: event.position!,
+                distance: event.distance,
+                tilt: event.tilt,
+              );
+        }
+        break;
+      case StylusEventType.hoverExit:
+        ref.read(stylusHoverProvider.notifier).clearHover();
+        break;
+      default:
+        break;
+    }
   }
 
   @override
@@ -76,6 +136,12 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
       setState(() => _isStylusDetected = true);
     }
 
+    // Stylus-only mode: when enabled, touch events never draw ink
+    final stylusOnly = ref.read(stylusOnlyModeProvider);
+    if (stylusOnly && event.kind == PointerDeviceKind.touch) {
+      return;
+    }
+
     // Palm rejection: if palm rejection is enabled and stylus is detected,
     // ignore normal touch events for drawing
     final palmRejection = ref.read(palmRejectionEnabledProvider);
@@ -85,7 +151,10 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
       return;
     }
 
-    final tool = event.kind == PointerDeviceKind.invertedStylus
+    final isBarrelButtonPressed = (event.buttons & kSecondaryMouseButton) != 0;
+    final tool =
+        (event.kind == PointerDeviceKind.invertedStylus ||
+            isBarrelButtonPressed)
         ? ToolType.eraser
         : ref.read(activeToolProvider);
 
@@ -162,6 +231,11 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   void _onPointerMove(PointerMoveEvent event) {
     if (widget.readOnly) return;
 
+    final stylusOnly = ref.read(stylusOnlyModeProvider);
+    if (stylusOnly && event.kind == PointerDeviceKind.touch) {
+      return;
+    }
+
     final palmRejection = ref.read(palmRejectionEnabledProvider);
     if (palmRejection &&
         _isStylusDetected &&
@@ -169,7 +243,10 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
       return;
     }
 
-    final tool = event.kind == PointerDeviceKind.invertedStylus
+    final isBarrelButtonPressed = (event.buttons & kSecondaryMouseButton) != 0;
+    final tool =
+        (event.kind == PointerDeviceKind.invertedStylus ||
+            isBarrelButtonPressed)
         ? ToolType.eraser
         : ref.read(activeToolProvider);
 
@@ -219,9 +296,14 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   }
 
   void _onPointerUp(PointerUpEvent event) {
+    ref.read(stylusHoverProvider.notifier).clearHover();
+
     if (widget.readOnly) return;
 
-    final tool = event.kind == PointerDeviceKind.invertedStylus
+    final isBarrelButtonPressed = (event.buttons & kSecondaryMouseButton) != 0;
+    final tool =
+        (event.kind == PointerDeviceKind.invertedStylus ||
+            isBarrelButtonPressed)
         ? ToolType.eraser
         : ref.read(activeToolProvider);
 
@@ -249,6 +331,20 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
             .read(strokesNotifierProvider.notifier)
             .addStroke(widget.pageId, strokeToSave);
       }
+    }
+  }
+
+  void _onPointerHover(PointerHoverEvent event) {
+    if (widget.readOnly) return;
+    if (event.kind == PointerDeviceKind.stylus ||
+        event.kind == PointerDeviceKind.invertedStylus) {
+      ref
+          .read(stylusHoverProvider.notifier)
+          .updateHover(
+            position: event.localPosition,
+            tilt: event.tilt,
+            distance: event.distance,
+          );
     }
   }
 
@@ -281,6 +377,7 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
     final selectedIds = ref.watch(selectedStrokesProvider(widget.pageId));
     final selectionBox = _computeSelectionBoundingBox(pageStrokes, selectedIds);
     final activeTool = ref.watch(activeToolProvider);
+    final hoverState = ref.watch(stylusHoverProvider);
     final isPanMode = activeTool == ToolType.pan || widget.readOnly;
 
     return SizedBox(
@@ -314,6 +411,23 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
             Positioned.fill(
               child: CustomPaint(
                 painter: ActiveStrokePainter(activeStroke: _activeStroke),
+              ),
+            ),
+
+          // Layer 3.5: Real-time Stylus Hover Reticle
+          if (hoverState.isHovering && !isPanMode)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: StylusHoverPainter(
+                    position: hoverState.position,
+                    radius: (ref.watch(strokeWidthProvider) / 2).clamp(
+                      2.0,
+                      40.0,
+                    ),
+                    color: ref.watch(strokeColorProvider),
+                  ),
+                ),
               ),
             ),
 
@@ -364,6 +478,7 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
                 onPointerMove: _onPointerMove,
                 onPointerUp: _onPointerUp,
                 onPointerCancel: _onPointerCancel,
+                onPointerHover: _onPointerHover,
               ),
             ),
         ],
@@ -433,4 +548,39 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
       ),
     );
   }
+}
+
+/// Floating reticle cursor showing exact pen width and ink color while hovering above digitizer.
+class StylusHoverPainter extends CustomPainter {
+  final Offset position;
+  final double radius;
+  final Color color;
+
+  const StylusHoverPainter({
+    required this.position,
+    required this.radius,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final ringPaint = Paint()
+      ..color = color.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.12)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(position, radius, fillPaint);
+    canvas.drawCircle(position, radius, ringPaint);
+    canvas.drawCircle(position, 1.5, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant StylusHoverPainter oldDelegate) =>
+      oldDelegate.position != position ||
+      oldDelegate.radius != radius ||
+      oldDelegate.color != color;
 }

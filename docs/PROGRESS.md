@@ -18,7 +18,7 @@
 | **Phase 5** | Vector Handwriting Engine | **VERIFIED & COMPLETE** | 80 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 6** | PDF Reader & Annotation Engine | **VERIFIED & COMPLETE** | 93 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 7** | Cloud Synchronization & Offline DB | **VERIFIED & COMPLETE** | 103 Flutter Tests + 6 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
-| **Phase 8** | Cross-Platform Optimization | Scheduled | - | - |
+| **Phase 8** | Cross-Platform Optimization & Native Hardware Integration | **VERIFIED & COMPLETE** | 123 Flutter Tests + 6 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 9** | Handwriting Recognition & Search | Scheduled | - | - |
 | **Phase 10** | Audio Notes & AI Study Assistant | Scheduled | - | - |
 | **Phase 11** | Version History & Template Store | Scheduled | - | - |
@@ -345,4 +345,94 @@
 - Multi-user real-time collaborative live presence will be expanded in Phase 11.
 
 ### 5. Next Tasks
-- Proceed to Phase 8: Cross-Platform Optimization & Native Hardware Integration (Apple Pencil Swift platform channels, hover/double-tap, Android S-Pen stylus button events, Windows Pen digitizer API integration).
+- Phase 7 completed. Proceeded to Phase 8.
+
+---
+
+## Phase 8: Cross-Platform Optimization & Native Hardware Integration (Completed)
+
+### 1. Implemented Features
+- **Unified Hardware Digitizer Abstraction (`lib/platform/`)**:
+  - `PlatformInputAdapter`: Universal contract providing hardware capability queries (`getCapabilities()`), lifecycle hooks, and broadcast stream of `StylusEvent` objects.
+  - `StylusCapabilities`: Encapsulates hardware features across targets (`hasPressure`, `hasTilt`, `hasHover`, `hasEraserTip`, `hasBarrelButtons`, `hasDoubleTap`, `hasSqueeze`, `stylusType`).
+  - `StylusEvent` & `StylusEventType`: Standardized events for double-tap gestures, squeeze, side/barrel button down/up, hover proximity enter/move/exit, and physical inverted eraser tip contact.
+  - Global providers: `platformInputAdapterProvider`, `stylusCapabilitiesProvider`, and `stylusEventsProvider`.
+- **iPadOS Apple Pencil Hardware Integration**:
+  - Native Swift Bridge in `ios/Runner/AppDelegate.swift`:
+    - Registered MethodChannel `naik_notes/apple_pencil` and EventChannel `naik_notes/apple_pencil/events`.
+    - Attached `UIPencilInteraction` to the Flutter root view controller with `UIPencilInteractionDelegate`.
+    - Dispatches double-tap events with user preference mapping (`switchEraser`, `switchPrevious`, `showColorPalette`).
+    - Added `#available(iOS 17.5, *)` squeeze gesture recognition.
+  - `ApplePencilAdapter` in `lib/platform/ios/apple_pencil_adapter.dart`: Subscribes to the EventChannel, parses native signals, and provides simulated event injection for testing and simulators.
+- **Android S-Pen & Active Stylus Hardware Integration**:
+  - Native Kotlin Bridge in `android/app/src/main/kotlin/.../MainActivity.kt`:
+    - Registered MethodChannel `naik_notes/android_stylus` and EventChannel `naik_notes/android_stylus/events`.
+    - Intercepts `dispatchGenericMotionEvent` and `dispatchTouchEvent` for `TOOL_TYPE_STYLUS` and `TOOL_TYPE_ERASER`.
+    - Detects S-Pen barrel button presses (`BUTTON_STYLUS_PRIMARY` / `BUTTON_STYLUS_SECONDARY`), hover distance (`AXIS_DISTANCE`), tilt angle (`AXIS_TILT`), and hover movement coordinates.
+  - `AndroidStylusAdapter` in `lib/platform/android/android_stylus_adapter.dart`: Bridges native Android signals into universal `StylusEvent` stream.
+- **Windows 10/11 Pen, Surface Digitizer & Inverted Tip Integration**:
+  - `WindowsPenAdapter` in `lib/platform/windows/windows_pen_adapter.dart`:
+    - Direct mapping of Windows Ink digitizer signals, pressure, tilt, and barrel buttons.
+    - Automatic detection of `PointerDeviceKind.invertedStylus` (Surface Pen physical top eraser).
+- **Desktop Keyboard Shortcuts Architecture (`HandwritingShortcuts`)**:
+  - Built `HandwritingShortcuts` in `lib/features/canvas/presentation/widgets/handwriting_shortcuts.dart`:
+    - `Ctrl + Z` / `Cmd + Z`: Undo canvas stroke.
+    - `Ctrl + Y` / `Ctrl + Shift + Z`: Redo canvas stroke.
+    - `Ctrl + S`: Trigger cloud save and background sync.
+    - `Ctrl + F`: Toggle in-document search bar.
+    - `Ctrl + =` / `Ctrl + +`: Zoom in canvas workspace.
+    - `Ctrl + -`: Zoom out canvas workspace.
+    - `Ctrl + 0`: Reset zoom (fit page).
+    - `Ctrl + N`: Insert new notebook page.
+    - `Ctrl + D`: Duplicate lasso-selected strokes.
+    - `Ctrl + C`: Copy lasso-selected strokes to clipboard.
+    - `Delete` / `Backspace`: Delete lasso-selected strokes.
+    - Single-letter tool shortcuts: `P` (Pen), `H` (Highlighter), `E` (Eraser), `L` (Lasso), `S` (Shape), `V` / `Space` (Pan mode), `T` (Add Sticky Note).
+    - **Smart Focus Suppression**: Single-key tool switches are strictly suppressed when an `EditableText` widget (e.g. search bar, sticky note editor) is actively focused.
+- **Hardware Palm Rejection & Stylus-Only Inking Mode**:
+  - `stylusOnlyModeProvider`: When enabled, finger touch events are strictly rejected from leaving ink, allowing the user's hand to rest freely on the screen and fingers to pan/zoom while only the active stylus writes ink.
+  - `stylusHoverProvider` & `StylusHoverPainter`: Real-time hover reticle rendered directly over the canvas tracking stylus nib proximity, showing exact pen brush thickness and ink color before touching the glass.
+  - Physical eraser tip (`PointerDeviceKind.invertedStylus`) and S-Pen / Surface Pen barrel buttons dynamically toggle the eraser tool and restore previous tools on release.
+  - `HandwritingToolbar`: Added interactive stylus-only mode toggle button with instant visual feedback.
+- **Responsive Layouts & Form-Factor Adaptation (`lib/core/presentation/responsive_layout.dart`)**:
+  - Breakpoints: `compact` (<600px, phones), `medium` (600-1024px, tablets), `expanded` (>1024px, desktop / large iPad Pro).
+  - `ResponsiveBuilder`, `ResponsiveLayout`, and `ResponsiveContext` extensions (`isCompact`, `isMedium`, `isExpanded`, `recommendedGridColumns`).
+  - Adaptive `NotebookViewScreen`:
+    - Expanded / Tablet: Full rich row of toolbar icon buttons, persistent side thumbnail sidebar.
+    - Compact (Mobile): Adaptive AppBar with top essential actions and a consolidated `PopupMenuButton` for secondary operations, preventing layout overflows.
+  - `TransformationController` connected to `InteractiveViewer` with programmatic zoom control and dual-mode pan navigation.
+
+### 2. Files Created & Modified
+- `lib/platform/models/stylus_event.dart` (Unified hardware stylus models, event types, capabilities)
+- `lib/platform/platform_input_adapter.dart` (Abstract platform adapter contract, fallback adapter, Riverpod providers)
+- `lib/platform/ios/apple_pencil_adapter.dart` (iPadOS Apple Pencil adapter)
+- `ios/Runner/AppDelegate.swift` (Native Swift bridge with `UIPencilInteractionDelegate` and platform channels)
+- `lib/platform/android/android_stylus_adapter.dart` (Android S-Pen and active stylus adapter)
+- `android/app/src/main/kotlin/.../MainActivity.kt` (Native Kotlin bridge with MotionEvent stylus & barrel button dispatch)
+- `lib/platform/windows/windows_pen_adapter.dart` (Windows 10/11 Pen and Surface digitizer adapter)
+- `lib/features/canvas/presentation/widgets/handwriting_shortcuts.dart` (Desktop productivity keyboard shortcuts & smart text focus suppression)
+- `lib/core/presentation/responsive_layout.dart` (Adaptive breakpoints, responsive builder, context helpers)
+- `lib/features/canvas/data/stroke_provider.dart` (Added `stylusOnlyModeProvider`, `stylusHoverProvider`, previous tool toggles)
+- `lib/features/canvas/presentation/widgets/handwriting_canvas.dart` (Integrated hardware stylus events, inverted eraser, hover reticle, palm rejection)
+- `lib/features/canvas/presentation/widgets/handwriting_toolbar.dart` (Added stylus-only mode toggle button)
+- `lib/features/notebooks/presentation/screens/notebook_view_screen.dart` (Wrapped in `HandwritingShortcuts`, responsive AppBar, zoom controller)
+- `test/unit/platform_input_adapter_test.dart` (Unit tests for capabilities, Apple Pencil, S-Pen, and Surface Pen adapters)
+- `test/unit/responsive_layout_test.dart` (Unit tests for breakpoints, responsive builder, grid column computations)
+- `test/widget/canvas_shortcuts_and_hardware_test.dart` (Widget tests for keyboard shortcuts, focus suppression, stylus-only mode, double-tap, barrel button)
+
+### 3. Verification & Test Results
+- `dart format lib test`: **100% formatted** (10 changed files).
+- `flutter analyze`: **0 issues found** (Clean, 0 warnings, 0 errors).
+- `flutter test`: **123 of 123 tests passed (100%)**:
+  - `platform_input_adapter_test.dart` (9 tests): Capabilities, Apple Pencil double-tap/squeeze, Android S-Pen barrel buttons/hover, Windows Pen inverted tip.
+  - `responsive_layout_test.dart` (5 tests): Breakpoints, responsive builder, responsive layout tree selection, grid column computations.
+  - `canvas_shortcuts_and_hardware_test.dart` (6 tests): Keyboard shortcuts, text focus suppression, toolbar stylus toggle, stylus-only inking rejection, hardware double-tap, barrel button.
+  - Plus all sync, PDF, vector stroke, smoothing, paper template, page, folder, notebook CRUD, user, auth, and smoke tests (103 tests).
+- `python -m pytest backend/tests -v`: **6 of 6 tests passed (100%)**.
+- `flutter build web --release`: **SUCCESS** (`build\web` generated).
+
+### 4. Known Limitations
+- Native physical testing on specific hardware (Apple Pencil Pro on physical iPad M4, S-Pen on physical Galaxy Tab S9) requires deployment to physical test devices; unit and widget tests simulate all channel events with high fidelity.
+
+### 5. Next Tasks
+- Proceed to Phase 9: Handwriting Recognition, Indexing & Full-Text Search.

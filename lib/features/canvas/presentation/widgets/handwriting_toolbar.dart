@@ -244,6 +244,28 @@ class HandwritingToolbar extends ConsumerWidget {
                   ref.read(palmRejectionEnabledProvider.notifier).toggle();
                 },
               ),
+
+              // 7. Stylus-Only Inking Toggle (Finger pans, stylus inks)
+              Consumer(
+                builder: (context, ref, _) {
+                  final stylusOnly = ref.watch(stylusOnlyModeProvider);
+                  return IconButton(
+                    icon: Icon(
+                      stylusOnly ? Icons.edit_note : Icons.touch_app,
+                      size: 20,
+                      color: stylusOnly
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    tooltip: stylusOnly
+                        ? 'Stylus-Only Mode: ON (Finger pans)'
+                        : 'Stylus-Only Mode: OFF (Finger inks)',
+                    onPressed: () {
+                      ref.read(stylusOnlyModeProvider.notifier).toggle();
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),
