@@ -12,6 +12,9 @@ import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_shor
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_toolbar.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/notebooks/data/page_provider.dart';
+import 'package:naik_notes/features/ai_assistant/presentation/widgets/ai_study_assistant_sheet.dart';
+import 'package:naik_notes/features/audio/data/audio_provider.dart';
+import 'package:naik_notes/features/audio/presentation/widgets/audio_recording_bar.dart';
 import 'package:naik_notes/features/pdf/data/sticky_note_provider.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/pdf_document_search_bar.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/pdf_thumbnail_sidebar.dart';
@@ -33,6 +36,7 @@ class NotebookViewScreen extends ConsumerStatefulWidget {
 class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   bool _showThumbnails = false;
   bool _showSearch = false;
+  bool _showAudioBar = false;
   bool _isContinuousScroll = false;
   String _searchQuery = '';
   int _activeMatchIndex = 0;
@@ -368,6 +372,20 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                       case 'search':
                         setState(() => _showSearch = !_showSearch);
                         break;
+                      case 'audio':
+                        setState(() => _showAudioBar = !_showAudioBar);
+                        break;
+                      case 'aiAssistant':
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => AiStudyAssistantSheet(
+                            notebookId: widget.notebookId,
+                            notebookTitle: notebook.title,
+                          ),
+                        );
+                        break;
                       case 'bookmark':
                         if (activePage != null) {
                           ref
@@ -420,6 +438,34 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                     }
                   },
                   itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'audio',
+                      child: Row(
+                        children: [
+                          Icon(
+                            _showAudioBar ? Icons.mic : Icons.mic_none_outlined,
+                            size: 20,
+                            color: _showAudioBar ? Colors.redAccent : null,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('Lecture Audio'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'aiAssistant',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 20,
+                            color: Colors.amber,
+                          ),
+                          SizedBox(width: 12),
+                          Text('AI Study Assistant'),
+                        ],
+                      ),
+                    ),
                     PopupMenuItem(
                       value: 'search',
                       child: Row(
@@ -630,27 +676,41 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
 
                 // Audio Recording shortcut
                 IconButton(
-                  icon: const Icon(Icons.mic_none_rounded),
+                  icon: Icon(
+                    _showAudioBar ? Icons.mic : Icons.mic_none_rounded,
+                    color: _showAudioBar ? Colors.redAccent : null,
+                  ),
                   tooltip: 'Record Lecture Audio',
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Audio recording module active in Phase 10',
-                        ),
-                      ),
-                    );
+                    setState(() => _showAudioBar = !_showAudioBar);
+                    if (_showAudioBar) {
+                      final audioService = ref.read(audioServiceProvider);
+                      if (!audioService.recordState.isRecording &&
+                          !audioService.playbackState.isPlaying) {
+                        audioService.startRecording(
+                          widget.notebookId,
+                          pageId: activePage?.id,
+                        );
+                      }
+                    }
                   },
                 ),
 
                 // AI Study Assistant shortcut
                 IconButton(
-                  icon: const Icon(Icons.auto_awesome_rounded),
+                  icon: Icon(
+                    Icons.auto_awesome_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
                   tooltip: 'AI Study Assistant',
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('AI Study Assistant active in Phase 10'),
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => AiStudyAssistantSheet(
+                        notebookId: widget.notebookId,
+                        notebookTitle: notebook.title,
                       ),
                     );
                   },
@@ -799,6 +859,20 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                               .read(inDocumentSearchQueryProvider.notifier)
                               .clear();
                         },
+                      ),
+                    ),
+
+                  // Floating Audio Recording & Playback Bar
+                  if (_showAudioBar)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: AudioRecordingBar(
+                        notebookId: widget.notebookId,
+                        activePageId: activePage?.id,
+                        onClose: () => setState(() => _showAudioBar = false),
                       ),
                     ),
 

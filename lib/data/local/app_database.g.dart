@@ -5270,6 +5270,1008 @@ class PageSearchIndexTableCompanion
   }
 }
 
+class $AudioRecordingsTableTable extends AudioRecordingsTable
+    with TableInfo<$AudioRecordingsTableTable, AudioRecordingsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AudioRecordingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _pageIdMeta = const VerificationMeta('pageId');
+  @override
+  late final GeneratedColumn<String> pageId = GeneratedColumn<String>(
+    'page_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES pages_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Lecture Audio'),
+  );
+  static const VerificationMeta _filePathMeta = const VerificationMeta(
+    'filePath',
+  );
+  @override
+  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
+    'file_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta(
+    'durationMs',
+  );
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+    'duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notebookId,
+    pageId,
+    title,
+    filePath,
+    durationMs,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'audio_recordings_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AudioRecordingsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('page_id')) {
+      context.handle(
+        _pageIdMeta,
+        pageId.isAcceptableOrUnknown(data['page_id']!, _pageIdMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('file_path')) {
+      context.handle(
+        _filePathMeta,
+        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_filePathMeta);
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+        _durationMsMeta,
+        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AudioRecordingsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AudioRecordingsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      pageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}page_id'],
+      ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      filePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_path'],
+      )!,
+      durationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_ms'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AudioRecordingsTableTable createAlias(String alias) {
+    return $AudioRecordingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class AudioRecordingsTableData extends DataClass
+    implements Insertable<AudioRecordingsTableData> {
+  final String id;
+  final String notebookId;
+  final String? pageId;
+  final String title;
+  final String filePath;
+  final int durationMs;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AudioRecordingsTableData({
+    required this.id,
+    required this.notebookId,
+    this.pageId,
+    required this.title,
+    required this.filePath,
+    required this.durationMs,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['notebook_id'] = Variable<String>(notebookId);
+    if (!nullToAbsent || pageId != null) {
+      map['page_id'] = Variable<String>(pageId);
+    }
+    map['title'] = Variable<String>(title);
+    map['file_path'] = Variable<String>(filePath);
+    map['duration_ms'] = Variable<int>(durationMs);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AudioRecordingsTableCompanion toCompanion(bool nullToAbsent) {
+    return AudioRecordingsTableCompanion(
+      id: Value(id),
+      notebookId: Value(notebookId),
+      pageId: pageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pageId),
+      title: Value(title),
+      filePath: Value(filePath),
+      durationMs: Value(durationMs),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AudioRecordingsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AudioRecordingsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      pageId: serializer.fromJson<String?>(json['pageId']),
+      title: serializer.fromJson<String>(json['title']),
+      filePath: serializer.fromJson<String>(json['filePath']),
+      durationMs: serializer.fromJson<int>(json['durationMs']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'pageId': serializer.toJson<String?>(pageId),
+      'title': serializer.toJson<String>(title),
+      'filePath': serializer.toJson<String>(filePath),
+      'durationMs': serializer.toJson<int>(durationMs),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AudioRecordingsTableData copyWith({
+    String? id,
+    String? notebookId,
+    Value<String?> pageId = const Value.absent(),
+    String? title,
+    String? filePath,
+    int? durationMs,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AudioRecordingsTableData(
+    id: id ?? this.id,
+    notebookId: notebookId ?? this.notebookId,
+    pageId: pageId.present ? pageId.value : this.pageId,
+    title: title ?? this.title,
+    filePath: filePath ?? this.filePath,
+    durationMs: durationMs ?? this.durationMs,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AudioRecordingsTableData copyWithCompanion(
+    AudioRecordingsTableCompanion data,
+  ) {
+    return AudioRecordingsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      pageId: data.pageId.present ? data.pageId.value : this.pageId,
+      title: data.title.present ? data.title.value : this.title,
+      filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      durationMs: data.durationMs.present
+          ? data.durationMs.value
+          : this.durationMs,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioRecordingsTableData(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('pageId: $pageId, ')
+          ..write('title: $title, ')
+          ..write('filePath: $filePath, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notebookId,
+    pageId,
+    title,
+    filePath,
+    durationMs,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AudioRecordingsTableData &&
+          other.id == this.id &&
+          other.notebookId == this.notebookId &&
+          other.pageId == this.pageId &&
+          other.title == this.title &&
+          other.filePath == this.filePath &&
+          other.durationMs == this.durationMs &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AudioRecordingsTableCompanion
+    extends UpdateCompanion<AudioRecordingsTableData> {
+  final Value<String> id;
+  final Value<String> notebookId;
+  final Value<String?> pageId;
+  final Value<String> title;
+  final Value<String> filePath;
+  final Value<int> durationMs;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AudioRecordingsTableCompanion({
+    this.id = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.pageId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AudioRecordingsTableCompanion.insert({
+    required String id,
+    required String notebookId,
+    this.pageId = const Value.absent(),
+    this.title = const Value.absent(),
+    required String filePath,
+    this.durationMs = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       notebookId = Value(notebookId),
+       filePath = Value(filePath),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AudioRecordingsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? notebookId,
+    Expression<String>? pageId,
+    Expression<String>? title,
+    Expression<String>? filePath,
+    Expression<int>? durationMs,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (pageId != null) 'page_id': pageId,
+      if (title != null) 'title': title,
+      if (filePath != null) 'file_path': filePath,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AudioRecordingsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? notebookId,
+    Value<String?>? pageId,
+    Value<String>? title,
+    Value<String>? filePath,
+    Value<int>? durationMs,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AudioRecordingsTableCompanion(
+      id: id ?? this.id,
+      notebookId: notebookId ?? this.notebookId,
+      pageId: pageId ?? this.pageId,
+      title: title ?? this.title,
+      filePath: filePath ?? this.filePath,
+      durationMs: durationMs ?? this.durationMs,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (pageId.present) {
+      map['page_id'] = Variable<String>(pageId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (filePath.present) {
+      map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioRecordingsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('pageId: $pageId, ')
+          ..write('title: $title, ')
+          ..write('filePath: $filePath, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AudioBookmarksTableTable extends AudioBookmarksTable
+    with TableInfo<$AudioBookmarksTableTable, AudioBookmarksTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AudioBookmarksTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recordingIdMeta = const VerificationMeta(
+    'recordingId',
+  );
+  @override
+  late final GeneratedColumn<String> recordingId = GeneratedColumn<String>(
+    'recording_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES audio_recordings_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _pageIdMeta = const VerificationMeta('pageId');
+  @override
+  late final GeneratedColumn<String> pageId = GeneratedColumn<String>(
+    'page_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _strokeIdMeta = const VerificationMeta(
+    'strokeId',
+  );
+  @override
+  late final GeneratedColumn<String> strokeId = GeneratedColumn<String>(
+    'stroke_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _timestampMsMeta = const VerificationMeta(
+    'timestampMs',
+  );
+  @override
+  late final GeneratedColumn<int> timestampMs = GeneratedColumn<int>(
+    'timestamp_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    recordingId,
+    pageId,
+    strokeId,
+    timestampMs,
+    label,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'audio_bookmarks_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AudioBookmarksTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('recording_id')) {
+      context.handle(
+        _recordingIdMeta,
+        recordingId.isAcceptableOrUnknown(
+          data['recording_id']!,
+          _recordingIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_recordingIdMeta);
+    }
+    if (data.containsKey('page_id')) {
+      context.handle(
+        _pageIdMeta,
+        pageId.isAcceptableOrUnknown(data['page_id']!, _pageIdMeta),
+      );
+    }
+    if (data.containsKey('stroke_id')) {
+      context.handle(
+        _strokeIdMeta,
+        strokeId.isAcceptableOrUnknown(data['stroke_id']!, _strokeIdMeta),
+      );
+    }
+    if (data.containsKey('timestamp_ms')) {
+      context.handle(
+        _timestampMsMeta,
+        timestampMs.isAcceptableOrUnknown(
+          data['timestamp_ms']!,
+          _timestampMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMsMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AudioBookmarksTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AudioBookmarksTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      recordingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recording_id'],
+      )!,
+      pageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}page_id'],
+      ),
+      strokeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stroke_id'],
+      ),
+      timestampMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp_ms'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AudioBookmarksTableTable createAlias(String alias) {
+    return $AudioBookmarksTableTable(attachedDatabase, alias);
+  }
+}
+
+class AudioBookmarksTableData extends DataClass
+    implements Insertable<AudioBookmarksTableData> {
+  final String id;
+  final String recordingId;
+  final String? pageId;
+  final String? strokeId;
+  final int timestampMs;
+  final String label;
+  final DateTime createdAt;
+  const AudioBookmarksTableData({
+    required this.id,
+    required this.recordingId,
+    this.pageId,
+    this.strokeId,
+    required this.timestampMs,
+    required this.label,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['recording_id'] = Variable<String>(recordingId);
+    if (!nullToAbsent || pageId != null) {
+      map['page_id'] = Variable<String>(pageId);
+    }
+    if (!nullToAbsent || strokeId != null) {
+      map['stroke_id'] = Variable<String>(strokeId);
+    }
+    map['timestamp_ms'] = Variable<int>(timestampMs);
+    map['label'] = Variable<String>(label);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AudioBookmarksTableCompanion toCompanion(bool nullToAbsent) {
+    return AudioBookmarksTableCompanion(
+      id: Value(id),
+      recordingId: Value(recordingId),
+      pageId: pageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pageId),
+      strokeId: strokeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(strokeId),
+      timestampMs: Value(timestampMs),
+      label: Value(label),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AudioBookmarksTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AudioBookmarksTableData(
+      id: serializer.fromJson<String>(json['id']),
+      recordingId: serializer.fromJson<String>(json['recordingId']),
+      pageId: serializer.fromJson<String?>(json['pageId']),
+      strokeId: serializer.fromJson<String?>(json['strokeId']),
+      timestampMs: serializer.fromJson<int>(json['timestampMs']),
+      label: serializer.fromJson<String>(json['label']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'recordingId': serializer.toJson<String>(recordingId),
+      'pageId': serializer.toJson<String?>(pageId),
+      'strokeId': serializer.toJson<String?>(strokeId),
+      'timestampMs': serializer.toJson<int>(timestampMs),
+      'label': serializer.toJson<String>(label),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AudioBookmarksTableData copyWith({
+    String? id,
+    String? recordingId,
+    Value<String?> pageId = const Value.absent(),
+    Value<String?> strokeId = const Value.absent(),
+    int? timestampMs,
+    String? label,
+    DateTime? createdAt,
+  }) => AudioBookmarksTableData(
+    id: id ?? this.id,
+    recordingId: recordingId ?? this.recordingId,
+    pageId: pageId.present ? pageId.value : this.pageId,
+    strokeId: strokeId.present ? strokeId.value : this.strokeId,
+    timestampMs: timestampMs ?? this.timestampMs,
+    label: label ?? this.label,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AudioBookmarksTableData copyWithCompanion(AudioBookmarksTableCompanion data) {
+    return AudioBookmarksTableData(
+      id: data.id.present ? data.id.value : this.id,
+      recordingId: data.recordingId.present
+          ? data.recordingId.value
+          : this.recordingId,
+      pageId: data.pageId.present ? data.pageId.value : this.pageId,
+      strokeId: data.strokeId.present ? data.strokeId.value : this.strokeId,
+      timestampMs: data.timestampMs.present
+          ? data.timestampMs.value
+          : this.timestampMs,
+      label: data.label.present ? data.label.value : this.label,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioBookmarksTableData(')
+          ..write('id: $id, ')
+          ..write('recordingId: $recordingId, ')
+          ..write('pageId: $pageId, ')
+          ..write('strokeId: $strokeId, ')
+          ..write('timestampMs: $timestampMs, ')
+          ..write('label: $label, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    recordingId,
+    pageId,
+    strokeId,
+    timestampMs,
+    label,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AudioBookmarksTableData &&
+          other.id == this.id &&
+          other.recordingId == this.recordingId &&
+          other.pageId == this.pageId &&
+          other.strokeId == this.strokeId &&
+          other.timestampMs == this.timestampMs &&
+          other.label == this.label &&
+          other.createdAt == this.createdAt);
+}
+
+class AudioBookmarksTableCompanion
+    extends UpdateCompanion<AudioBookmarksTableData> {
+  final Value<String> id;
+  final Value<String> recordingId;
+  final Value<String?> pageId;
+  final Value<String?> strokeId;
+  final Value<int> timestampMs;
+  final Value<String> label;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const AudioBookmarksTableCompanion({
+    this.id = const Value.absent(),
+    this.recordingId = const Value.absent(),
+    this.pageId = const Value.absent(),
+    this.strokeId = const Value.absent(),
+    this.timestampMs = const Value.absent(),
+    this.label = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AudioBookmarksTableCompanion.insert({
+    required String id,
+    required String recordingId,
+    this.pageId = const Value.absent(),
+    this.strokeId = const Value.absent(),
+    required int timestampMs,
+    required String label,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       recordingId = Value(recordingId),
+       timestampMs = Value(timestampMs),
+       label = Value(label),
+       createdAt = Value(createdAt);
+  static Insertable<AudioBookmarksTableData> custom({
+    Expression<String>? id,
+    Expression<String>? recordingId,
+    Expression<String>? pageId,
+    Expression<String>? strokeId,
+    Expression<int>? timestampMs,
+    Expression<String>? label,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (recordingId != null) 'recording_id': recordingId,
+      if (pageId != null) 'page_id': pageId,
+      if (strokeId != null) 'stroke_id': strokeId,
+      if (timestampMs != null) 'timestamp_ms': timestampMs,
+      if (label != null) 'label': label,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AudioBookmarksTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? recordingId,
+    Value<String?>? pageId,
+    Value<String?>? strokeId,
+    Value<int>? timestampMs,
+    Value<String>? label,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return AudioBookmarksTableCompanion(
+      id: id ?? this.id,
+      recordingId: recordingId ?? this.recordingId,
+      pageId: pageId ?? this.pageId,
+      strokeId: strokeId ?? this.strokeId,
+      timestampMs: timestampMs ?? this.timestampMs,
+      label: label ?? this.label,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (recordingId.present) {
+      map['recording_id'] = Variable<String>(recordingId.value);
+    }
+    if (pageId.present) {
+      map['page_id'] = Variable<String>(pageId.value);
+    }
+    if (strokeId.present) {
+      map['stroke_id'] = Variable<String>(strokeId.value);
+    }
+    if (timestampMs.present) {
+      map['timestamp_ms'] = Variable<int>(timestampMs.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioBookmarksTableCompanion(')
+          ..write('id: $id, ')
+          ..write('recordingId: $recordingId, ')
+          ..write('pageId: $pageId, ')
+          ..write('strokeId: $strokeId, ')
+          ..write('timestampMs: $timestampMs, ')
+          ..write('label: $label, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5284,6 +6286,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncQueueTableTable syncQueueTable = $SyncQueueTableTable(this);
   late final $PageSearchIndexTableTable pageSearchIndexTable =
       $PageSearchIndexTableTable(this);
+  late final $AudioRecordingsTableTable audioRecordingsTable =
+      $AudioRecordingsTableTable(this);
+  late final $AudioBookmarksTableTable audioBookmarksTable =
+      $AudioBookmarksTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5297,6 +6303,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     stickyNotesTable,
     syncQueueTable,
     pageSearchIndexTable,
+    audioRecordingsTable,
+    audioBookmarksTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5341,6 +6349,27 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('page_search_index_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('audio_recordings_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pages_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('audio_recordings_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'audio_recordings_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('audio_bookmarks_table', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -5733,6 +6762,31 @@ final class $$NotebooksTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $AudioRecordingsTableTable,
+    List<AudioRecordingsTableData>
+  >
+  _audioRecordingsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.audioRecordingsTable,
+        aliasName: 'notebooks_table__id__audio_recordings_table__notebook_id',
+      );
+
+  $$AudioRecordingsTableTableProcessedTableManager
+  get audioRecordingsTableRefs {
+    final manager = $$AudioRecordingsTableTableTableManager(
+      $_db,
+      $_db.audioRecordingsTable,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _audioRecordingsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$NotebooksTableTableFilterComposer
@@ -5910,6 +6964,31 @@ class $$NotebooksTableTableFilterComposer
           }) => $$PageSearchIndexTableTableFilterComposer(
             $db: $db,
             $table: $db.pageSearchIndexTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> audioRecordingsTableRefs(
+    Expression<bool> Function($$AudioRecordingsTableTableFilterComposer f) f,
+  ) {
+    final $$AudioRecordingsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.audioRecordingsTable,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AudioRecordingsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.audioRecordingsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6188,6 +7267,32 @@ class $$NotebooksTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> audioRecordingsTableRefs<T extends Object>(
+    Expression<T> Function($$AudioRecordingsTableTableAnnotationComposer a) f,
+  ) {
+    final $$AudioRecordingsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.audioRecordingsTable,
+          getReferencedColumn: (t) => t.notebookId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$AudioRecordingsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.audioRecordingsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$NotebooksTableTableTableManager
@@ -6207,6 +7312,7 @@ class $$NotebooksTableTableTableManager
             bool sectionsTableRefs,
             bool pagesTableRefs,
             bool pageSearchIndexTableRefs,
+            bool audioRecordingsTableRefs,
           })
         > {
   $$NotebooksTableTableTableManager(
@@ -6327,6 +7433,7 @@ class $$NotebooksTableTableTableManager
                 sectionsTableRefs = false,
                 pagesTableRefs = false,
                 pageSearchIndexTableRefs = false,
+                audioRecordingsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -6334,6 +7441,7 @@ class $$NotebooksTableTableTableManager
                     if (sectionsTableRefs) db.sectionsTable,
                     if (pagesTableRefs) db.pagesTable,
                     if (pageSearchIndexTableRefs) db.pageSearchIndexTable,
+                    if (audioRecordingsTableRefs) db.audioRecordingsTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -6398,6 +7506,26 @@ class $$NotebooksTableTableTableManager
                           referencedColumn: 'notebook_id',
                           typedResults: items,
                         ),
+                      if (audioRecordingsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          NotebooksTableData,
+                          $NotebooksTableTable,
+                          AudioRecordingsTableData,
+                          $AudioRecordingsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableTableReferences
+                              ._audioRecordingsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).audioRecordingsTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'notebook_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -6422,6 +7550,7 @@ typedef $$NotebooksTableTableProcessedTableManager =
         bool sectionsTableRefs,
         bool pagesTableRefs,
         bool pageSearchIndexTableRefs,
+        bool audioRecordingsTableRefs,
       })
     >;
 typedef $$SectionsTableTableCreateCompanionBuilder =
@@ -6885,6 +8014,31 @@ final class $$PagesTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $AudioRecordingsTableTable,
+    List<AudioRecordingsTableData>
+  >
+  _audioRecordingsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.audioRecordingsTable,
+        aliasName: 'pages_table__id__audio_recordings_table__page_id',
+      );
+
+  $$AudioRecordingsTableTableProcessedTableManager
+  get audioRecordingsTableRefs {
+    final manager = $$AudioRecordingsTableTableTableManager(
+      $_db,
+      $_db.audioRecordingsTable,
+    ).filter((f) => f.pageId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _audioRecordingsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PagesTableTableFilterComposer
@@ -7050,6 +8204,31 @@ class $$PagesTableTableFilterComposer
           }) => $$PageSearchIndexTableTableFilterComposer(
             $db: $db,
             $table: $db.pageSearchIndexTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> audioRecordingsTableRefs(
+    Expression<bool> Function($$AudioRecordingsTableTableFilterComposer f) f,
+  ) {
+    final $$AudioRecordingsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.audioRecordingsTable,
+      getReferencedColumn: (t) => t.pageId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AudioRecordingsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.audioRecordingsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -7316,6 +8495,32 @@ class $$PagesTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> audioRecordingsTableRefs<T extends Object>(
+    Expression<T> Function($$AudioRecordingsTableTableAnnotationComposer a) f,
+  ) {
+    final $$AudioRecordingsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.audioRecordingsTable,
+          getReferencedColumn: (t) => t.pageId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$AudioRecordingsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.audioRecordingsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PagesTableTableTableManager
@@ -7336,6 +8541,7 @@ class $$PagesTableTableTableManager
             bool strokesTableRefs,
             bool stickyNotesTableRefs,
             bool pageSearchIndexTableRefs,
+            bool audioRecordingsTableRefs,
           })
         > {
   $$PagesTableTableTableManager(_$AppDatabase db, $PagesTableTable table)
@@ -7431,6 +8637,7 @@ class $$PagesTableTableTableManager
                 strokesTableRefs = false,
                 stickyNotesTableRefs = false,
                 pageSearchIndexTableRefs = false,
+                audioRecordingsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -7438,6 +8645,7 @@ class $$PagesTableTableTableManager
                     if (strokesTableRefs) db.strokesTable,
                     if (stickyNotesTableRefs) db.stickyNotesTable,
                     if (pageSearchIndexTableRefs) db.pageSearchIndexTable,
+                    if (audioRecordingsTableRefs) db.audioRecordingsTable,
                   ],
                   addJoins:
                       <
@@ -7531,6 +8739,26 @@ class $$PagesTableTableTableManager
                           referencedColumn: 'page_id',
                           typedResults: items,
                         ),
+                      if (audioRecordingsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          PagesTableData,
+                          $PagesTableTable,
+                          AudioRecordingsTableData,
+                          $AudioRecordingsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PagesTableTableReferences
+                              ._audioRecordingsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PagesTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).audioRecordingsTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'page_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7556,6 +8784,7 @@ typedef $$PagesTableTableProcessedTableManager =
         bool strokesTableRefs,
         bool stickyNotesTableRefs,
         bool pageSearchIndexTableRefs,
+        bool audioRecordingsTableRefs,
       })
     >;
 typedef $$StrokesTableTableCreateCompanionBuilder =
@@ -9218,6 +10447,980 @@ typedef $$PageSearchIndexTableTableProcessedTableManager =
       PageSearchIndexTableData,
       PrefetchHooks Function({bool pageId, bool notebookId})
     >;
+typedef $$AudioRecordingsTableTableCreateCompanionBuilder =
+    AudioRecordingsTableCompanion Function({
+      required String id,
+      required String notebookId,
+      Value<String?> pageId,
+      Value<String> title,
+      required String filePath,
+      Value<int> durationMs,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AudioRecordingsTableTableUpdateCompanionBuilder =
+    AudioRecordingsTableCompanion Function({
+      Value<String> id,
+      Value<String> notebookId,
+      Value<String?> pageId,
+      Value<String> title,
+      Value<String> filePath,
+      Value<int> durationMs,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$AudioRecordingsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $AudioRecordingsTableTable,
+          AudioRecordingsTableData
+        > {
+  $$AudioRecordingsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $NotebooksTableTable _notebookIdTable(_$AppDatabase db) => db
+      .notebooksTable
+      .createAlias('audio_recordings_table__notebook_id__notebooks_table__id');
+
+  $$NotebooksTableTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableTableManager(
+      $_db,
+      $_db.notebooksTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $PagesTableTable _pageIdTable(_$AppDatabase db) => db.pagesTable
+      .createAlias('audio_recordings_table__page_id__pages_table__id');
+
+  $$PagesTableTableProcessedTableManager? get pageId {
+    final $_column = $_itemColumn<String>('page_id');
+    if ($_column == null) return null;
+    final manager = $$PagesTableTableTableManager(
+      $_db,
+      $_db.pagesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_pageIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $AudioBookmarksTableTable,
+    List<AudioBookmarksTableData>
+  >
+  _audioBookmarksTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.audioBookmarksTable,
+        aliasName:
+            'audio_recordings_table__id__audio_bookmarks_table__recording_id',
+      );
+
+  $$AudioBookmarksTableTableProcessedTableManager get audioBookmarksTableRefs {
+    final manager = $$AudioBookmarksTableTableTableManager(
+      $_db,
+      $_db.audioBookmarksTable,
+    ).filter((f) => f.recordingId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _audioBookmarksTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$AudioRecordingsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AudioRecordingsTableTable> {
+  $$AudioRecordingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotebooksTableTableFilterComposer get notebookId {
+    final $$NotebooksTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PagesTableTableFilterComposer get pageId {
+    final $$PagesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> audioBookmarksTableRefs(
+    Expression<bool> Function($$AudioBookmarksTableTableFilterComposer f) f,
+  ) {
+    final $$AudioBookmarksTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.audioBookmarksTable,
+      getReferencedColumn: (t) => t.recordingId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AudioBookmarksTableTableFilterComposer(
+            $db: $db,
+            $table: $db.audioBookmarksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AudioRecordingsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AudioRecordingsTableTable> {
+  $$AudioRecordingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotebooksTableTableOrderingComposer get notebookId {
+    final $$NotebooksTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PagesTableTableOrderingComposer get pageId {
+    final $$PagesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AudioRecordingsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AudioRecordingsTableTable> {
+  $$AudioRecordingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$NotebooksTableTableAnnotationComposer get notebookId {
+    final $$NotebooksTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PagesTableTableAnnotationComposer get pageId {
+    final $$PagesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> audioBookmarksTableRefs<T extends Object>(
+    Expression<T> Function($$AudioBookmarksTableTableAnnotationComposer a) f,
+  ) {
+    final $$AudioBookmarksTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.audioBookmarksTable,
+          getReferencedColumn: (t) => t.recordingId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$AudioBookmarksTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.audioBookmarksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$AudioRecordingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AudioRecordingsTableTable,
+          AudioRecordingsTableData,
+          $$AudioRecordingsTableTableFilterComposer,
+          $$AudioRecordingsTableTableOrderingComposer,
+          $$AudioRecordingsTableTableAnnotationComposer,
+          $$AudioRecordingsTableTableCreateCompanionBuilder,
+          $$AudioRecordingsTableTableUpdateCompanionBuilder,
+          (AudioRecordingsTableData, $$AudioRecordingsTableTableReferences),
+          AudioRecordingsTableData,
+          PrefetchHooks Function({
+            bool notebookId,
+            bool pageId,
+            bool audioBookmarksTableRefs,
+          })
+        > {
+  $$AudioRecordingsTableTableTableManager(
+    _$AppDatabase db,
+    $AudioRecordingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AudioRecordingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AudioRecordingsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AudioRecordingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<String?> pageId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> filePath = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AudioRecordingsTableCompanion(
+                id: id,
+                notebookId: notebookId,
+                pageId: pageId,
+                title: title,
+                filePath: filePath,
+                durationMs: durationMs,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String notebookId,
+                Value<String?> pageId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                required String filePath,
+                Value<int> durationMs = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AudioRecordingsTableCompanion.insert(
+                id: id,
+                notebookId: notebookId,
+                pageId: pageId,
+                title: title,
+                filePath: filePath,
+                durationMs: durationMs,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $AudioRecordingsTableTable,
+                    AudioRecordingsTableData
+                  >(table),
+                  $$AudioRecordingsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                notebookId = false,
+                pageId = false,
+                audioBookmarksTableRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (audioBookmarksTableRefs) db.audioBookmarksTable,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (notebookId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.notebookId,
+                            referencedTable:
+                                $$AudioRecordingsTableTableReferences
+                                    ._notebookIdTable(db),
+                            referencedColumn:
+                                $$AudioRecordingsTableTableReferences
+                                    ._notebookIdTable(db)
+                                    .id,
+                          ) as T;
+                        }
+                        if (pageId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.pageId,
+                            referencedTable:
+                                $$AudioRecordingsTableTableReferences
+                                    ._pageIdTable(db),
+                            referencedColumn:
+                                $$AudioRecordingsTableTableReferences
+                                    ._pageIdTable(db)
+                                    .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (audioBookmarksTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          AudioRecordingsTableData,
+                          $AudioRecordingsTableTable,
+                          AudioBookmarksTableData,
+                          $AudioBookmarksTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AudioRecordingsTableTableReferences
+                              ._audioBookmarksTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AudioRecordingsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).audioBookmarksTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'recording_id',
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$AudioRecordingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AudioRecordingsTableTable,
+      AudioRecordingsTableData,
+      $$AudioRecordingsTableTableFilterComposer,
+      $$AudioRecordingsTableTableOrderingComposer,
+      $$AudioRecordingsTableTableAnnotationComposer,
+      $$AudioRecordingsTableTableCreateCompanionBuilder,
+      $$AudioRecordingsTableTableUpdateCompanionBuilder,
+      (AudioRecordingsTableData, $$AudioRecordingsTableTableReferences),
+      AudioRecordingsTableData,
+      PrefetchHooks Function({
+        bool notebookId,
+        bool pageId,
+        bool audioBookmarksTableRefs,
+      })
+    >;
+typedef $$AudioBookmarksTableTableCreateCompanionBuilder =
+    AudioBookmarksTableCompanion Function({
+      required String id,
+      required String recordingId,
+      Value<String?> pageId,
+      Value<String?> strokeId,
+      required int timestampMs,
+      required String label,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$AudioBookmarksTableTableUpdateCompanionBuilder =
+    AudioBookmarksTableCompanion Function({
+      Value<String> id,
+      Value<String> recordingId,
+      Value<String?> pageId,
+      Value<String?> strokeId,
+      Value<int> timestampMs,
+      Value<String> label,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$AudioBookmarksTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $AudioBookmarksTableTable,
+          AudioBookmarksTableData
+        > {
+  $$AudioBookmarksTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $AudioRecordingsTableTable _recordingIdTable(_$AppDatabase db) =>
+      db.audioRecordingsTable.createAlias(
+        'audio_bookmarks_table__recording_id__audio_recordings_table__id',
+      );
+
+  $$AudioRecordingsTableTableProcessedTableManager get recordingId {
+    final $_column = $_itemColumn<String>('recording_id')!;
+
+    final manager = $$AudioRecordingsTableTableTableManager(
+      $_db,
+      $_db.audioRecordingsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_recordingIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$AudioBookmarksTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AudioBookmarksTableTable> {
+  $$AudioBookmarksTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pageId => $composableBuilder(
+    column: $table.pageId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get strokeId => $composableBuilder(
+    column: $table.strokeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestampMs => $composableBuilder(
+    column: $table.timestampMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AudioRecordingsTableTableFilterComposer get recordingId {
+    final $$AudioRecordingsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.recordingId,
+      referencedTable: $db.audioRecordingsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AudioRecordingsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.audioRecordingsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AudioBookmarksTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AudioBookmarksTableTable> {
+  $$AudioBookmarksTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pageId => $composableBuilder(
+    column: $table.pageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get strokeId => $composableBuilder(
+    column: $table.strokeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestampMs => $composableBuilder(
+    column: $table.timestampMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AudioRecordingsTableTableOrderingComposer get recordingId {
+    final $$AudioRecordingsTableTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.recordingId,
+          referencedTable: $db.audioRecordingsTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$AudioRecordingsTableTableOrderingComposer(
+                $db: $db,
+                $table: $db.audioRecordingsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$AudioBookmarksTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AudioBookmarksTableTable> {
+  $$AudioBookmarksTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get pageId =>
+      $composableBuilder(column: $table.pageId, builder: (column) => column);
+
+  GeneratedColumn<String> get strokeId =>
+      $composableBuilder(column: $table.strokeId, builder: (column) => column);
+
+  GeneratedColumn<int> get timestampMs => $composableBuilder(
+    column: $table.timestampMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$AudioRecordingsTableTableAnnotationComposer get recordingId {
+    final $$AudioRecordingsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.recordingId,
+          referencedTable: $db.audioRecordingsTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$AudioRecordingsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.audioRecordingsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$AudioBookmarksTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AudioBookmarksTableTable,
+          AudioBookmarksTableData,
+          $$AudioBookmarksTableTableFilterComposer,
+          $$AudioBookmarksTableTableOrderingComposer,
+          $$AudioBookmarksTableTableAnnotationComposer,
+          $$AudioBookmarksTableTableCreateCompanionBuilder,
+          $$AudioBookmarksTableTableUpdateCompanionBuilder,
+          (AudioBookmarksTableData, $$AudioBookmarksTableTableReferences),
+          AudioBookmarksTableData,
+          PrefetchHooks Function({bool recordingId})
+        > {
+  $$AudioBookmarksTableTableTableManager(
+    _$AppDatabase db,
+    $AudioBookmarksTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AudioBookmarksTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AudioBookmarksTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AudioBookmarksTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> recordingId = const Value.absent(),
+                Value<String?> pageId = const Value.absent(),
+                Value<String?> strokeId = const Value.absent(),
+                Value<int> timestampMs = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AudioBookmarksTableCompanion(
+                id: id,
+                recordingId: recordingId,
+                pageId: pageId,
+                strokeId: strokeId,
+                timestampMs: timestampMs,
+                label: label,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String recordingId,
+                Value<String?> pageId = const Value.absent(),
+                Value<String?> strokeId = const Value.absent(),
+                required int timestampMs,
+                required String label,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AudioBookmarksTableCompanion.insert(
+                id: id,
+                recordingId: recordingId,
+                pageId: pageId,
+                strokeId: strokeId,
+                timestampMs: timestampMs,
+                label: label,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $AudioBookmarksTableTable,
+                    AudioBookmarksTableData
+                  >(table),
+                  $$AudioBookmarksTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({recordingId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (recordingId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.recordingId,
+                        referencedTable: $$AudioBookmarksTableTableReferences
+                            ._recordingIdTable(db),
+                        referencedColumn: $$AudioBookmarksTableTableReferences
+                            ._recordingIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AudioBookmarksTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AudioBookmarksTableTable,
+      AudioBookmarksTableData,
+      $$AudioBookmarksTableTableFilterComposer,
+      $$AudioBookmarksTableTableOrderingComposer,
+      $$AudioBookmarksTableTableAnnotationComposer,
+      $$AudioBookmarksTableTableCreateCompanionBuilder,
+      $$AudioBookmarksTableTableUpdateCompanionBuilder,
+      (AudioBookmarksTableData, $$AudioBookmarksTableTableReferences),
+      AudioBookmarksTableData,
+      PrefetchHooks Function({bool recordingId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9238,4 +11441,8 @@ class $AppDatabaseManager {
       $$SyncQueueTableTableTableManager(_db, _db.syncQueueTable);
   $$PageSearchIndexTableTableTableManager get pageSearchIndexTable =>
       $$PageSearchIndexTableTableTableManager(_db, _db.pageSearchIndexTable);
+  $$AudioRecordingsTableTableTableManager get audioRecordingsTable =>
+      $$AudioRecordingsTableTableTableManager(_db, _db.audioRecordingsTable);
+  $$AudioBookmarksTableTableTableManager get audioBookmarksTable =>
+      $$AudioBookmarksTableTableTableManager(_db, _db.audioBookmarksTable);
 }

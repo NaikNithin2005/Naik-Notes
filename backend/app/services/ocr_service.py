@@ -130,3 +130,4 @@ class OcrService:
 
 
 ocr_service = OcrService()
+

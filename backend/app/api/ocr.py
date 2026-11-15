@@ -43,3 +43,4 @@ def recognize_image(request: RecognizeImageRequest):
         full_text="",
         stroke_count=0,
     )
+

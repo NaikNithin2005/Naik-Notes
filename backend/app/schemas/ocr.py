@@ -53,3 +53,4 @@ class OcrStatusResponse(BaseModel):
     engine: str = "NaikNotes-VectorCluster-OCR"
     version: str = "1.0.0"
     supported_languages: List[str] = Field(default_factory=lambda: ["en", "es", "fr", "de", "hi"])
+

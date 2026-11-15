@@ -6,6 +6,7 @@ abstract class PageSearchRepository {
   Future<void> indexPageContent(PageSearchEntry entry);
   Future<List<PageSearchEntry>> searchPages(String query, {String? notebookId});
   Future<List<PageSearchEntry>> getEntriesForPage(String pageId);
+  Future<List<PageSearchEntry>> getEntriesForNotebook(String notebookId);
   Future<void> deleteEntriesForPage(String pageId, {String? sourceType});
   Future<void> deleteEntriesForNotebook(String notebookId);
 }
@@ -66,6 +67,28 @@ class DriftPageSearchRepository implements PageSearchRepository {
     }
 
     final rows = await statement.get();
+    return rows
+        .map(
+          (r) => PageSearchEntry.fromDatabase(
+            id: r.id,
+            pageId: r.pageId,
+            notebookId: r.notebookId,
+            sourceType: r.sourceType,
+            textContent: r.textContent,
+            boundingBoxesJson: r.boundingBoxesJson,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<PageSearchEntry>> getEntriesForNotebook(String notebookId) async {
+    final rows = await (db.select(
+      db.pageSearchIndexTable,
+    )..where((t) => t.notebookId.equals(notebookId))).get();
+
     return rows
         .map(
           (r) => PageSearchEntry.fromDatabase(

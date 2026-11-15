@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/data/repositories/stroke_repository.dart';
+import 'package:naik_notes/features/audio/data/audio_provider.dart';
 import 'package:naik_notes/services/recognition/handwriting_recognition_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -288,6 +289,18 @@ class StrokesNotifier extends Notifier<StrokesState> {
     );
 
     await _repo.saveStroke(stroke);
+
+    // Synchronize stroke with active audio recording session
+    try {
+      final audioService = ref.read(audioServiceProvider);
+      if (audioService.recordState.isRecording) {
+        audioService.addBookmark(
+          'Stroke #${currentList.length}',
+          pageId: pageId,
+          strokeId: stroke.id,
+        );
+      }
+    } catch (_) {}
   }
 
   /// Indexes handwriting strokes for full-text search recognition.

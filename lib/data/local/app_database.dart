@@ -162,6 +162,44 @@ class PageSearchIndexTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Table representing audio recordings attached to a notebook or page.
+class AudioRecordingsTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get notebookId =>
+      text().references(NotebooksTable, #id, onDelete: KeyAction.cascade)();
+  TextColumn get pageId => text().nullable().references(
+    PagesTable,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get title => text().withDefault(const Constant('Lecture Audio'))();
+  TextColumn get filePath => text()();
+  IntColumn get durationMs => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table representing timestamped bookmarks within an audio recording synchronized with handwriting.
+class AudioBookmarksTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get recordingId => text().references(
+    AudioRecordingsTable,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get pageId => text().nullable()();
+  TextColumn get strokeId => text().nullable()();
+  IntColumn get timestampMs => integer()();
+  TextColumn get label => text()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     FoldersTable,
@@ -172,13 +210,15 @@ class PageSearchIndexTable extends Table {
     StickyNotesTable,
     SyncQueueTable,
     PageSearchIndexTable,
+    AudioRecordingsTable,
+    AudioBookmarksTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'naik_notes_local');

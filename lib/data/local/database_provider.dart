@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../repositories/audio_repository.dart';
 import '../repositories/folder_repository.dart';
 import '../repositories/notebook_repository.dart';
 import '../repositories/page_repository.dart';
@@ -56,4 +57,10 @@ final syncQueueRepositoryProvider = Provider<SyncQueueRepository>((ref) {
 final pageSearchRepositoryProvider = Provider<PageSearchRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   return DriftPageSearchRepository(db);
+});
+
+/// Global provider for AudioRepository.
+final audioRepositoryProvider = Provider<AudioRepository>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return DriftAudioRepository(db);
 });
