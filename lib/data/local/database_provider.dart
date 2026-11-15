@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/folder_repository.dart';
 import '../repositories/notebook_repository.dart';
 import '../repositories/page_repository.dart';
+import '../repositories/page_search_repository.dart';
 import '../repositories/sticky_note_repository.dart';
 import '../repositories/stroke_repository.dart';
 import '../repositories/sync_queue_repository.dart';
@@ -49,4 +50,10 @@ final stickyNoteRepositoryProvider = Provider<StickyNoteRepository>((ref) {
 final syncQueueRepositoryProvider = Provider<SyncQueueRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   return DriftSyncQueueRepository(db);
+});
+
+/// Global provider for PageSearchRepository.
+final pageSearchRepositoryProvider = Provider<PageSearchRepository>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return DriftPageSearchRepository(db);
 });

@@ -5,13 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:naik_notes/core/constants/app_constants.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
 import 'package:naik_notes/data/models/notebook_model.dart';
+import 'package:naik_notes/data/models/search_index_model.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 import 'package:naik_notes/features/folders/data/folder_provider.dart';
 import 'package:naik_notes/features/folders/presentation/widgets/create_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
+import 'package:naik_notes/features/notebooks/data/page_provider.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/create_notebook_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/move_to_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/rename_notebook_dialog.dart';
+import 'package:naik_notes/features/search/data/search_provider.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
 import '../widgets/notebook_card.dart';
@@ -152,6 +155,7 @@ class DashboardScreen extends ConsumerWidget {
     final folders = ref.watch(foldersProvider);
     final selectedFolderId = ref.watch(selectedFolderProvider);
     final searchQuery = ref.watch(searchQueryProvider);
+    final searchResultsAsync = ref.watch(globalSearchResultsProvider);
     final filterTab = ref.watch(dashboardFilterProvider);
     final isGridView = ref.watch(isGridViewProvider);
     final authState = ref.watch(authProvider);
@@ -545,6 +549,108 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           ),
+
+          // Global Deep Search Results (Handwriting, Sticky Notes, PDF matches)
+          if (searchQuery.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
+                ),
+                child: searchResultsAsync.maybeWhen(
+                  data: (List<SearchResultItem> results) {
+                    final deepMatches = results
+                        .where(
+                          (r) =>
+                              r.sourceType != 'notebookTitle' &&
+                              r.sourceType != 'notebookDescription',
+                        )
+                        .toList();
+                    if (deepMatches.isEmpty) return const SizedBox.shrink();
+
+                    return Card(
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome,
+                                  size: 18,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Found in handwritten notes & pages (${deepMatches.length})',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            ...deepMatches.take(5).map((match) {
+                              return ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  match.sourceType == 'handwriting'
+                                      ? Icons.gesture
+                                      : match.sourceType == 'sticky_note'
+                                      ? Icons.note_alt_outlined
+                                      : Icons.picture_as_pdf,
+                                  size: 20,
+                                  color: theme.colorScheme.secondary,
+                                ),
+                                title: Text(
+                                  '${match.notebookTitle} • Page ${match.pageNumber ?? 1}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  match.snippet,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                trailing: const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 12,
+                                ),
+                                onTap: () {
+                                  if (match.pageNumber != null) {
+                                    ref
+                                        .read(currentPageIndexProvider.notifier)
+                                        .setPage(match.pageNumber!);
+                                  }
+                                  context.push('/notebook/${match.notebookId}');
+                                },
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  orElse: () => const SizedBox.shrink(),
+                ),
+              ),
+            ),
 
           // Notebooks Content (Grid or Empty State)
           if (filteredNotebooks.isEmpty)

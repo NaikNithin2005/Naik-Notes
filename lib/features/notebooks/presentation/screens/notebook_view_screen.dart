@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:naik_notes/core/presentation/responsive_layout.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
+import 'package:naik_notes/data/models/search_index_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/features/canvas/data/stroke_provider.dart';
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_canvas.dart';
@@ -15,6 +16,7 @@ import 'package:naik_notes/features/pdf/data/sticky_note_provider.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/pdf_document_search_bar.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/pdf_thumbnail_sidebar.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/sticky_note_widget.dart';
+import 'package:naik_notes/features/search/data/search_provider.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
@@ -33,6 +35,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   bool _showSearch = false;
   bool _isContinuousScroll = false;
   String _searchQuery = '';
+  int _activeMatchIndex = 0;
   late final TransformationController _transformationController =
       TransformationController();
 
@@ -258,6 +261,41 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
         activePage?.templateType ?? PaperTemplateType.collegeRuled;
     final activeProps =
         activePage?.properties ?? PaperProperties.defaultFor(activeType);
+
+    final searchResultsAsync = ref.watch(
+      inDocumentSearchResultsProvider(widget.notebookId),
+    );
+    final allMatches =
+        <({String pageId, int pageNumber, WordBoundingBox box})>[];
+    searchResultsAsync.whenData((items) {
+      for (final item in items) {
+        if (item.pageId != null && item.pageNumber != null) {
+          for (final b in item.matchingBoxes) {
+            allMatches.add((
+              pageId: item.pageId!,
+              pageNumber: item.pageNumber!,
+              box: b,
+            ));
+          }
+        }
+      }
+    });
+
+    final totalMatches = allMatches.length;
+    final currentMatchDisplay = totalMatches == 0 ? 0 : (_activeMatchIndex + 1);
+
+    final activeBoxesOnCurrentPage = activePage == null
+        ? <WordBoundingBox>[]
+        : allMatches
+              .where((m) => m.pageId == activePage.id)
+              .map((m) => m.box)
+              .toList();
+    final activeBoxIndexInPage =
+        (allMatches.isNotEmpty &&
+            _activeMatchIndex < allMatches.length &&
+            allMatches[_activeMatchIndex].pageId == activePage?.id)
+        ? activeBoxesOnCurrentPage.indexOf(allMatches[_activeMatchIndex].box)
+        : -1;
 
     return Scaffold(
       backgroundColor: const Color(0xFFE8E4DF),
@@ -706,10 +744,61 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                         vertical: 6,
                       ),
                       child: PdfDocumentSearchBar(
-                        onSearch: (q) => setState(() => _searchQuery = q),
-                        onNextMatch: () {},
-                        onPreviousMatch: () {},
-                        onClose: () => setState(() => _showSearch = false),
+                        currentMatchIndex: currentMatchDisplay,
+                        totalMatches: totalMatches,
+                        onSearch: (q) {
+                          setState(() {
+                            _searchQuery = q;
+                            _activeMatchIndex = 0;
+                          });
+                          ref
+                              .read(inDocumentSearchQueryProvider.notifier)
+                              .setQuery(q);
+                          if (q.isNotEmpty && allMatches.isNotEmpty) {
+                            ref
+                                .read(currentPageIndexProvider.notifier)
+                                .setPage(allMatches[0].pageNumber);
+                          }
+                        },
+                        onNextMatch: () {
+                          if (allMatches.isEmpty) return;
+                          setState(() {
+                            _activeMatchIndex =
+                                (_activeMatchIndex + 1) % allMatches.length;
+                            final targetPage =
+                                allMatches[_activeMatchIndex].pageNumber;
+                            if (targetPage != clampedIndex) {
+                              ref
+                                  .read(currentPageIndexProvider.notifier)
+                                  .setPage(targetPage);
+                            }
+                          });
+                        },
+                        onPreviousMatch: () {
+                          if (allMatches.isEmpty) return;
+                          setState(() {
+                            _activeMatchIndex =
+                                (_activeMatchIndex - 1 + allMatches.length) %
+                                allMatches.length;
+                            final targetPage =
+                                allMatches[_activeMatchIndex].pageNumber;
+                            if (targetPage != clampedIndex) {
+                              ref
+                                  .read(currentPageIndexProvider.notifier)
+                                  .setPage(targetPage);
+                            }
+                          });
+                        },
+                        onClose: () {
+                          setState(() {
+                            _showSearch = false;
+                            _searchQuery = '';
+                            _activeMatchIndex = 0;
+                          });
+                          ref
+                              .read(inDocumentSearchQueryProvider.notifier)
+                              .clear();
+                        },
                       ),
                     ),
 
@@ -738,6 +827,19 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                               final stickyNotes = ref.watch(
                                 pageStickyNotesProvider(p.id),
                               );
+                              final pMatches = allMatches
+                                  .where((m) => m.pageId == p.id)
+                                  .map((m) => m.box)
+                                  .toList();
+                              final pActiveBoxIdx =
+                                  (allMatches.isNotEmpty &&
+                                      _activeMatchIndex < allMatches.length &&
+                                      allMatches[_activeMatchIndex].pageId ==
+                                          p.id)
+                                  ? pMatches.indexOf(
+                                      allMatches[_activeMatchIndex].box,
+                                    )
+                                  : -1;
 
                               return Center(
                                 child: Container(
@@ -763,6 +865,8 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                                         properties: pProps,
                                         width: p.width,
                                         height: p.height,
+                                        searchMatches: pMatches,
+                                        activeSearchIndex: pActiveBoxIdx,
                                         readOnly:
                                             ref.watch(activeToolProvider) ==
                                             ToolType.pan,
@@ -812,6 +916,8 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                                         properties: activeProps,
                                         width: activePage.width,
                                         height: activePage.height,
+                                        searchMatches: activeBoxesOnCurrentPage,
+                                        activeSearchIndex: activeBoxIndexInPage,
                                         readOnly:
                                             ref.watch(activeToolProvider) ==
                                             ToolType.pan,

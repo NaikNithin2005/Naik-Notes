@@ -4,10 +4,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
+import 'package:naik_notes/data/models/search_index_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/features/canvas/data/stroke_provider.dart';
 import 'package:naik_notes/features/canvas/rendering/active_stroke_painter.dart';
 import 'package:naik_notes/features/canvas/rendering/lasso_painter.dart';
+import 'package:naik_notes/features/canvas/rendering/search_highlight_painter.dart';
 import 'package:naik_notes/features/canvas/rendering/stroke_painter.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/paper_template_view.dart';
 import 'package:naik_notes/platform/models/stylus_event.dart';
@@ -25,6 +27,8 @@ class HandwritingCanvas extends ConsumerStatefulWidget {
   final double width;
   final double height;
   final bool readOnly;
+  final List<WordBoundingBox> searchMatches;
+  final int activeSearchIndex;
 
   const HandwritingCanvas({
     super.key,
@@ -34,6 +38,8 @@ class HandwritingCanvas extends ConsumerStatefulWidget {
     required this.width,
     required this.height,
     this.readOnly = false,
+    this.searchMatches = const [],
+    this.activeSearchIndex = 0,
   });
 
   @override
@@ -405,6 +411,19 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
               ),
             ),
           ),
+
+          // Layer 2.5: Search Highlights Layer
+          if (widget.searchMatches.isNotEmpty)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: SearchHighlightPainter(
+                    matchingBoxes: widget.searchMatches,
+                    activeIndex: widget.activeSearchIndex,
+                  ),
+                ),
+              ),
+            ),
 
           // Layer 3: Active In-Progress Stroke
           if (_activeStroke != null)

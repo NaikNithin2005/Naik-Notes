@@ -4727,6 +4727,549 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
   }
 }
 
+class $PageSearchIndexTableTable extends PageSearchIndexTable
+    with TableInfo<$PageSearchIndexTableTable, PageSearchIndexTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PageSearchIndexTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pageIdMeta = const VerificationMeta('pageId');
+  @override
+  late final GeneratedColumn<String> pageId = GeneratedColumn<String>(
+    'page_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES pages_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _textContentMeta = const VerificationMeta(
+    'textContent',
+  );
+  @override
+  late final GeneratedColumn<String> textContent = GeneratedColumn<String>(
+    'text_content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boundingBoxesJsonMeta = const VerificationMeta(
+    'boundingBoxesJson',
+  );
+  @override
+  late final GeneratedColumn<String> boundingBoxesJson =
+      GeneratedColumn<String>(
+        'bounding_boxes_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    pageId,
+    notebookId,
+    sourceType,
+    textContent,
+    boundingBoxesJson,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'page_search_index_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PageSearchIndexTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('page_id')) {
+      context.handle(
+        _pageIdMeta,
+        pageId.isAcceptableOrUnknown(data['page_id']!, _pageIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pageIdMeta);
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceTypeMeta);
+    }
+    if (data.containsKey('text_content')) {
+      context.handle(
+        _textContentMeta,
+        textContent.isAcceptableOrUnknown(
+          data['text_content']!,
+          _textContentMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_textContentMeta);
+    }
+    if (data.containsKey('bounding_boxes_json')) {
+      context.handle(
+        _boundingBoxesJsonMeta,
+        boundingBoxesJson.isAcceptableOrUnknown(
+          data['bounding_boxes_json']!,
+          _boundingBoxesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PageSearchIndexTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PageSearchIndexTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      pageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}page_id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      )!,
+      textContent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}text_content'],
+      )!,
+      boundingBoxesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bounding_boxes_json'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PageSearchIndexTableTable createAlias(String alias) {
+    return $PageSearchIndexTableTable(attachedDatabase, alias);
+  }
+}
+
+class PageSearchIndexTableData extends DataClass
+    implements Insertable<PageSearchIndexTableData> {
+  final String id;
+  final String pageId;
+  final String notebookId;
+  final String sourceType;
+  final String textContent;
+  final String? boundingBoxesJson;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const PageSearchIndexTableData({
+    required this.id,
+    required this.pageId,
+    required this.notebookId,
+    required this.sourceType,
+    required this.textContent,
+    this.boundingBoxesJson,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['page_id'] = Variable<String>(pageId);
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['source_type'] = Variable<String>(sourceType);
+    map['text_content'] = Variable<String>(textContent);
+    if (!nullToAbsent || boundingBoxesJson != null) {
+      map['bounding_boxes_json'] = Variable<String>(boundingBoxesJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PageSearchIndexTableCompanion toCompanion(bool nullToAbsent) {
+    return PageSearchIndexTableCompanion(
+      id: Value(id),
+      pageId: Value(pageId),
+      notebookId: Value(notebookId),
+      sourceType: Value(sourceType),
+      textContent: Value(textContent),
+      boundingBoxesJson: boundingBoxesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boundingBoxesJson),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PageSearchIndexTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PageSearchIndexTableData(
+      id: serializer.fromJson<String>(json['id']),
+      pageId: serializer.fromJson<String>(json['pageId']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
+      textContent: serializer.fromJson<String>(json['textContent']),
+      boundingBoxesJson: serializer.fromJson<String?>(
+        json['boundingBoxesJson'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'pageId': serializer.toJson<String>(pageId),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'sourceType': serializer.toJson<String>(sourceType),
+      'textContent': serializer.toJson<String>(textContent),
+      'boundingBoxesJson': serializer.toJson<String?>(boundingBoxesJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PageSearchIndexTableData copyWith({
+    String? id,
+    String? pageId,
+    String? notebookId,
+    String? sourceType,
+    String? textContent,
+    Value<String?> boundingBoxesJson = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => PageSearchIndexTableData(
+    id: id ?? this.id,
+    pageId: pageId ?? this.pageId,
+    notebookId: notebookId ?? this.notebookId,
+    sourceType: sourceType ?? this.sourceType,
+    textContent: textContent ?? this.textContent,
+    boundingBoxesJson: boundingBoxesJson.present
+        ? boundingBoxesJson.value
+        : this.boundingBoxesJson,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PageSearchIndexTableData copyWithCompanion(
+    PageSearchIndexTableCompanion data,
+  ) {
+    return PageSearchIndexTableData(
+      id: data.id.present ? data.id.value : this.id,
+      pageId: data.pageId.present ? data.pageId.value : this.pageId,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      textContent: data.textContent.present
+          ? data.textContent.value
+          : this.textContent,
+      boundingBoxesJson: data.boundingBoxesJson.present
+          ? data.boundingBoxesJson.value
+          : this.boundingBoxesJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PageSearchIndexTableData(')
+          ..write('id: $id, ')
+          ..write('pageId: $pageId, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('textContent: $textContent, ')
+          ..write('boundingBoxesJson: $boundingBoxesJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    pageId,
+    notebookId,
+    sourceType,
+    textContent,
+    boundingBoxesJson,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PageSearchIndexTableData &&
+          other.id == this.id &&
+          other.pageId == this.pageId &&
+          other.notebookId == this.notebookId &&
+          other.sourceType == this.sourceType &&
+          other.textContent == this.textContent &&
+          other.boundingBoxesJson == this.boundingBoxesJson &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PageSearchIndexTableCompanion
+    extends UpdateCompanion<PageSearchIndexTableData> {
+  final Value<String> id;
+  final Value<String> pageId;
+  final Value<String> notebookId;
+  final Value<String> sourceType;
+  final Value<String> textContent;
+  final Value<String?> boundingBoxesJson;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PageSearchIndexTableCompanion({
+    this.id = const Value.absent(),
+    this.pageId = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.textContent = const Value.absent(),
+    this.boundingBoxesJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PageSearchIndexTableCompanion.insert({
+    required String id,
+    required String pageId,
+    required String notebookId,
+    required String sourceType,
+    required String textContent,
+    this.boundingBoxesJson = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       pageId = Value(pageId),
+       notebookId = Value(notebookId),
+       sourceType = Value(sourceType),
+       textContent = Value(textContent),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<PageSearchIndexTableData> custom({
+    Expression<String>? id,
+    Expression<String>? pageId,
+    Expression<String>? notebookId,
+    Expression<String>? sourceType,
+    Expression<String>? textContent,
+    Expression<String>? boundingBoxesJson,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (pageId != null) 'page_id': pageId,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (sourceType != null) 'source_type': sourceType,
+      if (textContent != null) 'text_content': textContent,
+      if (boundingBoxesJson != null) 'bounding_boxes_json': boundingBoxesJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PageSearchIndexTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? pageId,
+    Value<String>? notebookId,
+    Value<String>? sourceType,
+    Value<String>? textContent,
+    Value<String?>? boundingBoxesJson,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PageSearchIndexTableCompanion(
+      id: id ?? this.id,
+      pageId: pageId ?? this.pageId,
+      notebookId: notebookId ?? this.notebookId,
+      sourceType: sourceType ?? this.sourceType,
+      textContent: textContent ?? this.textContent,
+      boundingBoxesJson: boundingBoxesJson ?? this.boundingBoxesJson,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (pageId.present) {
+      map['page_id'] = Variable<String>(pageId.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (textContent.present) {
+      map['text_content'] = Variable<String>(textContent.value);
+    }
+    if (boundingBoxesJson.present) {
+      map['bounding_boxes_json'] = Variable<String>(boundingBoxesJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PageSearchIndexTableCompanion(')
+          ..write('id: $id, ')
+          ..write('pageId: $pageId, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('textContent: $textContent, ')
+          ..write('boundingBoxesJson: $boundingBoxesJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4739,6 +5282,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $SyncQueueTableTable syncQueueTable = $SyncQueueTableTable(this);
+  late final $PageSearchIndexTableTable pageSearchIndexTable =
+      $PageSearchIndexTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4751,6 +5296,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     strokesTable,
     stickyNotesTable,
     syncQueueTable,
+    pageSearchIndexTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4781,6 +5327,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('sticky_notes_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pages_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('page_search_index_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('page_search_index_table', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -5148,6 +5708,31 @@ final class $$NotebooksTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $PageSearchIndexTableTable,
+    List<PageSearchIndexTableData>
+  >
+  _pageSearchIndexTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pageSearchIndexTable,
+        aliasName: 'notebooks_table__id__page_search_index_table__notebook_id',
+      );
+
+  $$PageSearchIndexTableTableProcessedTableManager
+  get pageSearchIndexTableRefs {
+    final manager = $$PageSearchIndexTableTableTableManager(
+      $_db,
+      $_db.pageSearchIndexTable,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _pageSearchIndexTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$NotebooksTableTableFilterComposer
@@ -5300,6 +5885,31 @@ class $$NotebooksTableTableFilterComposer
           }) => $$PagesTableTableFilterComposer(
             $db: $db,
             $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> pageSearchIndexTableRefs(
+    Expression<bool> Function($$PageSearchIndexTableTableFilterComposer f) f,
+  ) {
+    final $$PageSearchIndexTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.pageSearchIndexTable,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PageSearchIndexTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pageSearchIndexTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -5552,6 +6162,32 @@ class $$NotebooksTableTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> pageSearchIndexTableRefs<T extends Object>(
+    Expression<T> Function($$PageSearchIndexTableTableAnnotationComposer a) f,
+  ) {
+    final $$PageSearchIndexTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.pageSearchIndexTable,
+          getReferencedColumn: (t) => t.notebookId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PageSearchIndexTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pageSearchIndexTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$NotebooksTableTableTableManager
@@ -5567,7 +6203,11 @@ class $$NotebooksTableTableTableManager
           $$NotebooksTableTableUpdateCompanionBuilder,
           (NotebooksTableData, $$NotebooksTableTableReferences),
           NotebooksTableData,
-          PrefetchHooks Function({bool sectionsTableRefs, bool pagesTableRefs})
+          PrefetchHooks Function({
+            bool sectionsTableRefs,
+            bool pagesTableRefs,
+            bool pageSearchIndexTableRefs,
+          })
         > {
   $$NotebooksTableTableTableManager(
     _$AppDatabase db,
@@ -5683,12 +6323,17 @@ class $$NotebooksTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({sectionsTableRefs = false, pagesTableRefs = false}) {
+              ({
+                sectionsTableRefs = false,
+                pagesTableRefs = false,
+                pageSearchIndexTableRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (sectionsTableRefs) db.sectionsTable,
                     if (pagesTableRefs) db.pagesTable,
+                    if (pageSearchIndexTableRefs) db.pageSearchIndexTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -5733,6 +6378,26 @@ class $$NotebooksTableTableTableManager
                           referencedColumn: 'notebook_id',
                           typedResults: items,
                         ),
+                      if (pageSearchIndexTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          NotebooksTableData,
+                          $NotebooksTableTable,
+                          PageSearchIndexTableData,
+                          $PageSearchIndexTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableTableReferences
+                              ._pageSearchIndexTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pageSearchIndexTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'notebook_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5753,7 +6418,11 @@ typedef $$NotebooksTableTableProcessedTableManager =
       $$NotebooksTableTableUpdateCompanionBuilder,
       (NotebooksTableData, $$NotebooksTableTableReferences),
       NotebooksTableData,
-      PrefetchHooks Function({bool sectionsTableRefs, bool pagesTableRefs})
+      PrefetchHooks Function({
+        bool sectionsTableRefs,
+        bool pagesTableRefs,
+        bool pageSearchIndexTableRefs,
+      })
     >;
 typedef $$SectionsTableTableCreateCompanionBuilder =
     SectionsTableCompanion Function({
@@ -6191,6 +6860,31 @@ final class $$PagesTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $PageSearchIndexTableTable,
+    List<PageSearchIndexTableData>
+  >
+  _pageSearchIndexTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pageSearchIndexTable,
+        aliasName: 'pages_table__id__page_search_index_table__page_id',
+      );
+
+  $$PageSearchIndexTableTableProcessedTableManager
+  get pageSearchIndexTableRefs {
+    final manager = $$PageSearchIndexTableTableTableManager(
+      $_db,
+      $_db.pageSearchIndexTable,
+    ).filter((f) => f.pageId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _pageSearchIndexTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PagesTableTableFilterComposer
@@ -6331,6 +7025,31 @@ class $$PagesTableTableFilterComposer
           }) => $$StickyNotesTableTableFilterComposer(
             $db: $db,
             $table: $db.stickyNotesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> pageSearchIndexTableRefs(
+    Expression<bool> Function($$PageSearchIndexTableTableFilterComposer f) f,
+  ) {
+    final $$PageSearchIndexTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.pageSearchIndexTable,
+      getReferencedColumn: (t) => t.pageId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PageSearchIndexTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pageSearchIndexTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6571,6 +7290,32 @@ class $$PagesTableTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> pageSearchIndexTableRefs<T extends Object>(
+    Expression<T> Function($$PageSearchIndexTableTableAnnotationComposer a) f,
+  ) {
+    final $$PageSearchIndexTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.pageSearchIndexTable,
+          getReferencedColumn: (t) => t.pageId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PageSearchIndexTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pageSearchIndexTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PagesTableTableTableManager
@@ -6590,6 +7335,7 @@ class $$PagesTableTableTableManager
             bool notebookId,
             bool strokesTableRefs,
             bool stickyNotesTableRefs,
+            bool pageSearchIndexTableRefs,
           })
         > {
   $$PagesTableTableTableManager(_$AppDatabase db, $PagesTableTable table)
@@ -6684,12 +7430,14 @@ class $$PagesTableTableTableManager
                 notebookId = false,
                 strokesTableRefs = false,
                 stickyNotesTableRefs = false,
+                pageSearchIndexTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (strokesTableRefs) db.strokesTable,
                     if (stickyNotesTableRefs) db.stickyNotesTable,
+                    if (pageSearchIndexTableRefs) db.pageSearchIndexTable,
                   ],
                   addJoins:
                       <
@@ -6763,6 +7511,26 @@ class $$PagesTableTableTableManager
                           referencedColumn: 'page_id',
                           typedResults: items,
                         ),
+                      if (pageSearchIndexTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          PagesTableData,
+                          $PagesTableTable,
+                          PageSearchIndexTableData,
+                          $PageSearchIndexTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PagesTableTableReferences
+                              ._pageSearchIndexTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PagesTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pageSearchIndexTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'page_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -6787,6 +7555,7 @@ typedef $$PagesTableTableProcessedTableManager =
         bool notebookId,
         bool strokesTableRefs,
         bool stickyNotesTableRefs,
+        bool pageSearchIndexTableRefs,
       })
     >;
 typedef $$StrokesTableTableCreateCompanionBuilder =
@@ -7966,6 +8735,489 @@ typedef $$SyncQueueTableTableProcessedTableManager =
       SyncQueueTableData,
       PrefetchHooks Function()
     >;
+typedef $$PageSearchIndexTableTableCreateCompanionBuilder =
+    PageSearchIndexTableCompanion Function({
+      required String id,
+      required String pageId,
+      required String notebookId,
+      required String sourceType,
+      required String textContent,
+      Value<String?> boundingBoxesJson,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PageSearchIndexTableTableUpdateCompanionBuilder =
+    PageSearchIndexTableCompanion Function({
+      Value<String> id,
+      Value<String> pageId,
+      Value<String> notebookId,
+      Value<String> sourceType,
+      Value<String> textContent,
+      Value<String?> boundingBoxesJson,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$PageSearchIndexTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PageSearchIndexTableTable,
+          PageSearchIndexTableData
+        > {
+  $$PageSearchIndexTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PagesTableTable _pageIdTable(_$AppDatabase db) => db.pagesTable
+      .createAlias('page_search_index_table__page_id__pages_table__id');
+
+  $$PagesTableTableProcessedTableManager get pageId {
+    final $_column = $_itemColumn<String>('page_id')!;
+
+    final manager = $$PagesTableTableTableManager(
+      $_db,
+      $_db.pagesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_pageIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $NotebooksTableTable _notebookIdTable(_$AppDatabase db) => db
+      .notebooksTable
+      .createAlias('page_search_index_table__notebook_id__notebooks_table__id');
+
+  $$NotebooksTableTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableTableManager(
+      $_db,
+      $_db.notebooksTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PageSearchIndexTableTableFilterComposer
+    extends Composer<_$AppDatabase, $PageSearchIndexTableTable> {
+  $$PageSearchIndexTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get textContent => $composableBuilder(
+    column: $table.textContent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boundingBoxesJson => $composableBuilder(
+    column: $table.boundingBoxesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PagesTableTableFilterComposer get pageId {
+    final $$PagesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$NotebooksTableTableFilterComposer get notebookId {
+    final $$NotebooksTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PageSearchIndexTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $PageSearchIndexTableTable> {
+  $$PageSearchIndexTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get textContent => $composableBuilder(
+    column: $table.textContent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boundingBoxesJson => $composableBuilder(
+    column: $table.boundingBoxesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PagesTableTableOrderingComposer get pageId {
+    final $$PagesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$NotebooksTableTableOrderingComposer get notebookId {
+    final $$NotebooksTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PageSearchIndexTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PageSearchIndexTableTable> {
+  $$PageSearchIndexTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get textContent => $composableBuilder(
+    column: $table.textContent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get boundingBoxesJson => $composableBuilder(
+    column: $table.boundingBoxesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$PagesTableTableAnnotationComposer get pageId {
+    final $$PagesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.pageId,
+      referencedTable: $db.pagesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PagesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.pagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$NotebooksTableTableAnnotationComposer get notebookId {
+    final $$NotebooksTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PageSearchIndexTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PageSearchIndexTableTable,
+          PageSearchIndexTableData,
+          $$PageSearchIndexTableTableFilterComposer,
+          $$PageSearchIndexTableTableOrderingComposer,
+          $$PageSearchIndexTableTableAnnotationComposer,
+          $$PageSearchIndexTableTableCreateCompanionBuilder,
+          $$PageSearchIndexTableTableUpdateCompanionBuilder,
+          (PageSearchIndexTableData, $$PageSearchIndexTableTableReferences),
+          PageSearchIndexTableData,
+          PrefetchHooks Function({bool pageId, bool notebookId})
+        > {
+  $$PageSearchIndexTableTableTableManager(
+    _$AppDatabase db,
+    $PageSearchIndexTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PageSearchIndexTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PageSearchIndexTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PageSearchIndexTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> pageId = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
+                Value<String> textContent = const Value.absent(),
+                Value<String?> boundingBoxesJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PageSearchIndexTableCompanion(
+                id: id,
+                pageId: pageId,
+                notebookId: notebookId,
+                sourceType: sourceType,
+                textContent: textContent,
+                boundingBoxesJson: boundingBoxesJson,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String pageId,
+                required String notebookId,
+                required String sourceType,
+                required String textContent,
+                Value<String?> boundingBoxesJson = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PageSearchIndexTableCompanion.insert(
+                id: id,
+                pageId: pageId,
+                notebookId: notebookId,
+                sourceType: sourceType,
+                textContent: textContent,
+                boundingBoxesJson: boundingBoxesJson,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $PageSearchIndexTableTable,
+                    PageSearchIndexTableData
+                  >(table),
+                  $$PageSearchIndexTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({pageId = false, notebookId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (pageId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.pageId,
+                        referencedTable: $$PageSearchIndexTableTableReferences
+                            ._pageIdTable(db),
+                        referencedColumn: $$PageSearchIndexTableTableReferences
+                            ._pageIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+                    if (notebookId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.notebookId,
+                        referencedTable: $$PageSearchIndexTableTableReferences
+                            ._notebookIdTable(db),
+                        referencedColumn: $$PageSearchIndexTableTableReferences
+                            ._notebookIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PageSearchIndexTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PageSearchIndexTableTable,
+      PageSearchIndexTableData,
+      $$PageSearchIndexTableTableFilterComposer,
+      $$PageSearchIndexTableTableOrderingComposer,
+      $$PageSearchIndexTableTableAnnotationComposer,
+      $$PageSearchIndexTableTableCreateCompanionBuilder,
+      $$PageSearchIndexTableTableUpdateCompanionBuilder,
+      (PageSearchIndexTableData, $$PageSearchIndexTableTableReferences),
+      PageSearchIndexTableData,
+      PrefetchHooks Function({bool pageId, bool notebookId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7984,4 +9236,6 @@ class $AppDatabaseManager {
       $$StickyNotesTableTableTableManager(_db, _db.stickyNotesTable);
   $$SyncQueueTableTableTableManager get syncQueueTable =>
       $$SyncQueueTableTableTableManager(_db, _db.syncQueueTable);
+  $$PageSearchIndexTableTableTableManager get pageSearchIndexTable =>
+      $$PageSearchIndexTableTableTableManager(_db, _db.pageSearchIndexTable);
 }

@@ -19,7 +19,7 @@
 | **Phase 6** | PDF Reader & Annotation Engine | **VERIFIED & COMPLETE** | 93 Flutter Tests + 3 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 7** | Cloud Synchronization & Offline DB | **VERIFIED & COMPLETE** | 103 Flutter Tests + 6 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 8** | Cross-Platform Optimization & Native Hardware Integration | **VERIFIED & COMPLETE** | 123 Flutter Tests + 6 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
-| **Phase 9** | Handwriting Recognition & Search | Scheduled | - | - |
+| **Phase 9** | Handwriting Recognition & Search | **VERIFIED & COMPLETE** | 136 Flutter Tests + 10 Pytest Tests (100% Passed) | Clean (`0 issues`), Web Built (`build\web`) |
 | **Phase 10** | Audio Notes & AI Study Assistant | Scheduled | - | - |
 | **Phase 11** | Version History & Template Store | Scheduled | - | - |
 | **Phase 12** | Release Hardening & Verification | Scheduled | - | - |
@@ -435,4 +435,87 @@
 - Native physical testing on specific hardware (Apple Pencil Pro on physical iPad M4, S-Pen on physical Galaxy Tab S9) requires deployment to physical test devices; unit and widget tests simulate all channel events with high fidelity.
 
 ### 5. Next Tasks
-- Proceed to Phase 9: Handwriting Recognition, Indexing & Full-Text Search.
+- Completed Phase 9: Handwriting Recognition, Indexing & Full-Text Search.
+
+---
+
+## Phase 9: Handwriting Recognition, Indexing & Full-Text Search (Completed)
+
+### 1. Implemented Features
+- **Vector Handwriting Clustering & Bounding Box Engine**:
+  - Implemented spatial stroke clustering algorithm in `lib/services/recognition/handwriting_recognition_service.dart`.
+  - Filters handwriting strokes (excluding eraser, lasso, and pan gestures).
+  - Groups strokes into horizontal lines based on vertical baseline overlap, and clusters adjacent strokes into words based on inter-word gap thresholds (<= 35px).
+  - Computes exact resolution-independent bounding boxes (`WordBoundingBox`) with left, top, right, bottom document coordinates, confidence scores, and participating stroke IDs.
+- **Provider-Independent Backend OCR Microservice**:
+  - Built FastAPI OCR endpoints in `backend/app/api/ocr.py`:
+    - `GET /v1/ai/ocr/status`: Engine health and supported languages (`en`, `es`, `fr`, `de`, `hi`).
+    - `POST /v1/ai/ocr/recognize-strokes`: Ingests vector stroke coordinates and returns clustered bounding boxes and transcribed words.
+    - `POST /v1/ai/ocr/recognize-image`: Raster canvas OCR recognition endpoint.
+  - Implemented `backend/app/services/ocr_service.py` with spatial clustering algorithms and pluggable AI provider architecture without embedding client API keys.
+- **SQLite Full-Text Search Index (Drift Schema v7)**:
+  - Added `PageSearchIndexTable` to `AppDatabase` with fields: `id`, `pageId`, `notebookId`, `sourceType`, `textContent`, `boundingBoxesJson`, `createdAt`, `updatedAt`.
+  - Created `DriftPageSearchRepository` implementing `PageSearchRepository` for fast SQLite text indexing, keyword search with substring matching, notebook-scoped search, and cascade deletions.
+- **Unified Multi-Target Search Service**:
+  - Built `SearchService` in `lib/services/search/search_service.dart` querying across:
+    1. Notebook titles & descriptions (`NotebookRepository`).
+    2. Folders (`FolderRepository`).
+    3. Sticky notes on pages (`StickyNoteRepository`).
+    4. Handwritten notes and PDF pages (`PageSearchRepository`).
+  - Contextual snippet generator extracting 40 characters of surrounding text context around matched terms (`... snippet ...`).
+  - Riverpod 3 notifiers in `lib/features/search/data/search_provider.dart`: `globalSearchQueryProvider`, `globalSearchResultsProvider`, `inDocumentSearchQueryProvider`, `inDocumentSearchResultsProvider`, `activeSearchMatchIndexProvider`, and `currentPageSearchMatchesProvider`.
+- **Visual Search Highlights on Canvas**:
+  - Created `SearchHighlightPainter` in `lib/features/canvas/rendering/search_highlight_painter.dart`:
+    - Translucent amber/yellow highlighter rectangles drawn directly over matching word bounding boxes.
+    - Vibrant orange focused border and precision corner ticks indicating the currently active search match.
+  - Embedded `SearchHighlightPainter` as Layer 2.5 in `HandwritingCanvas` directly above completed strokes.
+- **In-Document Search & Multi-Page Navigation**:
+  - Wired `PdfDocumentSearchBar` in `NotebookViewScreen`:
+    - Real-time match counter ("2 of 5").
+    - "Next match" and "Previous match" navigation buttons cycling across all matching words.
+    - Automatic page flipping: when next match is on a different page, `currentPageIndexProvider` immediately flips to that page and focuses the active match bounding box.
+- **Dashboard Global Deep Search Integration**:
+  - Connected `DashboardScreen` search bar to `globalSearchResultsProvider`.
+  - Added "Found in handwritten notes & pages" deep search results card showing matching snippets, source type (handwriting, sticky note, PDF), notebook title, and page number with direct one-tap navigation.
+
+### 2. Files Created & Modified
+- `lib/data/local/app_database.dart` (Schema version 7 with `PageSearchIndexTable`)
+- `lib/data/local/app_database.g.dart` (Generated Drift code for search table)
+- `lib/data/local/database_provider.dart` (Registered `pageSearchRepositoryProvider`)
+- `lib/data/models/search_index_model.dart` (`WordBoundingBox`, `PageSearchEntry`, `SearchResultItem`)
+- `lib/data/repositories/page_search_repository.dart` (`PageSearchRepository` interface & `DriftPageSearchRepository`)
+- `backend/app/schemas/ocr.py` (Pydantic schemas for strokes, bounding boxes, OCR request/response)
+- `backend/app/services/ocr_service.py` (FastAPI vector stroke clustering and OCR service)
+- `backend/app/api/ocr.py` (FastAPI OCR router endpoints)
+- `backend/app/main.py` (Mounted `ocr.router`)
+- `backend/tests/test_ocr.py` (Pytest tests for status, empty strokes, clustered stroke bounding boxes, and image OCR)
+- `lib/services/recognition/handwriting_recognition_service.dart` (Vector clustering, word bounding boxes, SQLite indexing)
+- `lib/services/recognition/handwriting_recognition_provider.dart` (`handwritingRecognitionServiceProvider`)
+- `lib/services/search/search_service.dart` (Universal search across notebooks, folders, strokes, sticky notes, PDFs)
+- `lib/features/search/data/search_provider.dart` (Riverpod 3 search notifiers and results providers)
+- `lib/features/canvas/rendering/search_highlight_painter.dart` (Visual search highlight CustomPainter)
+- `lib/features/canvas/presentation/widgets/handwriting_canvas.dart` (Integrated Layer 2.5 search highlights)
+- `lib/features/canvas/data/stroke_provider.dart` (Added `indexPageStrokes` to `StrokesNotifier`)
+- `lib/features/notebooks/presentation/screens/notebook_view_screen.dart` (Wired search bar, match cycling, auto page flipping)
+- `lib/features/dashboard/presentation/screens/dashboard_screen.dart` (Deep search results cards with direct page navigation)
+- `test/unit/page_search_repository_test.dart` (4 unit tests for SQLite search index CRUD and queries)
+- `test/unit/handwriting_recognition_service_test.dart` (4 unit tests for clustering, bounding boxes, and indexing)
+- `test/unit/search_service_test.dart` (2 unit tests for global and scoped search)
+- `test/widget/search_and_highlight_test.dart` (3 widget tests for highlight painter, canvas, and search bar)
+
+### 3. Verification & Test Results
+- `dart format lib test`: **100% formatted** (17 files formatted).
+- `flutter analyze`: **0 issues found** (Clean, 0 warnings, 0 errors).
+- `flutter test`: **136 of 136 tests passed (100%)**:
+  - `page_search_repository_test.dart` (4 tests): Indexing, scoped search, revision updates, deletions.
+  - `handwriting_recognition_service_test.dart` (4 tests): Non-pen rejection, spatial clustering, stroke indexing, PDF/note indexing.
+  - `search_service_test.dart` (2 tests): Global multi-target search, in-document scoped search.
+  - `search_and_highlight_test.dart` (3 tests): Highlight painter, canvas search layer, search bar cycling.
+  - Plus all 123 existing tests for hardware digitizer, sync, PDF, vector handwriting, paper templates, folders, notebooks, auth, and smoke tests.
+- `python -m pytest backend/tests -v`: **10 of 10 tests passed (100%)**:
+  - `test_ocr.py`: Status, empty strokes, clustered strokes, bounding box calculations, image OCR.
+  - `test_auth.py`, `test_health.py`, `test_sync.py`: All passing.
+- `flutter build web --release`: **SUCCESS** (`build\web` generated).
+
+### 4. Next Tasks
+- Proceed to Phase 10: Audio Notes & AI Study Assistant.

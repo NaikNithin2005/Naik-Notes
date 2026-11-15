@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/data/repositories/stroke_repository.dart';
+import 'package:naik_notes/services/recognition/handwriting_recognition_provider.dart';
 import 'package:uuid/uuid.dart';
 
 /// Available standard color palette for the digital pens.
@@ -287,6 +288,18 @@ class StrokesNotifier extends Notifier<StrokesState> {
     );
 
     await _repo.saveStroke(stroke);
+  }
+
+  /// Indexes handwriting strokes for full-text search recognition.
+  Future<void> indexPageStrokes(String pageId, String notebookId) async {
+    final strokes =
+        state.pageStrokes[pageId] ?? await _repo.getStrokesForPage(pageId);
+    final recognitionService = ref.read(handwritingRecognitionServiceProvider);
+    await recognitionService.processAndIndexStrokes(
+      pageId,
+      notebookId,
+      strokes,
+    );
   }
 
   /// Erases any strokes at [point] within [tolerance].

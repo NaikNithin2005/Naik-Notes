@@ -145,6 +145,23 @@ class SyncQueueTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Table representing indexed text on notebook pages (from OCR, handwriting, sticky notes, or PDF text).
+class PageSearchIndexTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get pageId =>
+      text().references(PagesTable, #id, onDelete: KeyAction.cascade)();
+  TextColumn get notebookId =>
+      text().references(NotebooksTable, #id, onDelete: KeyAction.cascade)();
+  TextColumn get sourceType => text()(); // handwriting, pdf, sticky_note
+  TextColumn get textContent => text()();
+  TextColumn get boundingBoxesJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     FoldersTable,
@@ -154,13 +171,14 @@ class SyncQueueTable extends Table {
     StrokesTable,
     StickyNotesTable,
     SyncQueueTable,
+    PageSearchIndexTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'naik_notes_local');
