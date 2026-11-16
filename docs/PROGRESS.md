@@ -765,7 +765,15 @@
 - `python -m pytest backend/tests -v`: **20 of 20 tests passed (100%)**.
 - `flutter build web --release`: **SUCCESS** (`build\web` generated in 68.0s).
 
-### 4. Release Conclusion
+### 4. Release Conclusion & Device Verification
 - All 12 planned phases are **VERIFIED & COMPLETE**.
 - The Naik Notes application is fully hardened, tested, and ready for cross-platform deployment.
+- **Physical Device Target Verification (Android 16 / API 36 - SM E156B / RZCX51H539A)**:
+  - Fixed Android SDK 36 platform directory hierarchy (un-nested `android.jar`).
+  - Added `kotlin.incremental=false` to `android/gradle.properties` to eliminate cross-drive Windows cache lock collisions.
+  - Configured `android/build.gradle.kts` with `rootProject.layout.buildDirectory.dir("../../build")` for standard Flutter APK destination routing.
+  - Executed `flutter build apk --debug`: **SUCCESS** (`build\app\outputs\flutter-apk\app-debug.apk`).
+  - Deployed and installed via ADB to Samsung Galaxy `SM E156B`: **SUCCESS** (`Streamed Install Success`).
+  - Launched app (`am start com.naiknotes.app.naik_notes/.MainActivity`): Active process running with **0 fatal errors / 0 crashes**.
+
 
