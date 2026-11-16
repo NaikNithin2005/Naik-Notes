@@ -49,6 +49,16 @@ service cloud.firestore {
       match /folders/{folderId} {
         allow read, write: if isOwner(userId);
       }
+
+      // Sync metadata & recovery manifests
+      match /sync_metadata/{recordId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Drive file references
+      match /drive_files/{fileId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // Default deny for all other paths

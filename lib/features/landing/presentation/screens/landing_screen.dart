@@ -52,14 +52,14 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
 
   Future<void> _signInWithGoogle() async {
     final success = await ref.read(authProvider.notifier).signInWithGoogle();
-    if (success && mounted) {
+    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
       context.go(RouteNames.dashboard);
     }
   }
 
   Future<void> _signInWithApple() async {
     final success = await ref.read(authProvider.notifier).signInWithApple();
-    if (success && mounted) {
+    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
       context.go(RouteNames.dashboard);
     }
   }

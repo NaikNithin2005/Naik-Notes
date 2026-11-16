@@ -103,10 +103,11 @@ class AuthErrorHandler {
     // Google Sign-In missing certificate hash or API 10 / 12500
     if (lower.contains('certificate hash') ||
         lower.contains('api exception: 10') ||
+        lower.contains('10:') ||
         lower.contains('12500') ||
         lower.contains('play integrity')) {
       return 'Google Sign-In configuration required: Please add your SHA-1 fingerprint '
-          '(BB:42:0F:07:F9:08:43:69:3D:54:93:1A:02:A8:09:9B:46:F8:66:E7) in the Firebase Console.';
+          '(BB:42:0F:07:F9:08:43:69:3D:54:93:1A:02:A8:09:9B:46:F8:66:E7) in the Firebase Console under Project Settings > Your apps.';
     }
 
     // Phone / SMS region restriction
@@ -138,8 +139,10 @@ class AuthErrorHandler {
 
     // Clean up generic raw internal errors
     if (lower.contains('an internal error has occurred') ||
-        lower == 'internal-error') {
-      return 'Authentication service encountered a temporary error. Please verify your credentials and try again.';
+        lower.contains('internal-error') ||
+        lower == 'internal error') {
+      return 'Authentication service error: Please check your connection, or ensure '
+          'the sign-in provider is enabled in your Firebase Console.';
     }
 
     return raw;

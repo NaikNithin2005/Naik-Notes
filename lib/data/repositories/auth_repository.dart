@@ -16,8 +16,13 @@ abstract class AuthRepository {
   Stream<AppUser?> get authStateChanges;
 
   Future<AppUser> login(String email, String password);
-  Future<AppUser> register(String email, String password, String displayName);
-  Future<AppUser> signInWithGoogle();
+  Future<AppUser> register(
+    String email,
+    String password,
+    String displayName, {
+    String? confirmPassword,
+  });
+  Future<AppUser> signInWithGoogle({bool promptAccountSelection = true});
   Future<AppUser> signInWithApple();
 
   Future<void> sendPhoneOtp({
@@ -119,14 +124,18 @@ class RemoteAuthRepository implements AuthRepository {
   Future<AppUser> register(
     String email,
     String password,
-    String displayName,
-  ) async {
+    String displayName, {
+    String? confirmPassword,
+  }) async {
     final sanitizedEmail = email.trim();
     if (sanitizedEmail.isEmpty || password.isEmpty) {
       throw Exception('Email and password are required.');
     }
     if (password.length < 6) {
       throw Exception('Password must be at least 6 characters long.');
+    }
+    if (confirmPassword != null && confirmPassword != password) {
+      throw Exception('Passwords do not match.');
     }
 
     try {
@@ -172,7 +181,7 @@ class RemoteAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> signInWithGoogle() async {
+  Future<AppUser> signInWithGoogle({bool promptAccountSelection = true}) async {
     final user = AppUser(
       id: 'google_${_uuid.v4().substring(0, 8)}',
       email: 'google_user@naiknotes.com',

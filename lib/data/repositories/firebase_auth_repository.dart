@@ -227,8 +227,9 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<AppUser> register(
     String email,
     String password,
-    String displayName,
-  ) async {
+    String displayName, {
+    String? confirmPassword,
+  }) async {
     final sanitizedEmail = email.trim();
     final sanitizedName = displayName.trim();
 
@@ -237,6 +238,9 @@ class FirebaseAuthRepository implements AuthRepository {
     }
     if (password.length < 6) {
       throw Exception('Password must be at least 6 characters long.');
+    }
+    if (confirmPassword != null && confirmPassword != password) {
+      throw Exception('Passwords do not match.');
     }
 
     final effectiveName = sanitizedName.isEmpty
@@ -292,8 +296,14 @@ class FirebaseAuthRepository implements AuthRepository {
 
       _currentUser = appUser;
 
-      unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
-      unawaited(_registerDevice(appUser.id));
+      // Await profile sync to Firestore and device registration
+      try {
+        await _syncUserProfile(appUser.id, appUser.email, appUser.displayName)
+            .timeout(const Duration(seconds: 8));
+        await _registerDevice(appUser.id).timeout(const Duration(seconds: 8));
+      } catch (e) {
+        debugPrint('Firestore profile creation notice: $e');
+      }
 
       return appUser;
     } on fb.FirebaseAuthException catch (e) {
@@ -306,7 +316,7 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> signInWithGoogle() async {
+  Future<AppUser> signInWithGoogle({bool promptAccountSelection = true}) async {
     final auth = _firebaseAuth;
     if (auth == null) {
       final appUser = AppUser(
@@ -341,6 +351,13 @@ class FirebaseAuthRepository implements AuthRepository {
               '437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com',
         );
 
+        // Force interactive account chooser by clearing cached account
+        if (promptAccountSelection) {
+          try {
+            await googleSignIn.signOut();
+          } catch (_) {}
+        }
+
         final GoogleSignInAccount? googleAccount = await googleSignIn.signIn();
         if (googleAccount == null) {
           throw Exception('Google Sign-In was cancelled.');
@@ -366,6 +383,9 @@ class FirebaseAuthRepository implements AuthRepository {
         final fb.GoogleAuthProvider googleProvider = fb.GoogleAuthProvider();
         googleProvider.addScope('email');
         googleProvider.addScope('profile');
+        if (promptAccountSelection) {
+          googleProvider.setCustomParameters({'prompt': 'select_account'});
+        }
         credential = await auth
             .signInWithPopup(googleProvider)
             .timeout(
@@ -387,15 +407,15 @@ class FirebaseAuthRepository implements AuthRepository {
       final appUser = _mapFirebaseUser(fbUser);
       _currentUser = appUser;
 
-      unawaited(_registerDevice(appUser.id));
-      unawaited(
-        _syncUserProfile(
+      try {
+        await _registerDevice(appUser.id).timeout(const Duration(seconds: 6));
+        await _syncUserProfile(
           appUser.id,
           appUser.email,
           appUser.displayName,
           photoUrl: appUser.photoUrl,
-        ),
-      );
+        ).timeout(const Duration(seconds: 6));
+      } catch (_) {}
 
       return appUser;
     } on fb.FirebaseAuthException catch (e) {
@@ -667,6 +687,14 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    try {
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)) {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
+        await googleSignIn.signOut();
+      }
+    } catch (_) {}
     try {
       await _firebaseAuth?.signOut().timeout(const Duration(seconds: 10));
     } catch (_) {}

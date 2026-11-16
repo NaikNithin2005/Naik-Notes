@@ -38,7 +38,7 @@ class FirebaseSyncService {
   }
 
   /// Pushes a notebook document to `/users/{uid}/notebooks/{notebookId}`
-  Future<void> pushNotebook(String uid, Notebook notebook) async {
+  Future<bool> pushNotebook(String uid, Notebook notebook) async {
     try {
       await _userNotebooksRef(uid).doc(notebook.id).set({
         'id': notebook.id,
@@ -62,25 +62,29 @@ class FirebaseSyncService {
         'updatedAt': FieldValue.serverTimestamp(),
         'deletedAt': notebook.deletedAt?.toIso8601String(),
       }, SetOptions(merge: true));
+      return true;
     } catch (e) {
-      debugPrint('Firestore pushNotebook note: $e');
+      debugPrint('[FirebaseSyncService] pushNotebook failed for ${notebook.id}: $e');
+      return false;
     }
   }
 
   /// Soft or hard deletes a notebook document from Firestore.
-  Future<void> deleteNotebook(String uid, String notebookId) async {
+  Future<bool> deleteNotebook(String uid, String notebookId) async {
     try {
       await _userNotebooksRef(uid).doc(notebookId).update({
         'deletedAt': DateTime.now().toIso8601String(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      return true;
     } catch (e) {
-      debugPrint('Firestore deleteNotebook note: $e');
+      debugPrint('[FirebaseSyncService] deleteNotebook failed for $notebookId: $e');
+      return false;
     }
   }
 
   /// Pushes a page document to `/users/{uid}/notebooks/{notebookId}/pages/{pageId}`
-  Future<void> pushPage(
+  Future<bool> pushPage(
     String uid,
     String notebookId,
     NotebookPage page,
@@ -101,17 +105,21 @@ class FirebaseSyncService {
         'createdAt': page.createdAt.toIso8601String(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      return true;
     } catch (e) {
-      debugPrint('Firestore pushPage note: $e');
+      debugPrint('[FirebaseSyncService] pushPage failed for ${page.id}: $e');
+      return false;
     }
   }
 
   /// Deletes a page document from `/users/{uid}/notebooks/{notebookId}/pages/{pageId}`
-  Future<void> deletePage(String uid, String notebookId, String pageId) async {
+  Future<bool> deletePage(String uid, String notebookId, String pageId) async {
     try {
       await _userPagesRef(uid, notebookId).doc(pageId).delete();
+      return true;
     } catch (e) {
-      debugPrint('Firestore deletePage note: $e');
+      debugPrint('[FirebaseSyncService] deletePage failed for $pageId: $e');
+      return false;
     }
   }
 

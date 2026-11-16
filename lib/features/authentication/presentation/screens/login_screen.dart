@@ -36,7 +36,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final success = await ref
           .read(authProvider.notifier)
           .login(_emailController.text, _passwordController.text);
-      if (success && mounted) {
+      if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
         context.go(RouteNames.dashboard);
       }
     }
@@ -44,14 +44,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _loginWithGoogle() async {
     final success = await ref.read(authProvider.notifier).signInWithGoogle();
-    if (success && mounted) {
+    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
       context.go(RouteNames.dashboard);
     }
   }
 
   Future<void> _loginWithApple() async {
     final success = await ref.read(authProvider.notifier).signInWithApple();
-    if (success && mounted) {
+    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
       context.go(RouteNames.dashboard);
     }
   }

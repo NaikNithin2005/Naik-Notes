@@ -31,8 +31,9 @@ class MockAuthRepository implements AuthRepository {
   Future<AppUser> register(
     String email,
     String password,
-    String displayName,
-  ) async {
+    String displayName, {
+    String? confirmPassword,
+  }) async {
     if (password.length < 6) {
       throw Exception('Password must be at least 6 characters.');
     }
@@ -49,7 +50,7 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> signInWithGoogle() async {
+  Future<AppUser> signInWithGoogle({bool promptAccountSelection = true}) async {
     _user = AppUser(
       id: 'mock_google_uid',
       email: 'google@naiknotes.com',

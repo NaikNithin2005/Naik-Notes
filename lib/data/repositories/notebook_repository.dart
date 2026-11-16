@@ -6,10 +6,19 @@ import '../models/notebook_model.dart';
 
 /// Repository interface for local notebook persistence and operations.
 abstract class NotebookRepository {
-  Future<List<Notebook>> getAllNotebooks({bool includeArchived = false});
-  Stream<List<Notebook>> watchAllNotebooks({bool includeArchived = false});
-  Future<Notebook?> getNotebookById(String id);
-  Future<List<Notebook>> getNotebooksByFolder(String? folderId);
+  Future<List<Notebook>> getAllNotebooks({
+    String? ownerId,
+    bool includeArchived = false,
+  });
+  Stream<List<Notebook>> watchAllNotebooks({
+    String? ownerId,
+    bool includeArchived = false,
+  });
+  Future<Notebook?> getNotebookById(String id, {String? ownerId});
+  Future<List<Notebook>> getNotebooksByFolder(
+    String? folderId, {
+    String? ownerId,
+  });
   Future<void> saveNotebook(Notebook notebook);
   Future<void> renameNotebook(
     String id,
@@ -83,12 +92,16 @@ class DriftNotebookRepository implements NotebookRepository {
   }
 
   @override
-  Future<List<Notebook>> getAllNotebooks({bool includeArchived = false}) async {
+  Future<List<Notebook>> getAllNotebooks({
+    String? ownerId,
+    bool includeArchived = false,
+  }) async {
     final query = _db.select(_db.notebooksTable)
       ..where((tbl) {
         final notDeleted = tbl.deletedAt.isNull();
-        if (includeArchived) return notDeleted;
-        return notDeleted & tbl.isArchived.equals(false);
+        final ownerFilter = ownerId != null ? tbl.ownerId.equals(ownerId) : const Constant(true);
+        if (includeArchived) return notDeleted & ownerFilter;
+        return notDeleted & tbl.isArchived.equals(false) & ownerFilter;
       })
       ..orderBy([(tbl) => OrderingTerm.desc(tbl.updatedAt)]);
     final rows = await query.get();
@@ -96,35 +109,47 @@ class DriftNotebookRepository implements NotebookRepository {
   }
 
   @override
-  Stream<List<Notebook>> watchAllNotebooks({bool includeArchived = false}) {
+  Stream<List<Notebook>> watchAllNotebooks({
+    String? ownerId,
+    bool includeArchived = false,
+  }) {
     final query = _db.select(_db.notebooksTable)
       ..where((tbl) {
         final notDeleted = tbl.deletedAt.isNull();
-        if (includeArchived) return notDeleted;
-        return notDeleted & tbl.isArchived.equals(false);
+        final ownerFilter = ownerId != null ? tbl.ownerId.equals(ownerId) : const Constant(true);
+        if (includeArchived) return notDeleted & ownerFilter;
+        return notDeleted & tbl.isArchived.equals(false) & ownerFilter;
       })
       ..orderBy([(tbl) => OrderingTerm.desc(tbl.updatedAt)]);
     return query.watch().map((rows) => rows.map(_toDomain).toList());
   }
 
   @override
-  Future<Notebook?> getNotebookById(String id) async {
+  Future<Notebook?> getNotebookById(String id, {String? ownerId}) async {
     final query = _db.select(_db.notebooksTable)
-      ..where((tbl) => tbl.id.equals(id) & tbl.deletedAt.isNull());
+      ..where((tbl) {
+        final matches = tbl.id.equals(id) & tbl.deletedAt.isNull();
+        if (ownerId != null) return matches & tbl.ownerId.equals(ownerId);
+        return matches;
+      });
     final row = await query.getSingleOrNull();
     return row != null ? _toDomain(row) : null;
   }
 
   @override
-  Future<List<Notebook>> getNotebooksByFolder(String? folderId) async {
+  Future<List<Notebook>> getNotebooksByFolder(
+    String? folderId, {
+    String? ownerId,
+  }) async {
     final query = _db.select(_db.notebooksTable)
       ..where((tbl) {
         final notDeleted =
             tbl.deletedAt.isNull() & tbl.isArchived.equals(false);
+        final ownerFilter = ownerId != null ? tbl.ownerId.equals(ownerId) : const Constant(true);
         if (folderId == null) {
-          return notDeleted;
+          return notDeleted & ownerFilter;
         }
-        return notDeleted & tbl.folderId.equals(folderId);
+        return notDeleted & tbl.folderId.equals(folderId) & ownerFilter;
       })
       ..orderBy([(tbl) => OrderingTerm.desc(tbl.updatedAt)]);
     final rows = await query.get();

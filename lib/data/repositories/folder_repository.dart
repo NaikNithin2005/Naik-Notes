@@ -5,9 +5,9 @@ import '../models/folder_model.dart';
 
 /// Repository interface and implementation for local folder persistence.
 abstract class FolderRepository {
-  Future<List<Folder>> getAllFolders();
-  Stream<List<Folder>> watchAllFolders();
-  Future<Folder?> getFolderById(String id);
+  Future<List<Folder>> getAllFolders({String? ownerId});
+  Stream<List<Folder>> watchAllFolders({String? ownerId});
+  Future<Folder?> getFolderById(String id, {String? ownerId});
   Future<void> saveFolder(Folder folder);
   Future<void> renameFolder(String id, String newName, {String? newColorHex});
   Future<void> deleteFolder(String id);
@@ -46,26 +46,38 @@ class DriftFolderRepository implements FolderRepository {
   }
 
   @override
-  Future<List<Folder>> getAllFolders() async {
+  Future<List<Folder>> getAllFolders({String? ownerId}) async {
     final query = _db.select(_db.foldersTable)
-      ..where((tbl) => tbl.deletedAt.isNull())
+      ..where((tbl) {
+        final notDeleted = tbl.deletedAt.isNull();
+        if (ownerId != null) return notDeleted & tbl.ownerId.equals(ownerId);
+        return notDeleted;
+      })
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.name)]);
     final rows = await query.get();
     return rows.map(_toDomain).toList();
   }
 
   @override
-  Stream<List<Folder>> watchAllFolders() {
+  Stream<List<Folder>> watchAllFolders({String? ownerId}) {
     final query = _db.select(_db.foldersTable)
-      ..where((tbl) => tbl.deletedAt.isNull())
+      ..where((tbl) {
+        final notDeleted = tbl.deletedAt.isNull();
+        if (ownerId != null) return notDeleted & tbl.ownerId.equals(ownerId);
+        return notDeleted;
+      })
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.name)]);
     return query.watch().map((rows) => rows.map(_toDomain).toList());
   }
 
   @override
-  Future<Folder?> getFolderById(String id) async {
+  Future<Folder?> getFolderById(String id, {String? ownerId}) async {
     final query = _db.select(_db.foldersTable)
-      ..where((tbl) => tbl.id.equals(id) & tbl.deletedAt.isNull());
+      ..where((tbl) {
+        final matches = tbl.id.equals(id) & tbl.deletedAt.isNull();
+        if (ownerId != null) return matches & tbl.ownerId.equals(ownerId);
+        return matches;
+      });
     final row = await query.getSingleOrNull();
     return row != null ? _toDomain(row) : null;
   }

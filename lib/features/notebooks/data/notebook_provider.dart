@@ -18,26 +18,40 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
   @override
   List<Notebook> build() {
     _repository = ref.watch(notebookRepositoryProvider);
-    Future.microtask(() => loadFromDatabase());
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
+
+    Future.microtask(() => loadForUser(user?.id));
     return const [];
   }
 
-  Future<void> loadFromDatabase() async {
-    var dbNotebooks = await _repository.getAllNotebooks(includeArchived: true);
+  Future<void> loadForUser(String? userId) async {
+    var dbNotebooks = await _repository.getAllNotebooks(
+      ownerId: userId,
+      includeArchived: true,
+    );
     if (!ref.mounted) return;
     if (dbNotebooks.isEmpty) {
       try {
-        final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+        final fallbackId = userId ?? 'local_user';
         await ref
             .read(welcomeNotebookServiceProvider)
-            .ensureWelcomeNotebookCreated(currentUserId);
+            .ensureWelcomeNotebookCreated(fallbackId);
         if (!ref.mounted) return;
-        dbNotebooks = await _repository.getAllNotebooks(includeArchived: true);
+        dbNotebooks = await _repository.getAllNotebooks(
+          ownerId: userId,
+          includeArchived: true,
+        );
       } catch (_) {}
     }
     if (ref.mounted) {
       state = dbNotebooks;
     }
+  }
+
+  Future<void> loadFromDatabase() async {
+    final user = ref.read(authProvider).user;
+    await loadForUser(user?.id);
   }
 
   Future<void> loadNotebooks() => loadFromDatabase();
@@ -77,6 +91,15 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
 
     state = [newNotebook, ...state];
     await _repository.saveNotebook(newNotebook);
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebook(currentUserId, newNotebook);
+      } catch (e) {
+        // Logged gracefully, offline sync queue will retry
+      }
+    }
     try {
       await ref
           .read(syncServiceProvider)
@@ -106,8 +129,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
       newTitle,
       newDescription: newDescription,
     );
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    final updated = state.firstWhere((n) => n.id == id);
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebook(currentUserId, updated);
+      } catch (_) {}
+    }
     try {
-      final updated = state.firstWhere((n) => n.id == id);
       await ref
           .read(syncServiceProvider)
           .enqueueNotebookMutation(updated, SyncOperationType.update);
@@ -118,6 +149,14 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     final duplicated = await _repository.duplicateNotebook(id);
     if (duplicated != null) {
       state = [duplicated, ...state];
+      final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+      if (currentUserId != 'local_user') {
+        try {
+          await ref
+              .read(firebaseSyncServiceProvider)
+              .pushNotebook(currentUserId, duplicated);
+        } catch (_) {}
+      }
       try {
         await ref
             .read(syncServiceProvider)
@@ -140,8 +179,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.moveNotebookToFolder(notebookId, folderId);
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    final nb = state.firstWhere((n) => n.id == notebookId);
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebook(currentUserId, nb);
+      } catch (_) {}
+    }
     try {
-      final nb = state.firstWhere((n) => n.id == notebookId);
       await ref
           .read(syncServiceProvider)
           .enqueueNotebookMutation(nb, SyncOperationType.update);
@@ -157,8 +204,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.archiveNotebook(notebookId);
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    final nb = state.firstWhere((n) => n.id == notebookId);
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebook(currentUserId, nb);
+      } catch (_) {}
+    }
     try {
-      final nb = state.firstWhere((n) => n.id == notebookId);
       await ref
           .read(syncServiceProvider)
           .enqueueNotebookMutation(nb, SyncOperationType.update);
@@ -174,8 +229,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.unarchiveNotebook(notebookId);
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    final nb = state.firstWhere((n) => n.id == notebookId);
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebook(currentUserId, nb);
+      } catch (_) {}
+    }
     try {
-      final nb = state.firstWhere((n) => n.id == notebookId);
       await ref
           .read(syncServiceProvider)
           .enqueueNotebookMutation(nb, SyncOperationType.update);
@@ -191,8 +254,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           nb,
     ];
     await _repository.toggleFavorite(notebookId);
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    final nb = state.firstWhere((n) => n.id == notebookId);
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebook(currentUserId, nb);
+      } catch (_) {}
+    }
     try {
-      final nb = state.firstWhere((n) => n.id == notebookId);
       await ref
           .read(syncServiceProvider)
           .enqueueNotebookMutation(nb, SyncOperationType.update);
@@ -225,6 +296,14 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     ];
     if (updatedNb != null) {
       await _repository.saveNotebook(updatedNb!);
+      final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+      if (currentUserId != 'local_user') {
+        try {
+          await ref
+              .read(firebaseSyncServiceProvider)
+              .pushNotebook(currentUserId, updatedNb!);
+        } catch (_) {}
+      }
       try {
         await ref
             .read(syncServiceProvider)
@@ -249,6 +328,14 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     );
     state = state.where((nb) => nb.id != notebookId).toList();
     await _repository.deleteNotebook(notebookId);
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .deleteNotebook(currentUserId, notebookId);
+      } catch (_) {}
+    }
     try {
       await ref
           .read(syncServiceProvider)

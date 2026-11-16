@@ -28,7 +28,10 @@ class SearchService {
 
   /// Performs global full-text search across all notebooks, folders,
   /// handwritten strokes, sticky notes, and PDF pages.
-  Future<List<SearchResultItem>> searchGlobal(String query) async {
+  Future<List<SearchResultItem>> searchGlobal(
+    String query, {
+    String? ownerId,
+  }) async {
     final cleanQuery = query.trim().toLowerCase();
     if (cleanQuery.isEmpty) return [];
 
@@ -36,7 +39,9 @@ class SearchService {
 
     // 1. Search Notebook titles & descriptions
     try {
-      final notebooks = await notebookRepository.getAllNotebooks();
+      final notebooks = await notebookRepository.getAllNotebooks(
+        ownerId: ownerId,
+      );
       for (final nb in notebooks) {
         if (nb.title.toLowerCase().contains(cleanQuery)) {
           results.add(
@@ -66,7 +71,7 @@ class SearchService {
 
     // 2. Search Folders
     try {
-      final folders = await folderRepository.getAllFolders();
+      final folders = await folderRepository.getAllFolders(ownerId: ownerId);
       for (final f in folders) {
         if (f.name.toLowerCase().contains(cleanQuery)) {
           results.add(
@@ -88,7 +93,9 @@ class SearchService {
     try {
       final pageEntries = await pageSearchRepository.searchPages(cleanQuery);
       final notebooksMap = {
-        for (var nb in await notebookRepository.getAllNotebooks())
+        for (var nb in await notebookRepository.getAllNotebooks(
+          ownerId: ownerId,
+        ))
           nb.id: nb.title,
       };
 

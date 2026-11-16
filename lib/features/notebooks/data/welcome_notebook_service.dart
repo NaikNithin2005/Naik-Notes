@@ -34,6 +34,7 @@ class WelcomeNotebookService {
   /// Checks if a Welcome Notebook already exists for the given user.
   Future<bool> hasWelcomeNotebook(String userId) async {
     final notebooks = await _notebookRepo.getAllNotebooks(
+      ownerId: userId,
       includeArchived: true,
     );
     final welcomeId = 'welcome_notebook_$userId';
@@ -48,6 +49,7 @@ class WelcomeNotebookService {
   Future<Notebook?> ensureWelcomeNotebookCreated(String userId) async {
     if (await hasWelcomeNotebook(userId)) {
       final notebooks = await _notebookRepo.getAllNotebooks(
+        ownerId: userId,
         includeArchived: true,
       );
       return notebooks.firstWhere(

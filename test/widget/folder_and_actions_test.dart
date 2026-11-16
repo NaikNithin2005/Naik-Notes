@@ -38,10 +38,11 @@ class _MockFolderAuthRepo implements AuthRepository {
   Future<AppUser> register(
     String email,
     String password,
-    String displayName,
-  ) async => _user;
+    String displayName, {
+    String? confirmPassword,
+  }) async => _user;
   @override
-  Future<AppUser> signInWithGoogle() async => _user;
+  Future<AppUser> signInWithGoogle({bool promptAccountSelection = true}) async => _user;
   @override
   Future<AppUser> signInWithApple() async => _user;
   @override

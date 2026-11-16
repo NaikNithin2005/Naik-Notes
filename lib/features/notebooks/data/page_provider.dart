@@ -5,6 +5,8 @@ import '../../../data/local/database_provider.dart';
 import '../../../data/models/page_model.dart';
 import '../../../data/models/paper_template_model.dart';
 import '../../../data/repositories/page_repository.dart';
+import '../../authentication/data/auth_provider.dart';
+import '../../sync/data/sync_provider.dart';
 import 'notebook_provider.dart';
 
 /// State notifier managing the pages of all loaded notebooks, keyed by notebook ID.
@@ -71,6 +73,15 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
     final updatedList = [...currentPages, newPage];
     state = {...state, notebookId: updatedList};
     await _repository.savePage(newPage);
+
+    final currentUserId = ref.read(authProvider).user?.id;
+    if (currentUserId != null && currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushPage(currentUserId, notebookId, newPage);
+      } catch (_) {}
+    }
 
     // Update notebook page count in notebooksProvider
     final notebooksNotifier = ref.read(notebooksProvider.notifier);
@@ -182,6 +193,14 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
 
     state = {...state, notebookId: renumbered};
     await _repository.deletePage(pageId);
+    final currentUserId = ref.read(authProvider).user?.id;
+    if (currentUserId != null && currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .deletePage(currentUserId, notebookId, pageId);
+      } catch (_) {}
+    }
     for (final p in renumbered) {
       await _repository.savePage(p);
     }

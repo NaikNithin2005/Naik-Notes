@@ -210,3 +210,4 @@ class AppleLogo extends StatelessWidget {
     );
   }
 }
+

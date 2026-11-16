@@ -155,12 +155,25 @@ class SyncNotifier extends Notifier<SyncState> {
 
         // Push user's local notebooks to Firestore
         final localNotebooks = await notebookRepo.getAllNotebooks(
+          ownerId: uid,
           includeArchived: true,
         );
         for (final nb in localNotebooks) {
-          if (nb.ownerId == uid) {
-            await fbSync.pushNotebook(uid, nb);
-          }
+          await fbSync.pushNotebook(uid, nb);
+        }
+
+        // Claim and sync any unassigned local_user notebooks to active account
+        final unassignedNotebooks = await notebookRepo.getAllNotebooks(
+          ownerId: 'local_user',
+          includeArchived: true,
+        );
+        for (final unassigned in unassignedNotebooks) {
+          final claimed = unassigned.copyWith(
+            ownerId: uid,
+            updatedAt: DateTime.now(),
+          );
+          await notebookRepo.saveNotebook(claimed);
+          await fbSync.pushNotebook(uid, claimed);
         }
 
         // Pull remote notebooks from Firestore

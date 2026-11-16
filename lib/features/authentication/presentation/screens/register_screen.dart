@@ -44,8 +44,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _emailController.text,
             _passwordController.text,
             _nameController.text,
+            confirmPassword: _confirmPasswordController.text,
           );
-      if (success && mounted) {
+      if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
         context.go(RouteNames.dashboard);
       }
     }
@@ -53,14 +54,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _signUpWithGoogle() async {
     final success = await ref.read(authProvider.notifier).signInWithGoogle();
-    if (success && mounted) {
+    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
       context.go(RouteNames.dashboard);
     }
   }
 
   Future<void> _signUpWithApple() async {
     final success = await ref.read(authProvider.notifier).signInWithApple();
-    if (success && mounted) {
+    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
       context.go(RouteNames.dashboard);
     }
   }
