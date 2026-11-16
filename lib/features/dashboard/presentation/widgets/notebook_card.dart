@@ -15,6 +15,7 @@ class NotebookCard extends StatelessWidget {
   final VoidCallback? onMoveToFolder;
   final VoidCallback? onArchive;
   final VoidCallback? onChangeCover;
+  final VoidCallback? onExport;
   final VoidCallback? onDelete;
 
   const NotebookCard({
@@ -27,6 +28,7 @@ class NotebookCard extends StatelessWidget {
     this.onMoveToFolder,
     this.onArchive,
     this.onChangeCover,
+    this.onExport,
     this.onDelete,
   });
 
@@ -317,8 +319,9 @@ class NotebookCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            DateFormat('MMM d, yyyy')
-                                .format(notebook.updatedAt),
+                            DateFormat(
+                              'MMM d, yyyy',
+                            ).format(notebook.updatedAt),
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -351,6 +354,9 @@ class NotebookCard extends StatelessWidget {
                             break;
                           case 'change_cover':
                             onChangeCover?.call();
+                            break;
+                          case 'export':
+                            onExport?.call();
                             break;
                           case 'delete':
                             onDelete?.call();
@@ -412,6 +418,16 @@ class NotebookCard extends StatelessWidget {
                               Icon(Icons.image_outlined, size: 18),
                               SizedBox(width: 10),
                               Text('Change Cover Image'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'export',
+                          child: Row(
+                            children: [
+                              Icon(Icons.ios_share_outlined, size: 18),
+                              SizedBox(width: 10),
+                              Text('Export as PDF...'),
                             ],
                           ),
                         ),

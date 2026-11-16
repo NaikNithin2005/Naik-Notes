@@ -40,7 +40,8 @@ class _AiStudyAssistantSheetState extends ConsumerState<AiStudyAssistantSheet>
   final List<Map<String, String>> _chatMessages = [
     {
       'role': 'assistant',
-      'content': 'Hello! I am your Naik Notes Study Assistant. Ask me anything about your lecture notes, equations, or exam preparation.',
+      'content':
+          'Hello! I am your Naik Notes Study Assistant. Ask me anything about your lecture notes, equations, or exam preparation.',
     },
   ];
   bool _isChatLoading = false;
@@ -315,9 +316,9 @@ class _AiStudyAssistantSheetState extends ConsumerState<AiStudyAssistantSheet>
                         gradient: LinearGradient(
                           colors: [
                             Theme.of(context).colorScheme.surface,
-                            Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
+                            Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -355,9 +356,9 @@ class _AiStudyAssistantSheetState extends ConsumerState<AiStudyAssistantSheet>
                                 : 'Tap to reveal answer',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -490,8 +491,9 @@ class _AiStudyAssistantSheetState extends ConsumerState<AiStudyAssistantSheet>
                   tileColor = Colors.red.withValues(alpha: 0.2);
                 }
               } else if (isSelected) {
-                tileColor = Theme.of(context).colorScheme.primary
-                    .withValues(alpha: 0.1);
+                tileColor = Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1);
               }
 
               return Container(
@@ -710,8 +712,9 @@ class _AiStudyAssistantSheetState extends ConsumerState<AiStudyAssistantSheet>
             color: Theme.of(context).colorScheme.surface,
             border: Border(
               top: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant
-                    .withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
           ),

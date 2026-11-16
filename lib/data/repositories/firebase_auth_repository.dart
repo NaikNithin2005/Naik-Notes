@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/user_model.dart';
@@ -323,12 +324,43 @@ class FirebaseAuthRepository implements AuthRepository {
     }
 
     try {
-      final fb.GoogleAuthProvider googleProvider = fb.GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.addScope('profile');
-
       fb.UserCredential credential;
-      if (kIsWeb) {
+
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)) {
+        // Native Google Play Services on Android / iOS
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+          serverClientId:
+              '437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com',
+        );
+
+        final GoogleSignInAccount? googleAccount = await googleSignIn.signIn();
+        if (googleAccount == null) {
+          throw Exception('Google Sign-In was cancelled.');
+        }
+
+        final GoogleSignInAuthentication googleAuth =
+            await googleAccount.authentication;
+
+        final fb.AuthCredential authCredential =
+            fb.GoogleAuthProvider.credential(
+              accessToken: googleAuth.accessToken,
+              idToken: googleAuth.idToken,
+            );
+
+        credential = await auth
+            .signInWithCredential(authCredential)
+            .timeout(
+              const Duration(seconds: 45),
+              onTimeout: () =>
+                  throw TimeoutException('Google Sign-In timed out.'),
+            );
+      } else if (kIsWeb) {
+        final fb.GoogleAuthProvider googleProvider = fb.GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
         credential = await auth
             .signInWithPopup(googleProvider)
             .timeout(
@@ -337,6 +369,10 @@ class FirebaseAuthRepository implements AuthRepository {
                   throw TimeoutException('Google Sign-In timed out.'),
             );
       } else {
+        // Desktop platforms (Windows, macOS, Linux)
+        final fb.GoogleAuthProvider googleProvider = fb.GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
         credential = await auth
             .signInWithProvider(googleProvider)
             .timeout(
@@ -368,7 +404,19 @@ class FirebaseAuthRepository implements AuthRepository {
     } on TimeoutException catch (e) {
       throw Exception(e.message ?? 'Google Sign-In timed out.');
     } catch (e) {
-      if (e is Exception) rethrow;
+      if (e is Exception) {
+        final msg = e.toString();
+        if (msg.contains('ApiException: 10') ||
+            msg.contains('12500') ||
+            msg.contains('certificate hash')) {
+          throw Exception(
+            'Google Sign-In configuration required: Please add the SHA-1 and SHA-256 fingerprints to your Firebase Console under Project Settings > Your apps (com.naiknotes.app.naik_notes).\n'
+            'SHA-1: BB:42:0F:07:F9:08:43:69:3D:54:93:1A:02:A8:09:9B:46:F8:66:E7\n'
+            'SHA-256: 12:4B:88:AD:FC:BC:FD:40:46:6F:AE:12:97:27:4B:C7:14:05:E0:0A:93:1A:2D:A9:3F:44:56:A6:C7:72:ED:C7',
+          );
+        }
+        rethrow;
+      }
       throw Exception('Google Sign-In failed: $e');
     }
   }
@@ -388,6 +436,47 @@ class FirebaseAuthRepository implements AuthRepository {
       );
       _currentUser = appUser;
       return appUser;
+    }
+
+    // On Android and Windows, Apple Sign In requires Apple Services ID in Firebase Console.
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.windows)) {
+      try {
+        final appleProvider = fb.OAuthProvider('apple.com');
+        appleProvider.addScope('email');
+        appleProvider.addScope('name');
+
+        final credential = await auth
+            .signInWithProvider(appleProvider)
+            .timeout(
+              const Duration(seconds: 45),
+              onTimeout: () =>
+                  throw TimeoutException('Apple Sign-In timed out.'),
+            );
+
+        final fbUser = credential.user;
+        if (fbUser == null) {
+          throw Exception('Apple Sign-In was cancelled.');
+        }
+
+        final appUser = _mapFirebaseUser(fbUser);
+        _currentUser = appUser;
+
+        await _registerDevice(appUser.id);
+        await _syncUserProfile(
+          appUser.id,
+          appUser.email,
+          appUser.displayName,
+          photoUrl: appUser.photoUrl,
+        );
+
+        return appUser;
+      } catch (e) {
+        throw Exception(
+          'Apple Sign-In is configured natively for iPadOS and Apple devices. On Android and Windows, please use Email or Google Sign-In.',
+        );
+      }
     }
 
     try {
@@ -495,7 +584,21 @@ class FirebaseAuthRepository implements AuthRepository {
           } catch (_) {}
         },
         verificationFailed: (fb.FirebaseAuthException e) {
-          onError(_mapAuthError(e.code, e.message));
+          String mapped = _mapAuthError(e.code, e.message);
+          if (e.message != null &&
+              (e.message!.contains('SHA-1') ||
+                  e.message!.contains('fingerprint') ||
+                  e.message!.contains('Play Integrity') ||
+                  e.code == 'missing-client-identifier' ||
+                  e.code == 'app-not-authorized')) {
+            mapped =
+                'Phone Authentication configuration required:\n'
+                '1. Go to Firebase Console > Project Settings > Your apps (com.naiknotes.app.naik_notes)\n'
+                '2. Add SHA-1: BB:42:0F:07:F9:08:43:69:3D:54:93:1A:02:A8:09:9B:46:F8:66:E7\n'
+                '3. Add SHA-256: 12:4B:88:AD:FC:BC:FD:40:46:6F:AE:12:97:27:4B:C7:14:05:E0:0A:93:1A:2D:A9:3F:44:56:A6:C7:72:ED:C7\n'
+                '4. Ensure Phone provider is enabled in Firebase Authentication > Sign-in method.';
+          }
+          onError(mapped);
         },
         codeSent: (String verificationId, int? resendToken) {
           onCodeSent(verificationId, resendToken);
@@ -729,6 +832,13 @@ class FirebaseAuthRepository implements AuthRepository {
         return 'The SMS verification code entered is incorrect or expired.';
       case 'invalid-verification-id':
         return 'Invalid verification session. Please request a new code.';
+      case 'app-not-authorized':
+      case 'missing-client-identifier':
+        return 'App certificate verification required. Ensure SHA-1 and SHA-256 fingerprints are added in Firebase Console.';
+      case 'quota-exceeded':
+        return 'SMS quota exceeded for this Firebase project. Please try again later or use Email/Google sign-in.';
+      case 'session-expired':
+        return 'The authentication session has expired. Please try again.';
       default:
         return message ?? 'Authentication operation failed.';
     }

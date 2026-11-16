@@ -259,54 +259,57 @@ void main() {
       await db.close();
     });
 
-    test('insertPageBefore, insertPageAfter and reorderPages maintain sequential ordering', () async {
-      final notifier = container.read(notebookPagesProvider.notifier);
+    test(
+      'insertPageBefore, insertPageAfter and reorderPages maintain sequential ordering',
+      () async {
+        final notifier = container.read(notebookPagesProvider.notifier);
 
-      // 1. Initial 3 pages
-      await notifier.loadPages('nb-unlimited-test', count: 3);
-      var pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
-      expect(pages.length, 3);
-      expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3]);
+        // 1. Initial 3 pages
+        await notifier.loadPages('nb-unlimited-test', count: 3);
+        var pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
+        expect(pages.length, 3);
+        expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3]);
 
-      final p2Id = pages[1].id;
+        final p2Id = pages[1].id;
 
-      // 2. Insert page BEFORE Page 2
-      final insertedBefore = await notifier.insertPageBefore(
-        'nb-unlimited-test',
-        p2Id,
-        templateId: PaperTemplateType.squareGrid.id,
-      );
-      expect(insertedBefore.pageNumber, 2);
+        // 2. Insert page BEFORE Page 2
+        final insertedBefore = await notifier.insertPageBefore(
+          'nb-unlimited-test',
+          p2Id,
+          templateId: PaperTemplateType.squareGrid.id,
+        );
+        expect(insertedBefore.pageNumber, 2);
 
-      pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
-      expect(pages.length, 4);
-      expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3, 4]);
-      expect(pages[1].id, insertedBefore.id);
-      expect(pages[1].templateId, PaperTemplateType.squareGrid.id);
-      expect(pages[2].id, p2Id); // The original Page 2 is now Page 3
+        pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
+        expect(pages.length, 4);
+        expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3, 4]);
+        expect(pages[1].id, insertedBefore.id);
+        expect(pages[1].templateId, PaperTemplateType.squareGrid.id);
+        expect(pages[2].id, p2Id); // The original Page 2 is now Page 3
 
-      // 3. Insert page AFTER original Page 2 (now at index 2)
-      final insertedAfter = await notifier.insertPageAfter(
-        'nb-unlimited-test',
-        p2Id,
-        templateId: PaperTemplateType.dottedPaper.id,
-      );
-      expect(insertedAfter.pageNumber, 4);
+        // 3. Insert page AFTER original Page 2 (now at index 2)
+        final insertedAfter = await notifier.insertPageAfter(
+          'nb-unlimited-test',
+          p2Id,
+          templateId: PaperTemplateType.dottedPaper.id,
+        );
+        expect(insertedAfter.pageNumber, 4);
 
-      pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
-      expect(pages.length, 5);
-      expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3, 4, 5]);
-      expect(pages[3].id, insertedAfter.id);
-      expect(pages[3].templateId, PaperTemplateType.dottedPaper.id);
+        pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
+        expect(pages.length, 5);
+        expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3, 4, 5]);
+        expect(pages[3].id, insertedAfter.id);
+        expect(pages[3].templateId, PaperTemplateType.dottedPaper.id);
 
-      // 4. Reorder: move the last page (index 4) to index 0 (top of notebook)
-      final lastPageId = pages.last.id;
-      await notifier.reorderPages('nb-unlimited-test', 4, 0);
+        // 4. Reorder: move the last page (index 4) to index 0 (top of notebook)
+        final lastPageId = pages.last.id;
+        await notifier.reorderPages('nb-unlimited-test', 4, 0);
 
-      pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
-      expect(pages.length, 5);
-      expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3, 4, 5]);
-      expect(pages.first.id, lastPageId);
-    });
+        pages = container.read(notebookPagesProvider)['nb-unlimited-test']!;
+        expect(pages.length, 5);
+        expect(pages.map((p) => p.pageNumber).toList(), [1, 2, 3, 4, 5]);
+        expect(pages.first.id, lastPageId);
+      },
+    );
   });
 }

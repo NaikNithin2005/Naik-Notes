@@ -78,78 +78,81 @@ void main() {
       expect(await failingService.checkServerHealth(), isFalse);
     });
 
-    test('syncAll pushes pending operations to remote backend and updates watermark', () async {
-      // 1. Enqueue local notebook
-      final now = DateTime.now();
-      final localNotebook = Notebook(
-        id: 'nb-local-1',
-        ownerId: 'local_user',
-        title: 'Local Research Notes',
-        coverId: 'dark_academia_leather',
-        createdAt: now,
-        updatedAt: now,
-      );
+    test(
+      'syncAll pushes pending operations to remote backend and updates watermark',
+      () async {
+        // 1. Enqueue local notebook
+        final now = DateTime.now();
+        final localNotebook = Notebook(
+          id: 'nb-local-1',
+          ownerId: 'local_user',
+          title: 'Local Research Notes',
+          coverId: 'dark_academia_leather',
+          createdAt: now,
+          updatedAt: now,
+        );
 
-      final op = SyncOperation(
-        id: 'op-push-1',
-        entityType: SyncEntityType.notebook,
-        entityId: localNotebook.id,
-        operationType: SyncOperationType.insert,
-        payload: localNotebook.toJson(),
-        revision: 1,
-        createdAt: now,
-      );
+        final op = SyncOperation(
+          id: 'op-push-1',
+          entityType: SyncEntityType.notebook,
+          entityId: localNotebook.id,
+          operationType: SyncOperationType.insert,
+          payload: localNotebook.toJson(),
+          revision: 1,
+          createdAt: now,
+        );
 
-      await queueRepo.enqueue(op);
-      expect(await queueRepo.getPendingCount(), equals(1));
+        await queueRepo.enqueue(op);
+        expect(await queueRepo.getPendingCount(), equals(1));
 
-      // Mock backend response
-      final mockClient = MockClient((request) async {
-        if (request.url.path.endsWith('/sync/status')) {
-          return http.Response(jsonEncode({'status': 'healthy'}), 200);
-        }
-        if (request.url.path.endsWith('/sync/push')) {
-          final body = jsonDecode(request.body) as Map<String, dynamic>;
-          final ops = body['operations'] as List<dynamic>;
-          expect(ops.length, equals(1));
+        // Mock backend response
+        final mockClient = MockClient((request) async {
+          if (request.url.path.endsWith('/sync/status')) {
+            return http.Response(jsonEncode({'status': 'healthy'}), 200);
+          }
+          if (request.url.path.endsWith('/sync/push')) {
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            final ops = body['operations'] as List<dynamic>;
+            expect(ops.length, equals(1));
 
-          return http.Response(
-            jsonEncode({
-              'synced_ids': ['op-push-1'],
-              'conflicts': [],
-              'latest_watermark': 105,
-            }),
-            200,
-          );
-        }
-        if (request.url.path.endsWith('/sync/pull')) {
-          return http.Response(
-            jsonEncode({'operations': [], 'latest_watermark': 105}),
-            200,
-          );
-        }
-        return http.Response('Not Found', 404);
-      });
+            return http.Response(
+              jsonEncode({
+                'synced_ids': ['op-push-1'],
+                'conflicts': [],
+                'latest_watermark': 105,
+              }),
+              200,
+            );
+          }
+          if (request.url.path.endsWith('/sync/pull')) {
+            return http.Response(
+              jsonEncode({'operations': [], 'latest_watermark': 105}),
+              200,
+            );
+          }
+          return http.Response('Not Found', 404);
+        });
 
-      final service = SyncService(
-        queueRepo: queueRepo,
-        notebookRepo: notebookRepo,
-        folderRepo: folderRepo,
-        pageRepo: pageRepo,
-        strokeRepo: strokeRepo,
-        stickyNoteRepo: stickyNoteRepo,
-        client: mockClient,
-        baseUrl: 'http://test-server/v1',
-      );
+        final service = SyncService(
+          queueRepo: queueRepo,
+          notebookRepo: notebookRepo,
+          folderRepo: folderRepo,
+          pageRepo: pageRepo,
+          strokeRepo: strokeRepo,
+          stickyNoteRepo: stickyNoteRepo,
+          client: mockClient,
+          baseUrl: 'http://test-server/v1',
+        );
 
-      final result = await service.syncAll();
-      expect(result.isSuccess, isTrue);
-      expect(result.pushedCount, equals(1));
-      expect(service.lastWatermark, equals(105));
+        final result = await service.syncAll();
+        expect(result.isSuccess, isTrue);
+        expect(result.pushedCount, equals(1));
+        expect(service.lastWatermark, equals(105));
 
-      // Synced operations should be cleared from queue
-      expect(await queueRepo.getPendingCount(), equals(0));
-    });
+        // Synced operations should be cleared from queue
+        expect(await queueRepo.getPendingCount(), equals(0));
+      },
+    );
 
     test(
       'syncAll pulls remote operations and reconciles into local database',

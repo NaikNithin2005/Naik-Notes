@@ -85,8 +85,9 @@ class _CreateFolderDialogState extends ConsumerState<CreateFolderDialog> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: _parseColor(_selectedColorHex)
-                            .withValues(alpha: 0.15),
+                        color: _parseColor(
+                          _selectedColorHex,
+                        ).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(

@@ -13,6 +13,8 @@ import 'package:naik_notes/core/config/app_config.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
 import 'package:naik_notes/core/theme/theme_controller.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
+import 'package:naik_notes/features/canvas/data/toolbar_preferences.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/toolbar_customizer_dialog.dart';
 import 'package:naik_notes/features/folders/data/folder_provider.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/sync/data/sync_provider.dart';
@@ -236,8 +238,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       Text(
                         'Registered Devices',
-                        style: Theme.of(ctx).textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -267,102 +270,195 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         }
 
                         final docs = snapshot.data?.docs ?? [];
-                        if (docs.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.devices,
-                                  size: 48,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Current device registered',
-                                  style: Theme.of(ctx).textTheme.titleSmall,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Log in on your iPad, Android, or Windows PC to sync seamlessly.',
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(ctx).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          );
-                        }
+                        final hasAndroid = docs.any(
+                          (d) => (d.data()['platform'] as String? ?? '')
+                              .toLowerCase()
+                              .contains('android'),
+                        );
+                        final hasIos = docs.any(
+                          (d) =>
+                              (d.data()['platform'] as String? ?? '')
+                                  .toLowerCase()
+                                  .contains('ios') ||
+                              (d.data()['platform'] as String? ?? '')
+                                  .toLowerCase()
+                                  .contains('ipad') ||
+                              (d.data()['platform'] as String? ?? '')
+                                  .toLowerCase()
+                                  .contains('mac'),
+                        );
+                        final hasWindows = docs.any(
+                          (d) => (d.data()['platform'] as String? ?? '')
+                              .toLowerCase()
+                              .contains('window'),
+                        );
 
-                        return ListView.separated(
-                          controller: scrollController,
-                          itemCount: docs.length,
-                          separatorBuilder: (c, i) => const Divider(height: 1),
-                          itemBuilder: (itemCtx, index) {
-                            final data = docs[index].data();
-                            final deviceName =
-                                data['deviceName'] as String? ?? 'Device';
-                            final platform = (data['platform'] as String? ?? '')
-                                .toLowerCase();
-                            final lastActiveRaw = data['lastActiveAt'];
-                            String lastActiveText = 'Active recently';
-                            if (lastActiveRaw is Timestamp) {
-                              lastActiveText =
-                                  'Last active: ${DateFormat.yMMMd().add_jm().format(lastActiveRaw.toDate())}';
-                            }
-
-                            IconData deviceIcon = Icons.devices_other;
-                            if (platform.contains('window')) {
-                              deviceIcon = Icons.laptop_windows;
-                            } else if (platform.contains('ios') ||
-                                platform.contains('ipad') ||
-                                platform.contains('mac')) {
-                              deviceIcon = Icons.tablet_mac;
-                            } else if (platform.contains('android')) {
-                              deviceIcon = Icons.phone_android;
-                            }
-
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: Theme.of(ctx)
+                        return Column(
+                          children: [
+                            // Platform Registration Status Breakdown
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(ctx)
                                     .colorScheme
-                                    .primaryContainer,
-                                child: Icon(
-                                  deviceIcon,
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
                                   color: Theme.of(ctx)
                                       .colorScheme
-                                      .onPrimaryContainer,
+                                      .outlineVariant
+                                      .withValues(alpha: 0.5),
                                 ),
                               ),
-                              title: Text(
-                                deviceName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                lastActiveText,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'Linked',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildPlatformStatusBadge(
+                                      ctx,
+                                      'Android',
+                                      hasAndroid,
+                                      Icons.phone_android,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildPlatformStatusBadge(
+                                      ctx,
+                                      'iPad / iOS',
+                                      hasIos,
+                                      Icons.tablet_mac,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildPlatformStatusBadge(
+                                      ctx,
+                                      'Windows',
+                                      hasWindows,
+                                      Icons.laptop_windows,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
+                            ),
+                            const SizedBox(height: 12),
+
+                            Expanded(
+                              child: docs.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.devices,
+                                            size: 40,
+                                            color: Colors.grey,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Current client session active',
+                                            style: Theme.of(
+                                              ctx,
+                                            ).textTheme.titleSmall,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Sign in on Android, iPad or Windows to sync across devices.',
+                                            textAlign: TextAlign.center,
+                                            style: Theme.of(
+                                              ctx,
+                                            ).textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      controller: scrollController,
+                                      itemCount: docs.length,
+                                      separatorBuilder: (c, i) =>
+                                          const Divider(height: 1),
+                                      itemBuilder: (itemCtx, index) {
+                                        final data = docs[index].data();
+                                        final deviceName =
+                                            data['deviceName'] as String? ??
+                                            'Device';
+                                        final platform =
+                                            (data['platform'] as String? ?? '')
+                                                .toLowerCase();
+                                        final lastActiveRaw =
+                                            data['lastActiveAt'];
+                                        String lastActiveText =
+                                            'Active recently';
+                                        if (lastActiveRaw is Timestamp) {
+                                          lastActiveText =
+                                              'Last active: ${DateFormat.yMMMd().add_jm().format(lastActiveRaw.toDate())}';
+                                        }
+
+                                        IconData deviceIcon =
+                                            Icons.devices_other;
+                                        if (platform.contains('window')) {
+                                          deviceIcon = Icons.laptop_windows;
+                                        } else if (platform.contains('ios') ||
+                                            platform.contains('ipad') ||
+                                            platform.contains('mac')) {
+                                          deviceIcon = Icons.tablet_mac;
+                                        } else if (platform.contains(
+                                          'android',
+                                        )) {
+                                          deviceIcon = Icons.phone_android;
+                                        }
+
+                                        return ListTile(
+                                          leading: CircleAvatar(
+                                            backgroundColor: Theme.of(
+                                              ctx,
+                                            ).colorScheme.primaryContainer,
+                                            child: Icon(
+                                              deviceIcon,
+                                              color: Theme.of(
+                                                ctx,
+                                              ).colorScheme.onPrimaryContainer,
+                                            ),
+                                          ),
+                                          title: Text(
+                                            deviceName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            lastActiveText,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          trailing: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green.withValues(
+                                                alpha: 0.15,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: const Text(
+                                              'Linked',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.green,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                            ),
+                          ],
                         );
                       },
                     ),
@@ -373,6 +469,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildPlatformStatusBadge(
+    BuildContext context,
+    String platformName,
+    bool isRegistered,
+    IconData icon,
+  ) {
+    final theme = Theme.of(context);
+    final color = isRegistered
+        ? Colors.green
+        : theme.colorScheme.onSurface.withValues(alpha: 0.4);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+      decoration: BoxDecoration(
+        color: isRegistered
+            ? Colors.green.withValues(alpha: 0.1)
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isRegistered
+              ? Colors.green.withValues(alpha: 0.3)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 4),
+          Text(
+            platformName,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            isRegistered ? 'Registered' : 'Not Linked',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: isRegistered ? Colors.green : Colors.grey,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -869,6 +1014,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Section: Toolbar Customization
+          Text(
+            'Toolbar Customization',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Consumer(
+            builder: (context, ref, _) {
+              final toolbarPrefs = ref.watch(toolbarPreferencesProvider);
+              final notifier = ref.read(toolbarPreferencesProvider.notifier);
+              final visibleCount = toolbarPrefs.visibleToolIds.length;
+              final totalCount = ToolbarCatalog.allTools.length;
+
+              return Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.tune_rounded),
+                      title: const Text('Manage Visible Tools & Favorites'),
+                      subtitle: Text(
+                        '$visibleCount of $totalCount tools active • ${toolbarPrefs.favoriteToolIds.length} favorites',
+                      ),
+                      trailing: const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                      ),
+                      onTap: () => ToolbarCustomizerDialog.show(context),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.dock_rounded),
+                      title: const Text('Toolbar Dock Placement'),
+                      subtitle: Text(toolbarPrefs.dockPosition.label),
+                      trailing: DropdownButton<ToolbarDockPosition>(
+                        value: toolbarPrefs.dockPosition,
+                        underline: const SizedBox(),
+                        items: ToolbarDockPosition.values.map((pos) {
+                          return DropdownMenuItem(
+                            value: pos,
+                            child: Row(
+                              children: [
+                                Icon(pos.icon, size: 16),
+                                const SizedBox(width: 8),
+                                Text(pos.label),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) notifier.setDockPosition(val);
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.aspect_ratio_rounded),
+                      title: const Text('Compact Toolbar Mode'),
+                      subtitle: const Text(
+                        'Reduced padding and icon size for high density',
+                      ),
+                      value: toolbarPrefs.isCompact,
+                      onChanged: (val) => notifier.toggleCompactMode(val),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 24),

@@ -174,7 +174,8 @@ class AiStudyAssistantService {
     return AiSummaryData(
       notebookId: notebookId,
       title: 'Lecture & Study Summary',
-      summaryMarkdown: '### Offline Summary\n\n- Covers foundational concepts from current notes.\n- Core mathematical equations and principles.\n\n*Review derivations before self-testing.*',
+      summaryMarkdown:
+          '### Offline Summary\n\n- Covers foundational concepts from current notes.\n- Core mathematical equations and principles.\n\n*Review derivations before self-testing.*',
       keyConcepts: [
         'Key Theorems',
         'Mathematical Models',
@@ -222,7 +223,8 @@ class AiStudyAssistantService {
       const AiFlashcard(
         id: 'fc-1',
         question: 'What is the primary theorem outlined in your notes?',
-        answer: 'The fundamental theorem defines the relationship between system inputs and boundary constraints.',
+        answer:
+            'The fundamental theorem defines the relationship between system inputs and boundary constraints.',
         hint: 'Review the opening section.',
         difficulty: 'medium',
       ),
@@ -280,7 +282,8 @@ class AiStudyAssistantService {
           'Discontinuous step response',
         ],
         correctAnswerIndex: 1,
-        explanation: 'Linear superposition applies whenever the differential operators satisfy additivity.',
+        explanation:
+            'Linear superposition applies whenever the differential operators satisfy additivity.',
       ),
     ];
   }
@@ -311,7 +314,8 @@ class AiStudyAssistantService {
       formulaLatex: formulaText.startsWith(r'$$')
           ? formulaText
           : r'$$' + formulaText + r'$$',
-      explanation: 'This formula expresses fundamental equilibrium and gradient behavior across the system.',
+      explanation:
+          'This formula expresses fundamental equilibrium and gradient behavior across the system.',
       variableDefinitions: const {
         'E': 'Total Energy',
         'm': 'Mass',

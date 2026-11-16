@@ -1,4 +1,7 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart'
+    show Color, Paint, Canvas, Rect, StrokeCap, StrokeJoin, PaintingStyle, Path;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
@@ -95,6 +98,8 @@ class PdfService {
     required List<NotebookPage> pages,
     required Map<String, List<Stroke>> strokesPerPage,
     required Map<String, List<StickyNote>> stickyNotesPerPage,
+    bool includeBackground = true,
+    bool includeStickyNotes = true,
   }) async {
     final pdf = pw.Document(
       title: notebook.title,
@@ -114,11 +119,12 @@ class PdfService {
             return pw.Stack(
               children: [
                 // Layer 1: Page Background
-                pw.Container(
-                  width: page.width,
-                  height: page.height,
-                  color: PdfColor.fromHex(page.properties.backgroundColorHex),
-                ),
+                if (includeBackground)
+                  pw.Container(
+                    width: page.width,
+                    height: page.height,
+                    color: PdfColor.fromHex(page.properties.backgroundColorHex),
+                  ),
 
                 // Layer 2: Vector Handwriting Strokes
                 if (strokes.isNotEmpty)
@@ -152,27 +158,28 @@ class PdfService {
                   ),
 
                 // Layer 3: Sticky Notes
-                ...stickyNotes.map((note) {
-                  return pw.Positioned(
-                    left: note.x,
-                    top: note.y,
-                    child: pw.Container(
-                      width: note.width,
-                      height: note.height,
-                      padding: const pw.EdgeInsets.all(10),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColor.fromHex(note.colorHex),
-                        borderRadius: const pw.BorderRadius.all(
-                          pw.Radius.circular(6),
+                if (includeStickyNotes)
+                  ...stickyNotes.map((note) {
+                    return pw.Positioned(
+                      left: note.x,
+                      top: note.y,
+                      child: pw.Container(
+                        width: note.width,
+                        height: note.height,
+                        padding: const pw.EdgeInsets.all(10),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColor.fromHex(note.colorHex),
+                          borderRadius: const pw.BorderRadius.all(
+                            pw.Radius.circular(6),
+                          ),
+                        ),
+                        child: pw.Text(
+                          note.content,
+                          style: const pw.TextStyle(fontSize: 10),
                         ),
                       ),
-                      child: pw.Text(
-                        note.content,
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
               ],
             );
           },
@@ -181,6 +188,88 @@ class PdfService {
     }
 
     return await pdf.save();
+  }
+
+  /// Exports a single page as a standalone vector PDF.
+  Future<Uint8List> exportSinglePagePdf({
+    required Notebook notebook,
+    required NotebookPage page,
+    required List<Stroke> strokes,
+    required List<StickyNote> stickyNotes,
+    bool includeBackground = true,
+    bool includeStickyNotes = true,
+  }) async {
+    return exportFlattenedPdf(
+      notebook: notebook,
+      pages: [page],
+      strokesPerPage: {page.id: strokes},
+      stickyNotesPerPage: {page.id: stickyNotes},
+      includeBackground: includeBackground,
+      includeStickyNotes: includeStickyNotes,
+    );
+  }
+
+  /// Exports a subset range of pages from a notebook as a vector PDF.
+  Future<Uint8List> exportPageRangePdf({
+    required Notebook notebook,
+    required List<NotebookPage> pages,
+    required Map<String, List<Stroke>> strokesPerPage,
+    required Map<String, List<StickyNote>> stickyNotesPerPage,
+    bool includeBackground = true,
+    bool includeStickyNotes = true,
+  }) async {
+    return exportFlattenedPdf(
+      notebook: notebook,
+      pages: pages,
+      strokesPerPage: strokesPerPage,
+      stickyNotesPerPage: stickyNotesPerPage,
+      includeBackground: includeBackground,
+      includeStickyNotes: includeStickyNotes,
+    );
+  }
+
+  /// Renders a page to a high-resolution PNG image byte array using vector rasterization.
+  Future<Uint8List> renderPageToPng({
+    required NotebookPage page,
+    required List<Stroke> strokes,
+    required List<StickyNote> stickyNotes,
+    double pixelRatio = 2.0,
+    bool includeBackground = true,
+  }) async {
+    final width = page.width * pixelRatio;
+    final height = page.height * pixelRatio;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, width, height));
+    canvas.scale(pixelRatio, pixelRatio);
+
+    if (includeBackground) {
+      final hex = page.properties.backgroundColorHex.replaceFirst('#', '');
+      final colorVal = int.parse('FF$hex', radix: 16);
+      final bgPaint = Paint()..color = Color(colorVal);
+      canvas.drawRect(Rect.fromLTWH(0, 0, page.width, page.height), bgPaint);
+    }
+
+    for (final stroke in strokes) {
+      if (stroke.points.isEmpty || stroke.deletedAt != null) continue;
+      final paint = Paint()
+        ..color = stroke.color
+        ..strokeWidth = stroke.width
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke;
+
+      final path = Path();
+      path.moveTo(stroke.points.first.x, stroke.points.first.y);
+      for (int i = 1; i < stroke.points.length; i++) {
+        path.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
+      canvas.drawPath(path, paint);
+    }
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(width.toInt(), height.toInt());
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
   }
 
   /// Extracts sample table of contents / bookmarks from PDF.

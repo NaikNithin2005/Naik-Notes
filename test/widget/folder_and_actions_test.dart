@@ -35,7 +35,11 @@ class _MockFolderAuthRepo implements AuthRepository {
   @override
   Future<AppUser> login(String email, String password) async => _user;
   @override
-  Future<AppUser> register(String email, String password, String displayName) async => _user;
+  Future<AppUser> register(
+    String email,
+    String password,
+    String displayName,
+  ) async => _user;
   @override
   Future<AppUser> signInWithGoogle() async => _user;
   @override
@@ -48,13 +52,15 @@ class _MockFolderAuthRepo implements AuthRepository {
     void Function(AppUser user)? onVerificationCompleted,
   }) async => onCodeSent('id', null);
   @override
-  Future<AppUser> verifyPhoneOtp(String verificationId, String smsCode) async => _user;
+  Future<AppUser> verifyPhoneOtp(String verificationId, String smsCode) async =>
+      _user;
   @override
   Future<void> logout() async {}
   @override
   Future<void> deleteAccount() async {}
   @override
-  Future<List<Map<String, dynamic>>> getRegisteredDevices(String uid) async => [];
+  Future<List<Map<String, dynamic>>> getRegisteredDevices(String uid) async =>
+      [];
   @override
   Future<void> removeRegisteredDevice(String uid, String deviceId) async {}
   @override

@@ -110,6 +110,7 @@ class _ReadingModePageFlipViewState
               final page = widget.pages[index];
 
               return AnimatedBuilder(
+                key: ValueKey('reading_page_${page.id}'),
                 animation: _pageController,
                 builder: (context, child) {
                   double value = 0.0;
@@ -121,77 +122,91 @@ class _ReadingModePageFlipViewState
                   // 3D Book Page Curl / Turn Perspective Transform
                   final isTurningLeft = value > 0;
                   final turnProgress = value.abs().clamp(0.0, 1.0);
-                  final angle =
-                      value * (math.pi / 5.0); // Natural page rotation angle
+                  // Clamp angle safely within [-pi/5, pi/5] to avoid inverted bleed-through
+                  final angle = (value * (math.pi / 5.0)).clamp(
+                    -math.pi / 4.0,
+                    math.pi / 4.0,
+                  );
 
                   final matrix = Matrix4.identity()
                     ..setEntry(3, 2, 0.001) // 3D camera perspective
                     ..rotateY(angle);
 
-                  return Center(
-                    child: Transform(
-                      transform: matrix,
-                      alignment: isTurningLeft
-                          ? Alignment.centerLeft
-                          : Alignment.centerRight,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 20,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFDF8),
-                          borderRadius: BorderRadius.circular(4),
-                          boxShadow: [
-                            // Page spine drop shadow
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: 0.18 + (turnProgress * 0.15),
+                  return ClipRect(
+                    child: Center(
+                      child: Transform(
+                        transform: matrix,
+                        alignment: isTurningLeft
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 20,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFDF8),
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              // Page spine drop shadow
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: 0.18 + (turnProgress * 0.15),
+                                ),
+                                blurRadius: 18 + (turnProgress * 12),
+                                offset: Offset(isTurningLeft ? -8 : 8, 8),
                               ),
-                              blurRadius: 18 + (turnProgress * 12),
-                              offset: Offset(isTurningLeft ? -8 : 8, 8),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          children: [
-                            // Read-only canvas rendering page template and strokes
-                            HandwritingCanvas(
-                              pageId: page.id,
-                              type: page.templateType,
-                              properties: page.properties,
-                              width: page.width,
-                              height: page.height,
-                              readOnly: true,
-                            ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Stack(
+                              children: [
+                                // Layer 0: 100% Opaque Solid Paper Base (Eliminates page-tearing bleed-through)
+                                const Positioned.fill(
+                                  child: ColoredBox(color: Color(0xFFFFFDF8)),
+                                ),
 
-                            // Dynamic spine curvature lighting gradient
-                            if (turnProgress > 0.01)
-                              Positioned.fill(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: isTurningLeft
-                                          ? Alignment.centerLeft
-                                          : Alignment.centerRight,
-                                      end: isTurningLeft
-                                          ? Alignment.centerRight
-                                          : Alignment.centerLeft,
-                                      colors: [
-                                        Colors.black.withValues(
-                                          alpha: 0.22 * turnProgress,
+                                // Layer 1: Read-only canvas rendering page template and strokes
+                                HandwritingCanvas(
+                                  key: ValueKey('canvas_${page.id}'),
+                                  pageId: page.id,
+                                  type: page.templateType,
+                                  properties: page.properties,
+                                  width: page.width,
+                                  height: page.height,
+                                  readOnly: true,
+                                ),
+
+                                // Layer 2: Dynamic spine curvature lighting gradient
+                                if (turnProgress > 0.01)
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: isTurningLeft
+                                              ? Alignment.centerLeft
+                                              : Alignment.centerRight,
+                                          end: isTurningLeft
+                                              ? Alignment.centerRight
+                                              : Alignment.centerLeft,
+                                          colors: [
+                                            Colors.black.withValues(
+                                              alpha: 0.22 * turnProgress,
+                                            ),
+                                            Colors.transparent,
+                                            Colors.white.withValues(
+                                              alpha: 0.15 * turnProgress,
+                                            ),
+                                          ],
+                                          stops: const [0.0, 0.25, 1.0],
                                         ),
-                                        Colors.transparent,
-                                        Colors.white.withValues(
-                                          alpha: 0.15 * turnProgress,
-                                        ),
-                                      ],
-                                      stops: const [0.0, 0.25, 1.0],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                          ],
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -214,8 +229,9 @@ class _ReadingModePageFlipViewState
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
                   label: const Text('Exit Reading Mode'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF4E342E)
-                        .withValues(alpha: 0.85),
+                    backgroundColor: const Color(
+                      0xFF4E342E,
+                    ).withValues(alpha: 0.85),
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -249,8 +265,9 @@ class _ReadingModePageFlipViewState
               icon: const Icon(Icons.chevron_left_rounded, size: 28),
               tooltip: 'Previous Page (Left Arrow / Swipe)',
               style: IconButton.styleFrom(
-                backgroundColor: const Color(0xFF4E342E)
-                    .withValues(alpha: 0.75),
+                backgroundColor: const Color(
+                  0xFF4E342E,
+                ).withValues(alpha: 0.75),
                 foregroundColor: Colors.white,
               ),
               onPressed: _currentPage > 1 ? _goToPreviousPage : null,
@@ -263,8 +280,9 @@ class _ReadingModePageFlipViewState
               icon: const Icon(Icons.chevron_right_rounded, size: 28),
               tooltip: 'Next Page (Right Arrow / Swipe)',
               style: IconButton.styleFrom(
-                backgroundColor: const Color(0xFF4E342E)
-                    .withValues(alpha: 0.75),
+                backgroundColor: const Color(
+                  0xFF4E342E,
+                ).withValues(alpha: 0.75),
                 foregroundColor: Colors.white,
               ),
               onPressed: _currentPage < totalPages ? _goToNextPage : null,

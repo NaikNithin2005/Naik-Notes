@@ -63,75 +63,78 @@ void main() {
       },
     );
 
-    test('clusterStrokesIntoWords groups adjacent strokes into one word bounding box', () {
-      final now = DateTime.now();
-      // Stroke 1: letters "N-a" at x=10..35, y=50..70
-      final s1 = Stroke(
-        id: 's1',
-        pageId: 'page-1',
-        tool: ToolType.ballpointPen,
-        colorValue: 0xFF000000,
-        width: 2.0,
-        opacity: 1.0,
-        points: const [
-          StrokePoint(x: 10, y: 50, timestamp: 100),
-          StrokePoint(x: 35, y: 70, timestamp: 120),
-        ],
-        createdAt: now,
-      );
+    test(
+      'clusterStrokesIntoWords groups adjacent strokes into one word bounding box',
+      () {
+        final now = DateTime.now();
+        // Stroke 1: letters "N-a" at x=10..35, y=50..70
+        final s1 = Stroke(
+          id: 's1',
+          pageId: 'page-1',
+          tool: ToolType.ballpointPen,
+          colorValue: 0xFF000000,
+          width: 2.0,
+          opacity: 1.0,
+          points: const [
+            StrokePoint(x: 10, y: 50, timestamp: 100),
+            StrokePoint(x: 35, y: 70, timestamp: 120),
+          ],
+          createdAt: now,
+        );
 
-      // Stroke 2: letters "i-k" at x=40..60, y=52..68 (gap = 5px <= 35px threshold)
-      final s2 = Stroke(
-        id: 's2',
-        pageId: 'page-1',
-        tool: ToolType.ballpointPen,
-        colorValue: 0xFF000000,
-        width: 2.0,
-        opacity: 1.0,
-        points: const [
-          StrokePoint(x: 40, y: 52, timestamp: 130),
-          StrokePoint(x: 60, y: 68, timestamp: 150),
-        ],
-        createdAt: now,
-      );
+        // Stroke 2: letters "i-k" at x=40..60, y=52..68 (gap = 5px <= 35px threshold)
+        final s2 = Stroke(
+          id: 's2',
+          pageId: 'page-1',
+          tool: ToolType.ballpointPen,
+          colorValue: 0xFF000000,
+          width: 2.0,
+          opacity: 1.0,
+          points: const [
+            StrokePoint(x: 40, y: 52, timestamp: 130),
+            StrokePoint(x: 60, y: 68, timestamp: 150),
+          ],
+          createdAt: now,
+        );
 
-      // Stroke 3: second word far to the right at x=150..180 (gap = 90px > 35px threshold)
-      final s3 = Stroke(
-        id: 's3',
-        pageId: 'page-1',
-        tool: ToolType.ballpointPen,
-        colorValue: 0xFF000000,
-        width: 2.0,
-        opacity: 1.0,
-        points: const [
-          StrokePoint(x: 150, y: 50, timestamp: 200),
-          StrokePoint(x: 180, y: 70, timestamp: 220),
-        ],
-        createdAt: now,
-      );
+        // Stroke 3: second word far to the right at x=150..180 (gap = 90px > 35px threshold)
+        final s3 = Stroke(
+          id: 's3',
+          pageId: 'page-1',
+          tool: ToolType.ballpointPen,
+          colorValue: 0xFF000000,
+          width: 2.0,
+          opacity: 1.0,
+          points: const [
+            StrokePoint(x: 150, y: 50, timestamp: 200),
+            StrokePoint(x: 180, y: 70, timestamp: 220),
+          ],
+          createdAt: now,
+        );
 
-      final words = recognitionService.clusterStrokesIntoWords(
-        [s1, s2, s3],
-        lexicon: ['Naik', 'Notes'],
-      );
+        final words = recognitionService.clusterStrokesIntoWords(
+          [s1, s2, s3],
+          lexicon: ['Naik', 'Notes'],
+        );
 
-      expect(words.length, 2);
+        expect(words.length, 2);
 
-      // First word cluster covers s1 and s2
-      final first = words[0];
-      expect(first.word, 'Naik');
-      expect(first.strokeIds.contains('s1'), true);
-      expect(first.strokeIds.contains('s2'), true);
-      expect(first.left, lessThanOrEqualTo(10.0));
-      expect(first.right, greaterThanOrEqualTo(60.0));
+        // First word cluster covers s1 and s2
+        final first = words[0];
+        expect(first.word, 'Naik');
+        expect(first.strokeIds.contains('s1'), true);
+        expect(first.strokeIds.contains('s2'), true);
+        expect(first.left, lessThanOrEqualTo(10.0));
+        expect(first.right, greaterThanOrEqualTo(60.0));
 
-      // Second word cluster covers s3
-      final second = words[1];
-      expect(second.word, 'Notes');
-      expect(second.strokeIds, ['s3']);
-      expect(second.left, lessThanOrEqualTo(150.0));
-      expect(second.right, greaterThanOrEqualTo(180.0));
-    });
+        // Second word cluster covers s3
+        final second = words[1];
+        expect(second.word, 'Notes');
+        expect(second.strokeIds, ['s3']);
+        expect(second.left, lessThanOrEqualTo(150.0));
+        expect(second.right, greaterThanOrEqualTo(180.0));
+      },
+    );
 
     test(
       'processAndIndexStrokes saves clustered strokes to search repository',

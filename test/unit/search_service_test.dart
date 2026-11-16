@@ -125,36 +125,39 @@ void main() {
       await db.close();
     });
 
-    test('searchGlobal returns matches across notebooks, folders, and indexed content', () async {
-      // 1. Search notebook title
-      final aiResults = await searchService.searchGlobal('neural');
-      expect(aiResults.length, 1);
-      expect(aiResults.first.sourceType, 'notebookTitle');
-      expect(aiResults.first.notebookId, 'nb-ai');
+    test(
+      'searchGlobal returns matches across notebooks, folders, and indexed content',
+      () async {
+        // 1. Search notebook title
+        final aiResults = await searchService.searchGlobal('neural');
+        expect(aiResults.length, 1);
+        expect(aiResults.first.sourceType, 'notebookTitle');
+        expect(aiResults.first.notebookId, 'nb-ai');
 
-      // 2. Search folder
-      final folderResults = await searchService.searchGlobal('computer');
-      expect(folderResults.length, 1);
-      expect(folderResults.first.sourceType, 'folder');
-      expect(
-        folderResults.first.notebookTitle.contains('Computer Science'),
-        true,
-      );
+        // 2. Search folder
+        final folderResults = await searchService.searchGlobal('computer');
+        expect(folderResults.length, 1);
+        expect(folderResults.first.sourceType, 'folder');
+        expect(
+          folderResults.first.notebookTitle.contains('Computer Science'),
+          true,
+        );
 
-      // 3. Search indexed handwriting content
-      final hwResults = await searchService.searchGlobal('gradient');
-      expect(hwResults.length, 1);
-      expect(hwResults.first.sourceType, 'handwriting');
-      expect(hwResults.first.notebookId, 'nb-ai');
-      expect(hwResults.first.pageNumber, 1);
-      expect(hwResults.first.matchingBoxes.length, 1);
-      expect(hwResults.first.matchingBoxes.first.word, 'Gradient');
-      expect(hwResults.first.snippet.contains('Gradient descent'), true);
+        // 3. Search indexed handwriting content
+        final hwResults = await searchService.searchGlobal('gradient');
+        expect(hwResults.length, 1);
+        expect(hwResults.first.sourceType, 'handwriting');
+        expect(hwResults.first.notebookId, 'nb-ai');
+        expect(hwResults.first.pageNumber, 1);
+        expect(hwResults.first.matchingBoxes.length, 1);
+        expect(hwResults.first.matchingBoxes.first.word, 'Gradient');
+        expect(hwResults.first.snippet.contains('Gradient descent'), true);
 
-      // 4. Empty query
-      final emptyResults = await searchService.searchGlobal('   ');
-      expect(emptyResults.isEmpty, true);
-    });
+        // 4. Empty query
+        final emptyResults = await searchService.searchGlobal('   ');
+        expect(emptyResults.isEmpty, true);
+      },
+    );
 
     test(
       'searchInNotebook returns scoped matches and bounding boxes',

@@ -10,7 +10,7 @@ import '../../../services/sync/sync_service.dart';
 import '../../authentication/data/auth_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
 
-enum SyncUiStatus { synced, syncing, offline, error }
+enum SyncUiStatus { synced, syncing, offline, error, pending }
 
 class SyncState {
   final SyncUiStatus status;

@@ -109,14 +109,8 @@ void main() {
       expect(find.text('Recent'), findsOneWidget);
       expect(find.text('Favorites'), findsOneWidget);
 
-      // Verify Empty State is displayed
-      expect(find.text('No notebooks yet'), findsOneWidget);
-      expect(
-        find.text(
-          'No notebooks yet. Create your first notebook to get started.',
-        ),
-        findsOneWidget,
-      );
+      // Verify Library view displays the provisioned Welcome Notebook
+      expect(find.text('Welcome to Naik Notes'), findsWidgets);
     });
 
     testWidgets('opens Create Notebook dialog and validates input', (

@@ -9522,15 +9522,17 @@ class $$SectionsTableTableTableManager
                     >
                   >(state) {
                     if (notebookId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.notebookId,
-                        referencedTable: $$SectionsTableTableReferences
-                            ._notebookIdTable(db),
-                        referencedColumn: $$SectionsTableTableReferences
-                            ._notebookIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.notebookId,
+                                referencedTable: $$SectionsTableTableReferences
+                                    ._notebookIdTable(db),
+                                referencedColumn: $$SectionsTableTableReferences
+                                    ._notebookIdTable(db)
+                                    .id,
+                              )
+                              as T;
                     }
 
                     return state;
@@ -9558,40 +9560,42 @@ typedef $$SectionsTableTableProcessedTableManager =
       SectionsTableData,
       PrefetchHooks Function({bool notebookId})
     >;
-typedef $$PagesTableTableCreateCompanionBuilder = PagesTableCompanion Function({
-  required String id,
-  required String notebookId,
-  Value<String?> sectionId,
-  required int pageNumber,
-  Value<String> templateId,
-  Value<String?> backgroundColor,
-  Value<String?> templatePropertiesJson,
-  Value<bool> isBookmarked,
-  Value<int?> pdfPageIndex,
-  Value<double> width,
-  Value<double> height,
-  Value<int> revision,
-  required DateTime createdAt,
-  required DateTime updatedAt,
-  Value<int> rowid,
-});
-typedef $$PagesTableTableUpdateCompanionBuilder = PagesTableCompanion Function({
-  Value<String> id,
-  Value<String> notebookId,
-  Value<String?> sectionId,
-  Value<int> pageNumber,
-  Value<String> templateId,
-  Value<String?> backgroundColor,
-  Value<String?> templatePropertiesJson,
-  Value<bool> isBookmarked,
-  Value<int?> pdfPageIndex,
-  Value<double> width,
-  Value<double> height,
-  Value<int> revision,
-  Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
-  Value<int> rowid,
-});
+typedef $$PagesTableTableCreateCompanionBuilder =
+    PagesTableCompanion Function({
+      required String id,
+      required String notebookId,
+      Value<String?> sectionId,
+      required int pageNumber,
+      Value<String> templateId,
+      Value<String?> backgroundColor,
+      Value<String?> templatePropertiesJson,
+      Value<bool> isBookmarked,
+      Value<int?> pdfPageIndex,
+      Value<double> width,
+      Value<double> height,
+      Value<int> revision,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PagesTableTableUpdateCompanionBuilder =
+    PagesTableCompanion Function({
+      Value<String> id,
+      Value<String> notebookId,
+      Value<String?> sectionId,
+      Value<int> pageNumber,
+      Value<String> templateId,
+      Value<String?> backgroundColor,
+      Value<String?> templatePropertiesJson,
+      Value<bool> isBookmarked,
+      Value<int?> pdfPageIndex,
+      Value<double> width,
+      Value<double> height,
+      Value<int> revision,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
 
 final class $$PagesTableTableReferences
     extends BaseReferences<_$AppDatabase, $PagesTableTable, PagesTableData> {
@@ -10405,15 +10409,18 @@ class $$PagesTableTableTableManager
                         >
                       >(state) {
                         if (notebookId) {
-                          state = state.withJoin(
-                            currentTable: table,
-                            currentColumn: table.notebookId,
-                            referencedTable: $$PagesTableTableReferences
-                                ._notebookIdTable(db),
-                            referencedColumn: $$PagesTableTableReferences
-                                ._notebookIdTable(db)
-                                .id,
-                          ) as T;
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.notebookId,
+                                    referencedTable: $$PagesTableTableReferences
+                                        ._notebookIdTable(db),
+                                    referencedColumn:
+                                        $$PagesTableTableReferences
+                                            ._notebookIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
                         }
 
                         return state;
@@ -10949,15 +10956,17 @@ class $$StrokesTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.pageId,
-                        referencedTable: $$StrokesTableTableReferences
-                            ._pageIdTable(db),
-                        referencedColumn: $$StrokesTableTableReferences
-                            ._pageIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.pageId,
+                                referencedTable: $$StrokesTableTableReferences
+                                    ._pageIdTable(db),
+                                referencedColumn: $$StrokesTableTableReferences
+                                    ._pageIdTable(db)
+                                    .id,
+                              )
+                              as T;
                     }
 
                     return state;
@@ -11372,15 +11381,19 @@ class $$StickyNotesTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.pageId,
-                        referencedTable: $$StickyNotesTableTableReferences
-                            ._pageIdTable(db),
-                        referencedColumn: $$StickyNotesTableTableReferences
-                            ._pageIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.pageId,
+                                referencedTable:
+                                    $$StickyNotesTableTableReferences
+                                        ._pageIdTable(db),
+                                referencedColumn:
+                                    $$StickyNotesTableTableReferences
+                                        ._pageIdTable(db)
+                                        .id,
+                              )
+                              as T;
                     }
 
                     return state;
@@ -12162,26 +12175,34 @@ class $$PageSearchIndexTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.pageId,
-                        referencedTable: $$PageSearchIndexTableTableReferences
-                            ._pageIdTable(db),
-                        referencedColumn: $$PageSearchIndexTableTableReferences
-                            ._pageIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.pageId,
+                                referencedTable:
+                                    $$PageSearchIndexTableTableReferences
+                                        ._pageIdTable(db),
+                                referencedColumn:
+                                    $$PageSearchIndexTableTableReferences
+                                        ._pageIdTable(db)
+                                        .id,
+                              )
+                              as T;
                     }
                     if (notebookId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.notebookId,
-                        referencedTable: $$PageSearchIndexTableTableReferences
-                            ._notebookIdTable(db),
-                        referencedColumn: $$PageSearchIndexTableTableReferences
-                            ._notebookIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.notebookId,
+                                referencedTable:
+                                    $$PageSearchIndexTableTableReferences
+                                        ._notebookIdTable(db),
+                                referencedColumn:
+                                    $$PageSearchIndexTableTableReferences
+                                        ._notebookIdTable(db)
+                                        .id,
+                              )
+                              as T;
                     }
 
                     return state;
@@ -12728,30 +12749,34 @@ class $$AudioRecordingsTableTableTableManager
                         >
                       >(state) {
                         if (notebookId) {
-                          state = state.withJoin(
-                            currentTable: table,
-                            currentColumn: table.notebookId,
-                            referencedTable:
-                                $$AudioRecordingsTableTableReferences
-                                    ._notebookIdTable(db),
-                            referencedColumn:
-                                $$AudioRecordingsTableTableReferences
-                                    ._notebookIdTable(db)
-                                    .id,
-                          ) as T;
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.notebookId,
+                                    referencedTable:
+                                        $$AudioRecordingsTableTableReferences
+                                            ._notebookIdTable(db),
+                                    referencedColumn:
+                                        $$AudioRecordingsTableTableReferences
+                                            ._notebookIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
                         }
                         if (pageId) {
-                          state = state.withJoin(
-                            currentTable: table,
-                            currentColumn: table.pageId,
-                            referencedTable:
-                                $$AudioRecordingsTableTableReferences
-                                    ._pageIdTable(db),
-                            referencedColumn:
-                                $$AudioRecordingsTableTableReferences
-                                    ._pageIdTable(db)
-                                    .id,
-                          ) as T;
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.pageId,
+                                    referencedTable:
+                                        $$AudioRecordingsTableTableReferences
+                                            ._pageIdTable(db),
+                                    referencedColumn:
+                                        $$AudioRecordingsTableTableReferences
+                                            ._pageIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
                         }
 
                         return state;
@@ -13147,15 +13172,19 @@ class $$AudioBookmarksTableTableTableManager
                     >
                   >(state) {
                     if (recordingId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.recordingId,
-                        referencedTable: $$AudioBookmarksTableTableReferences
-                            ._recordingIdTable(db),
-                        referencedColumn: $$AudioBookmarksTableTableReferences
-                            ._recordingIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.recordingId,
+                                referencedTable:
+                                    $$AudioBookmarksTableTableReferences
+                                        ._recordingIdTable(db),
+                                referencedColumn:
+                                    $$AudioBookmarksTableTableReferences
+                                        ._recordingIdTable(db)
+                                        .id,
+                              )
+                              as T;
                     }
 
                     return state;
@@ -13678,26 +13707,34 @@ class $$PageSnapshotsTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.pageId,
-                        referencedTable: $$PageSnapshotsTableTableReferences
-                            ._pageIdTable(db),
-                        referencedColumn: $$PageSnapshotsTableTableReferences
-                            ._pageIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.pageId,
+                                referencedTable:
+                                    $$PageSnapshotsTableTableReferences
+                                        ._pageIdTable(db),
+                                referencedColumn:
+                                    $$PageSnapshotsTableTableReferences
+                                        ._pageIdTable(db)
+                                        .id,
+                              )
+                              as T;
                     }
                     if (notebookId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.notebookId,
-                        referencedTable: $$PageSnapshotsTableTableReferences
-                            ._notebookIdTable(db),
-                        referencedColumn: $$PageSnapshotsTableTableReferences
-                            ._notebookIdTable(db)
-                            .id,
-                      ) as T;
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.notebookId,
+                                referencedTable:
+                                    $$PageSnapshotsTableTableReferences
+                                        ._notebookIdTable(db),
+                                referencedColumn:
+                                    $$PageSnapshotsTableTableReferences
+                                        ._notebookIdTable(db)
+                                        .id,
+                              )
+                              as T;
                     }
 
                     return state;

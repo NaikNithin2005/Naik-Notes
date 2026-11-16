@@ -21,56 +21,62 @@ void main() {
       await db.close();
     });
 
-    test('fetchCommunityCatalog returns fallback seed templates when backend is offline', () async {
-      final templates = await service.fetchCommunityCatalog();
-      expect(templates.isNotEmpty, true);
-      expect(templates.length, greaterThanOrEqualTo(3));
+    test(
+      'fetchCommunityCatalog returns fallback seed templates when backend is offline',
+      () async {
+        final templates = await service.fetchCommunityCatalog();
+        expect(templates.isNotEmpty, true);
+        expect(templates.length, greaterThanOrEqualTo(3));
 
-      // Category filter
-      final engineering = await service.fetchCommunityCatalog(
-        category: 'Engineering',
-      );
-      expect(engineering.every((t) => t.category == 'Engineering'), true);
+        // Category filter
+        final engineering = await service.fetchCommunityCatalog(
+          category: 'Engineering',
+        );
+        expect(engineering.every((t) => t.category == 'Engineering'), true);
 
-      // Search filter
-      final searchResult = await service.fetchCommunityCatalog(
-        search: 'Cornell',
-      );
-      expect(searchResult.any((t) => t.title.contains('Cornell')), true);
-    });
+        // Search filter
+        final searchResult = await service.fetchCommunityCatalog(
+          search: 'Cornell',
+        );
+        expect(searchResult.any((t) => t.title.contains('Cornell')), true);
+      },
+    );
 
-    test('createCustomTemplate saves template and export/import round-trips correctly', () async {
-      // 1. Create custom template
-      final created = await service.createCustomTemplate(
-        title: 'Astrophysics Log Sheet',
-        description: 'Constellation grid with observation header',
-        category: 'Math & Science',
-        author: 'Kepler',
-        properties: const PaperProperties(
-          backgroundColorHex: '#1E2022',
-          gridSize: 18.0,
-          lineSpacing: 18.0,
-        ),
-      );
+    test(
+      'createCustomTemplate saves template and export/import round-trips correctly',
+      () async {
+        // 1. Create custom template
+        final created = await service.createCustomTemplate(
+          title: 'Astrophysics Log Sheet',
+          description: 'Constellation grid with observation header',
+          category: 'Math & Science',
+          author: 'Kepler',
+          properties: const PaperProperties(
+            backgroundColorHex: '#1E2022',
+            gridSize: 18.0,
+            lineSpacing: 18.0,
+          ),
+        );
 
-      expect(created.title, 'Astrophysics Log Sheet');
-      final installed = await repo.getInstalledTemplates();
-      expect(installed.length, 1);
-      expect(installed.first.title, 'Astrophysics Log Sheet');
+        expect(created.title, 'Astrophysics Log Sheet');
+        final installed = await repo.getInstalledTemplates();
+        expect(installed.length, 1);
+        expect(installed.first.title, 'Astrophysics Log Sheet');
 
-      // 2. Export to JSON
-      final json = service.exportTemplateToJson(created);
-      expect(json.contains('Astrophysics Log Sheet'), true);
-      expect(json.contains('#1E2022'), true);
+        // 2. Export to JSON
+        final json = service.exportTemplateToJson(created);
+        expect(json.contains('Astrophysics Log Sheet'), true);
+        expect(json.contains('#1E2022'), true);
 
-      // 3. Import from JSON
-      final imported = await service.importTemplateFromJson(json);
-      expect(imported, isNotNull);
-      expect(imported!.title, 'Astrophysics Log Sheet');
-      expect(imported.properties.backgroundColorHex, '#1E2022');
+        // 3. Import from JSON
+        final imported = await service.importTemplateFromJson(json);
+        expect(imported, isNotNull);
+        expect(imported!.title, 'Astrophysics Log Sheet');
+        expect(imported.properties.backgroundColorHex, '#1E2022');
 
-      final installedAfterImport = await repo.getInstalledTemplates();
-      expect(installedAfterImport.length, 2);
-    });
+        final installedAfterImport = await repo.getInstalledTemplates();
+        expect(installedAfterImport.length, 2);
+      },
+    );
   });
 }

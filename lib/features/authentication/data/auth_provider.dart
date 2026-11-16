@@ -44,10 +44,12 @@ class AuthState {
       user: clearUser ? null : (user ?? this.user),
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      successMessage:
-          clearSuccess ? null : (successMessage ?? this.successMessage),
-      verificationId:
-          clearPhoneAuth ? null : (verificationId ?? this.verificationId),
+      successMessage: clearSuccess
+          ? null
+          : (successMessage ?? this.successMessage),
+      verificationId: clearPhoneAuth
+          ? null
+          : (verificationId ?? this.verificationId),
       resendToken: clearPhoneAuth ? null : (resendToken ?? this.resendToken),
     );
   }
@@ -251,7 +253,8 @@ class AuthNotifier extends Notifier<AuthState> {
     final verifId = state.verificationId;
     if (verifId == null) {
       state = state.copyWith(
-        errorMessage: 'Please enter your phone number to receive a verification code first.',
+        errorMessage:
+            'Please enter your phone number to receive a verification code first.',
       );
       return false;
     }
@@ -353,8 +356,8 @@ final authProvider = NotifierProvider<AuthNotifier, AuthState>(
 /// Provider fetching registered devices for the active user.
 final registeredDevicesProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final auth = ref.watch(authProvider);
-  final repo = ref.watch(authRepositoryProvider);
-  if (auth.user == null) return [];
-  return repo.getRegisteredDevices(auth.user!.id);
-});
+      final auth = ref.watch(authProvider);
+      final repo = ref.watch(authRepositoryProvider);
+      if (auth.user == null) return [];
+      return repo.getRegisteredDevices(auth.user!.id);
+    });

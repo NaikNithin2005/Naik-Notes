@@ -8,6 +8,7 @@ import '../../../data/repositories/notebook_repository.dart';
 import '../../sync/data/sync_provider.dart';
 
 import '../../authentication/data/auth_provider.dart';
+import 'welcome_notebook_service.dart';
 
 /// State notifier managing the reactive list of notebooks, backed by Drift SQLite.
 class NotebooksNotifier extends Notifier<List<Notebook>> {
@@ -22,9 +23,18 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
   }
 
   Future<void> loadFromDatabase() async {
-    final dbNotebooks = await _repository.getAllNotebooks(
-      includeArchived: true,
-    );
+    var dbNotebooks = await _repository.getAllNotebooks(includeArchived: true);
+    if (!ref.mounted) return;
+    if (dbNotebooks.isEmpty) {
+      try {
+        final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+        await ref
+            .read(welcomeNotebookServiceProvider)
+            .ensureWelcomeNotebookCreated(currentUserId);
+        if (!ref.mounted) return;
+        dbNotebooks = await _repository.getAllNotebooks(includeArchived: true);
+      } catch (_) {}
+    }
     if (ref.mounted) {
       state = dbNotebooks;
     }

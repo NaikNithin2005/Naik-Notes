@@ -153,7 +153,8 @@ class TemplateStoreService {
       CustomTemplate(
         id: 'tpl-dark-engineering-grid',
         title: 'Dark Mode Precision Quad Grid',
-        description: '5mm quad grid with dark slate paper tone, cyan guide lines, and technical header block for engineering calculations.',
+        description:
+            '5mm quad grid with dark slate paper tone, cyan guide lines, and technical header block for engineering calculations.',
         category: 'Engineering',
         author: 'Prof. Naik',
         properties: const PaperProperties(
@@ -180,7 +181,8 @@ class TemplateStoreService {
       CustomTemplate(
         id: 'tpl-cornell-biochem',
         title: 'Cornell Medical Biochemistry Cue Sheet',
-        description: '2.5-inch left recall cue column, 7.1mm college rule notes body, and 96pt summary footer optimized for pre-med revision.',
+        description:
+            '2.5-inch left recall cue column, 7.1mm college rule notes body, and 96pt summary footer optimized for pre-med revision.',
         category: 'Math & Science',
         author: 'BioMed Guild',
         properties: const PaperProperties(
@@ -207,7 +209,8 @@ class TemplateStoreService {
       CustomTemplate(
         id: 'tpl-bullet-habit-tracker',
         title: '7-Day Habit Matrix & Weekly Planner',
-        description: 'Minimalist ivory layout featuring a 7-day habit tracker matrix, top 3 priorities quadrant, and daily time blocks.',
+        description:
+            'Minimalist ivory layout featuring a 7-day habit tracker matrix, top 3 priorities quadrant, and daily time blocks.',
         category: 'Planning',
         author: 'ProductivityHub',
         properties: const PaperProperties(

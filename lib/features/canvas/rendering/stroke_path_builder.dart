@@ -377,8 +377,9 @@ class StrokePathBuilder {
         stroke.shapeType?.isLineLike != true) {
       fillPath = rawPath;
       fillPaint = Paint()
-        ..color = Color(stroke.fillColorValue!)
-            .withValues(alpha: stroke.fillOpacity)
+        ..color = Color(
+          stroke.fillColorValue!,
+        ).withValues(alpha: stroke.fillOpacity)
         ..style = PaintingStyle.fill
         ..isAntiAlias = true;
     }

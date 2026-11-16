@@ -43,6 +43,11 @@ class SyncDetailsDialog extends ConsumerWidget {
         statusTitle = 'Offline Mode';
         statusIcon = Icons.cloud_off_rounded;
         break;
+      case SyncUiStatus.pending:
+        statusColor = const Color(0xFFF59E0B);
+        statusTitle = 'Pending Changes (${syncState.pendingCount})';
+        statusIcon = Icons.cloud_upload_outlined;
+        break;
       case SyncUiStatus.error:
         statusColor = AppColors.syncError;
         statusTitle = 'Sync Error';

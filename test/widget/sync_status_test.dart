@@ -46,8 +46,8 @@ void main() {
             ),
           ),
         );
-        expect(find.text('Syncing...'), findsOneWidget);
-        expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
+        expect(find.text('Synchronizing...'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
         // 3. Offline
         await tester.pumpWidget(
@@ -70,8 +70,21 @@ void main() {
             ),
           ),
         );
-        expect(find.text('Sync Error'), findsOneWidget);
+        expect(find.text('Sync Failed'), findsOneWidget);
         expect(find.byIcon(Icons.sync_problem_rounded), findsOneWidget);
+
+        // 5. Pending
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: SyncStatusBadge(status: SyncUiStatus.pending),
+              ),
+            ),
+          ),
+        );
+        expect(find.text('Pending Changes'), findsOneWidget);
+        expect(find.byIcon(Icons.cloud_upload_outlined), findsOneWidget);
       },
     );
 

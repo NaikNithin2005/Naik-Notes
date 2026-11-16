@@ -18,7 +18,12 @@ import 'package:naik_notes/features/search/data/search_provider.dart';
 import 'package:naik_notes/features/sync/data/sync_provider.dart';
 import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
 import 'package:naik_notes/core/theme/theme_controller.dart';
+import 'package:naik_notes/core/widgets/naik_empty_state.dart';
 import 'package:naik_notes/core/widgets/naik_notes_logo.dart';
+import 'package:naik_notes/data/local/database_provider.dart';
+import 'package:naik_notes/data/models/page_model.dart';
+import 'package:naik_notes/data/models/paper_template_model.dart';
+import 'package:naik_notes/features/notebooks/presentation/widgets/export_notebook_dialog.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
 import '../widgets/notebook_card.dart';
@@ -212,6 +217,94 @@ class DashboardScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  Future<void> _exportNotebook(
+    BuildContext context,
+    WidgetRef ref,
+    Notebook nb,
+  ) async {
+    final pageRepo = ref.read(pageRepositoryProvider);
+    final pages = await pageRepo.getPagesForNotebook(nb.id);
+    if (!context.mounted) return;
+    ExportNotebookDialog.show(
+      context,
+      notebook: nb,
+      pages: pages.isNotEmpty
+          ? pages
+          : [
+              NotebookPage(
+                id: 'page-${nb.id}-1',
+                notebookId: nb.id,
+                pageNumber: 1,
+                templateId: nb.paperTemplateId,
+                properties: PaperProperties.defaultFor(
+                  PaperTemplateType.fromId(nb.paperTemplateId),
+                ),
+                createdAt: nb.createdAt,
+                updatedAt: nb.updatedAt,
+              ),
+            ],
+    );
+  }
+
+  Widget _buildEmptyState(
+    BuildContext context,
+    WidgetRef ref,
+    int filterTab,
+    String searchQuery,
+    String? selectedFolderId,
+    List<Notebook> notebooks,
+    dynamic folders,
+  ) {
+    if (searchQuery.isNotEmpty) {
+      return NaikEmptyState.search(
+        query: searchQuery,
+        onClearSearch: () =>
+            ref.read(searchQueryProvider.notifier).setQuery(''),
+      );
+    }
+
+    if (selectedFolderId != null) {
+      String folderName = 'Folder';
+      if (selectedFolderId == '__unfiled__') {
+        folderName = 'Unfiled';
+      } else {
+        final match = folders.where((f) => f.id == selectedFolderId);
+        if (match.isNotEmpty) {
+          folderName = match.first.name;
+        }
+      }
+      return NaikEmptyState.folder(
+        folderName: folderName,
+        onCreateNotebook: () => _showCreateNotebookDialog(
+          context,
+          folderId: selectedFolderId == '__unfiled__' ? null : selectedFolderId,
+        ),
+      );
+    }
+
+    if (filterTab == 1) {
+      return NaikEmptyState.recent(
+        onBrowseNotebooks: () =>
+            ref.read(dashboardFilterProvider.notifier).setFilter(0),
+      );
+    }
+
+    if (filterTab == 2) {
+      return NaikEmptyState.favorites(
+        onBrowseNotebooks: () =>
+            ref.read(dashboardFilterProvider.notifier).setFilter(0),
+      );
+    }
+
+    if (filterTab == 3) {
+      return NaikEmptyState.archive();
+    }
+
+    return NaikEmptyState.notebooks(
+      onCreateNotebook: () => _showCreateNotebookDialog(context),
+    );
   }
 
   Color _parseColor(String hex) {
@@ -974,63 +1067,14 @@ class DashboardScreen extends ConsumerWidget {
           if (filteredNotebooks.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      filterTab == 3
-                          ? Icons.archive_outlined
-                          : Icons.menu_book_rounded,
-                      size: 64,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      filterTab == 3
-                          ? 'No archived notebooks'
-                          : (notebooks.isEmpty &&
-                                searchQuery.isEmpty &&
-                                selectedFolderId == null)
-                          ? 'No notebooks yet'
-                          : 'No notebooks found in this view',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.8,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      searchQuery.isNotEmpty
-                          ? 'Try modifying your search query'
-                          : filterTab == 3
-                          ? 'Archived notebooks will appear here'
-                          : (notebooks.isEmpty && selectedFolderId == null)
-                          ? 'No notebooks yet. Create your first notebook to get started.'
-                          : 'Create a notebook or change the active folder filter',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
-                      ),
-                    ),
-                    if (filterTab != 3) ...[
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: () => _showCreateNotebookDialog(
-                          context,
-                          folderId: selectedFolderId == '__unfiled__'
-                              ? null
-                              : selectedFolderId,
-                        ),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Create Notebook'),
-                      ),
-                    ],
-                  ],
-                ),
+              child: _buildEmptyState(
+                context,
+                ref,
+                filterTab,
+                searchQuery,
+                selectedFolderId,
+                notebooks,
+                folders,
               ),
             )
           else if (isGridView)
@@ -1107,6 +1151,7 @@ class DashboardScreen extends ConsumerWidget {
                             }
                           }
                         },
+                        onExport: () => _exportNotebook(context, ref, nb),
                         onDelete: () => _confirmDelete(context, ref, nb),
                       );
                     }, childCount: filteredNotebooks.length),
@@ -1203,6 +1248,9 @@ class DashboardScreen extends ConsumerWidget {
                                         .archiveNotebook(nb.id);
                                   }
                                   break;
+                                case 'export':
+                                  _exportNotebook(context, ref, nb);
+                                  break;
                                 case 'delete':
                                   _confirmDelete(context, ref, nb);
                                   break;
@@ -1230,6 +1278,10 @@ class DashboardScreen extends ConsumerWidget {
                                 child: Text(
                                   nb.isArchived ? 'Unarchive' : 'Archive',
                                 ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'export',
+                                child: Text('Export as PDF...'),
                               ),
                               const PopupMenuDivider(),
                               const PopupMenuItem(

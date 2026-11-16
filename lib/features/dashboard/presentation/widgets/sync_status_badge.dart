@@ -17,32 +17,61 @@ class SyncStatusBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final effectiveStatus = status ?? ref.watch(syncProvider).status;
+    final syncState = ref.watch(syncProvider);
+    var effectiveStatus = status ?? syncState.status;
+    if (effectiveStatus == SyncUiStatus.synced && syncState.pendingCount > 0) {
+      effectiveStatus = SyncUiStatus.pending;
+    }
 
     Color badgeColor;
-    IconData badgeIcon;
+    Widget leadingWidget;
     String label;
 
     switch (effectiveStatus) {
       case SyncUiStatus.synced:
         badgeColor = AppColors.syncSuccess;
-        badgeIcon = Icons.cloud_done_rounded;
+        leadingWidget = Icon(
+          Icons.cloud_done_rounded,
+          size: 14,
+          color: badgeColor,
+        );
         label = 'Synced';
         break;
       case SyncUiStatus.syncing:
         badgeColor = AppColors.syncPending;
-        badgeIcon = Icons.sync_rounded;
-        label = 'Syncing...';
+        leadingWidget = SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(strokeWidth: 2, color: badgeColor),
+        );
+        label = 'Synchronizing...';
         break;
       case SyncUiStatus.offline:
         badgeColor = AppColors.syncOffline;
-        badgeIcon = Icons.cloud_off_rounded;
+        leadingWidget = Icon(
+          Icons.cloud_off_rounded,
+          size: 14,
+          color: badgeColor,
+        );
         label = 'Offline';
         break;
       case SyncUiStatus.error:
         badgeColor = AppColors.syncError;
-        badgeIcon = Icons.sync_problem_rounded;
-        label = 'Sync Error';
+        leadingWidget = Icon(
+          Icons.sync_problem_rounded,
+          size: 14,
+          color: badgeColor,
+        );
+        label = 'Sync Failed';
+        break;
+      case SyncUiStatus.pending:
+        badgeColor = Colors.amber.shade700;
+        leadingWidget = Icon(
+          Icons.cloud_upload_outlined,
+          size: 14,
+          color: badgeColor,
+        );
+        label = 'Pending Changes';
         break;
     }
 
@@ -61,7 +90,7 @@ class SyncStatusBadge extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(badgeIcon, size: 14, color: badgeColor),
+              leadingWidget,
               const SizedBox(width: 5),
               Text(
                 label,

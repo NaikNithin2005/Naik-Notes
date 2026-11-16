@@ -48,7 +48,9 @@ class AppUpdateInfo {
       latestVersion: latest,
       hasUpdate: isNewer,
       releaseNotes:
-          json['releaseNotes'] as String? ?? json['changelog'] as String? ?? 'Performance improvements, handwriting enhancements, and stability updates.',
+          json['releaseNotes'] as String? ??
+          json['changelog'] as String? ??
+          'Performance improvements, handwriting enhancements, and stability updates.',
       downloadUrl:
           json['downloadUrl'] as String? ?? json['html_url'] as String?,
       isMandatory: json['isMandatory'] as bool? ?? false,

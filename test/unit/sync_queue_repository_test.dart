@@ -58,37 +58,34 @@ void main() {
       },
     );
 
-    test(
-      'markAsSyncing and markAsSynced transitions status correctly',
-      () async {
-        final op = SyncOperation(
-          id: 'op-transition',
-          entityType: SyncEntityType.folder,
-          entityId: 'folder-1',
-          operationType: SyncOperationType.insert,
-          payload: {'name': 'College'},
-          revision: 1,
-          createdAt: DateTime.now(),
-        );
+    test('markAsSyncing and markAsSynced transitions status correctly', () async {
+      final op = SyncOperation(
+        id: 'op-transition',
+        entityType: SyncEntityType.folder,
+        entityId: 'folder-1',
+        operationType: SyncOperationType.insert,
+        payload: {'name': 'College'},
+        revision: 1,
+        createdAt: DateTime.now(),
+      );
 
-        await queueRepo.enqueue(op);
+      await queueRepo.enqueue(op);
 
-        // Transition to syncing
-        await queueRepo.markAsSyncing(['op-transition']);
-        var pending = await queueRepo.getPendingOperations();
-        // 'syncing' status is excluded from pending queue query (only 'pending' and 'failed')
-        expect(pending.isEmpty, isTrue);
+      // Transition to syncing
+      await queueRepo.markAsSyncing(['op-transition']);
+      var pending = await queueRepo.getPendingOperations();
+      // 'syncing' status is excluded from pending queue query (only 'pending' and 'failed')
+      expect(pending.isEmpty, isTrue);
 
-        // Transition to synced
-        await queueRepo.markAsSynced(['op-transition']);
-        expect(await queueRepo.getPendingCount(), equals(0));
+      // Transition to synced
+      await queueRepo.markAsSynced(['op-transition']);
+      expect(await queueRepo.getPendingCount(), equals(0));
 
-        // Clear synced
-        await queueRepo.clearSynced();
-        final allRows = await db.select(db.syncQueueTable).get();
-        expect(allRows.isEmpty, isTrue);
-      },
-    );
+      // Clear synced
+      await queueRepo.clearSynced();
+      final allRows = await db.select(db.syncQueueTable).get();
+      expect(allRows.isEmpty, isTrue);
+    });
 
     test('markAsFailed increments retryCount and records lastError', () async {
       final op = SyncOperation(

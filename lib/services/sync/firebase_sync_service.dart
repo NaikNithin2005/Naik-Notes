@@ -194,9 +194,9 @@ class FirebaseSyncService {
   /// Fetches all remote notebooks for [uid].
   Future<List<Notebook>> fetchNotebooks(String uid) async {
     try {
-      final snapshot = await _userNotebooksRef(uid)
-          .where('deletedAt', isNull: true)
-          .get();
+      final snapshot = await _userNotebooksRef(
+        uid,
+      ).where('deletedAt', isNull: true).get();
 
       final list = <Notebook>[];
       for (final doc in snapshot.docs) {

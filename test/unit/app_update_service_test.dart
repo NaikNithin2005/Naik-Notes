@@ -63,36 +63,42 @@ void main() {
       },
     );
 
-    test('returns non-blocking fallback when remote server returns error or is offline', () async {
-      final mockClient = MockClient((request) async {
-        return http.Response('Server Error', 500);
-      });
+    test(
+      'returns non-blocking fallback when remote server returns error or is offline',
+      () async {
+        final mockClient = MockClient((request) async {
+          return http.Response('Server Error', 500);
+        });
 
-      final service = AppUpdateService(client: mockClient);
-      final updateInfo = await service.checkForUpdate(
-        customEndpoint: 'https://test.naiknotes.com/version',
-      );
+        final service = AppUpdateService(client: mockClient);
+        final updateInfo = await service.checkForUpdate(
+          customEndpoint: 'https://test.naiknotes.com/version',
+        );
 
-      expect(updateInfo.hasUpdate, isFalse);
-      expect(updateInfo.currentVersion, updateInfo.latestVersion);
-      expect(updateInfo.releaseNotes, isNotEmpty);
-    });
+        expect(updateInfo.hasUpdate, isFalse);
+        expect(updateInfo.currentVersion, updateInfo.latestVersion);
+        expect(updateInfo.releaseNotes, isNotEmpty);
+      },
+    );
   });
 
   group('Riverpod Notifier State Tests', () {
-    test('AppUpdateNotifier and AutoUpdateEnabledNotifier handle state transitions', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'AppUpdateNotifier and AutoUpdateEnabledNotifier handle state transitions',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      expect(container.read(autoUpdateEnabledProvider), isTrue);
+        expect(container.read(autoUpdateEnabledProvider), isTrue);
 
-      container.read(autoUpdateEnabledProvider.notifier).toggle(false);
-      expect(container.read(autoUpdateEnabledProvider), isFalse);
+        container.read(autoUpdateEnabledProvider.notifier).toggle(false);
+        expect(container.read(autoUpdateEnabledProvider), isFalse);
 
-      final notifier = container.read(appUpdateNotifierProvider.notifier);
-      final info = await notifier.check();
-      expect(info, isNotNull);
-      expect(container.read(appUpdateNotifierProvider).value, isNotNull);
-    });
+        final notifier = container.read(appUpdateNotifierProvider.notifier);
+        final info = await notifier.check();
+        expect(info, isNotNull);
+        expect(container.read(appUpdateNotifierProvider).value, isNotNull);
+      },
+    );
   });
 }

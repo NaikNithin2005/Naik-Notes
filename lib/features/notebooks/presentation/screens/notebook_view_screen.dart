@@ -9,6 +9,7 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/data/models/search_index_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/features/canvas/data/stroke_provider.dart';
+import 'package:naik_notes/features/canvas/data/toolbar_preferences.dart';
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_canvas.dart';
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_shortcuts.dart';
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_toolbar.dart';
@@ -26,7 +27,7 @@ import 'package:naik_notes/features/notebooks/presentation/widgets/reading_mode_
 import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
 import 'package:naik_notes/features/version_history/presentation/widgets/version_history_sheet.dart';
-import 'package:naik_notes/services/pdf/pdf_service.dart';
+import '../widgets/export_notebook_dialog.dart';
 
 /// Notebook reader & writing canvas workspace.
 class NotebookViewScreen extends ConsumerStatefulWidget {
@@ -685,25 +686,12 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                         }
                         break;
                       case 'export':
-                        final pdfService = ref.read(pdfServiceProvider);
-                        final strokesState = ref.read(strokesNotifierProvider);
-                        final stickyNotesState = ref.read(stickyNotesProvider);
-                        final bytes = await pdfService.exportFlattenedPdf(
+                        ExportNotebookDialog.show(
+                          context,
                           notebook: notebook,
                           pages: pages,
-                          strokesPerPage: strokesState.pageStrokes,
-                          stickyNotesPerPage: stickyNotesState,
+                          activePage: activePage,
                         );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Flattened PDF generated (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB, ${pages.length} pages)!',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
                         break;
                     }
                   },
@@ -1060,32 +1048,17 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                   },
                 ),
 
-                // Export Flattened PDF
+                // Export Document (PDF / PNG)
                 IconButton(
                   icon: const Icon(Icons.share_outlined),
-                  tooltip: 'Export Flattened PDF',
-                  onPressed: () async {
-                    final pdfService = ref.read(pdfServiceProvider);
-                    final strokesState = ref.read(strokesNotifierProvider);
-                    final stickyNotesState = ref.read(stickyNotesProvider);
-
-                    final bytes = await pdfService.exportFlattenedPdf(
+                  tooltip: 'Export Document (PDF / PNG)',
+                  onPressed: () {
+                    ExportNotebookDialog.show(
+                      context,
                       notebook: notebook,
                       pages: pages,
-                      strokesPerPage: strokesState.pageStrokes,
-                      stickyNotesPerPage: stickyNotesState,
+                      activePage: activePage,
                     );
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Flattened PDF generated (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB, ${pages.length} pages)!',
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
                   },
                 ),
                 const SizedBox(width: 8),
@@ -1274,8 +1247,11 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                       ),
                     ),
 
-                  // Dynamic Vector Handwriting & Inking Toolbar (Hidden in Reading Mode)
-                  if (!_isReadingMode && activePage != null)
+                  // Dynamic Vector Handwriting & Inking Toolbar (Top Dock Placement)
+                  if (!_isReadingMode &&
+                      activePage != null &&
+                      ref.watch(toolbarPreferencesProvider).dockPosition !=
+                          ToolbarDockPosition.bottom)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1432,6 +1408,19 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                             ),
                           ),
                   ),
+
+                  // Dynamic Vector Handwriting & Inking Toolbar (Bottom Dock Placement)
+                  if (!_isReadingMode &&
+                      activePage != null &&
+                      ref.watch(toolbarPreferencesProvider).dockPosition ==
+                          ToolbarDockPosition.bottom)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      child: HandwritingToolbar(pageId: activePage.id),
+                    ),
 
                   // Bottom Page Navigation & Management Bar (Visible in Editing Mode)
                   if (!_isReadingMode)

@@ -68,74 +68,77 @@ void main() {
       await db.close();
     });
 
-    test('captureSnapshot snapshots current page strokes and increments version number', () async {
-      // 1. Add stroke to page
-      await strokeRepo.saveStroke(
-        Stroke(
-          id: 's-1',
-          pageId: testPageId,
-          tool: ToolType.ballpointPen,
-          colorValue: 0xFF000000,
-          width: 2.0,
-          opacity: 1.0,
-          points: const [StrokePoint(x: 10, y: 10, timestamp: 0)],
-          createdAt: DateTime.now(),
-        ),
-      );
+    test(
+      'captureSnapshot snapshots current page strokes and increments version number',
+      () async {
+        // 1. Add stroke to page
+        await strokeRepo.saveStroke(
+          Stroke(
+            id: 's-1',
+            pageId: testPageId,
+            tool: ToolType.ballpointPen,
+            colorValue: 0xFF000000,
+            width: 2.0,
+            opacity: 1.0,
+            points: const [StrokePoint(x: 10, y: 10, timestamp: 0)],
+            createdAt: DateTime.now(),
+          ),
+        );
 
-      final snap1 = await service.captureSnapshot(
-        testPageId,
-        testNotebookId,
-        label: 'Initial Notes',
-      );
-      expect(snap1.versionNumber, 1);
-      expect(snap1.label, 'Initial Notes');
-      expect(snap1.strokeCount, 1);
+        final snap1 = await service.captureSnapshot(
+          testPageId,
+          testNotebookId,
+          label: 'Initial Notes',
+        );
+        expect(snap1.versionNumber, 1);
+        expect(snap1.label, 'Initial Notes');
+        expect(snap1.strokeCount, 1);
 
-      // 2. Add sticky note and another stroke
-      await stickyRepo.saveStickyNote(
-        StickyNote(
-          id: 'sn-1',
-          pageId: testPageId,
-          x: 20,
-          y: 20,
-          content: 'Homework due Friday',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      await strokeRepo.saveStroke(
-        Stroke(
-          id: 's-2',
-          pageId: testPageId,
-          tool: ToolType.pencil,
-          colorValue: 0xFF555555,
-          width: 1.0,
-          opacity: 0.85,
-          points: const [StrokePoint(x: 20, y: 20, timestamp: 10)],
-          createdAt: DateTime.now(),
-        ),
-      );
+        // 2. Add sticky note and another stroke
+        await stickyRepo.saveStickyNote(
+          StickyNote(
+            id: 'sn-1',
+            pageId: testPageId,
+            x: 20,
+            y: 20,
+            content: 'Homework due Friday',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await strokeRepo.saveStroke(
+          Stroke(
+            id: 's-2',
+            pageId: testPageId,
+            tool: ToolType.pencil,
+            colorValue: 0xFF555555,
+            width: 1.0,
+            opacity: 0.85,
+            points: const [StrokePoint(x: 20, y: 20, timestamp: 10)],
+            createdAt: DateTime.now(),
+          ),
+        );
 
-      final snap2 = await service.captureSnapshot(
-        testPageId,
-        testNotebookId,
-        label: 'Added Sticky Note',
-      );
-      expect(snap2.versionNumber, 2);
-      expect(snap2.strokeCount, 2);
-      expect(snap2.noteCount, 1);
+        final snap2 = await service.captureSnapshot(
+          testPageId,
+          testNotebookId,
+          label: 'Added Sticky Note',
+        );
+        expect(snap2.versionNumber, 2);
+        expect(snap2.strokeCount, 2);
+        expect(snap2.noteCount, 1);
 
-      // Verify diff calculations
-      final diff = service.calculateDiff(snap1, snap2);
-      expect(diff.strokesDelta, 1);
-      expect(diff.notesDelta, 1);
-      expect(diff.summaryText, '+1 strokes, +1 notes');
+        // Verify diff calculations
+        final diff = service.calculateDiff(snap1, snap2);
+        expect(diff.strokesDelta, 1);
+        expect(diff.notesDelta, 1);
+        expect(diff.summaryText, '+1 strokes, +1 notes');
 
-      // Timeline retrieval
-      final timeline = await service.getPageTimeline(testPageId);
-      expect(timeline.length, 2);
-      expect(timeline.first.versionNumber, 2);
-    });
+        // Timeline retrieval
+        final timeline = await service.getPageTimeline(testPageId);
+        expect(timeline.length, 2);
+        expect(timeline.first.versionNumber, 2);
+      },
+    );
   });
 }

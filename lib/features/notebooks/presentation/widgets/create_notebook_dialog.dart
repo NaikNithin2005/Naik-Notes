@@ -195,10 +195,20 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                         TextFormField(
                           controller: _titleController,
                           autofocus: true,
+                          textInputAction: TextInputAction.next,
                           onChanged: (_) => setState(() {}),
                           decoration: const InputDecoration(
                             labelText: 'Notebook Title *',
                             hintText: 'e.g., Organic Chemistry, Lecture Notes',
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                            ),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -212,9 +222,19 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                         // Description Input
                         TextFormField(
                           controller: _descriptionController,
+                          textInputAction: TextInputAction.done,
                           decoration: const InputDecoration(
                             labelText: 'Description (Optional)',
                             hintText: 'Subject, professor, semester or tags',
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -305,21 +325,21 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                         // Live Cover Card Miniature Preview
                         Center(
                           child: Container(
-                            width: 140,
-                            height: 185,
+                            width: 150,
+                            height: 200,
                             decoration: BoxDecoration(
                               color: coverColor,
                               borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(6),
-                                bottomLeft: Radius.circular(6),
-                                topRight: Radius.circular(14),
-                                bottomRight: Radius.circular(14),
+                                topLeft: Radius.circular(8),
+                                bottomLeft: Radius.circular(8),
+                                topRight: Radius.circular(16),
+                                bottomRight: Radius.circular(16),
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(2, 4),
+                                  color: Colors.black.withValues(alpha: 0.22),
+                                  blurRadius: 10,
+                                  offset: const Offset(3, 5),
                                 ),
                               ],
                             ),
@@ -329,10 +349,10 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                                   Positioned.fill(
                                     child: ClipRRect(
                                       borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(6),
-                                        bottomLeft: Radius.circular(6),
-                                        topRight: Radius.circular(14),
-                                        bottomRight: Radius.circular(14),
+                                        topLeft: Radius.circular(8),
+                                        bottomLeft: Radius.circular(8),
+                                        topRight: Radius.circular(16),
+                                        bottomRight: Radius.circular(16),
                                       ),
                                       child: Image.memory(
                                         _customCoverBytes!,
@@ -344,10 +364,10 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                                   Positioned.fill(
                                     child: ClipRRect(
                                       borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(6),
-                                        bottomLeft: Radius.circular(6),
-                                        topRight: Radius.circular(14),
-                                        bottomRight: Radius.circular(14),
+                                        topLeft: Radius.circular(8),
+                                        bottomLeft: Radius.circular(8),
+                                        topRight: Radius.circular(16),
+                                        bottomRight: Radius.circular(16),
                                       ),
                                       child: Image.file(
                                         File(_customCoverPath!),
@@ -356,41 +376,91 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                                     ),
                                   ),
 
-                                // Left Book Spine
+                                // Left Book Spine with Shadow Gradient
                                 Positioned(
                                   left: 0,
                                   top: 0,
                                   bottom: 0,
-                                  width: 16,
+                                  width: 20,
                                   child: Container(
-                                    color: Colors.black.withValues(alpha: 0.3),
+                                    decoration: BoxDecoration(
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(8),
+                                        bottomLeft: Radius.circular(8),
+                                      ),
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.35),
+                                          Colors.black.withValues(alpha: 0.15),
+                                          Colors.black.withValues(alpha: 0.0),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
 
-                                // Live Title Plate Overlay
+                                // Spine Stitch line
                                 Positioned(
-                                  left: 24,
-                                  right: 12,
-                                  bottom: 20,
+                                  left: 18,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: 1,
+                                  child: Container(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                  ),
+                                ),
+
+                                // Centered, Non-overlapping Horizontal Title Plate
+                                Positioned(
+                                  left: 28,
+                                  right: 14,
+                                  top: 65,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 6,
+                                      horizontal: 10,
+                                      vertical: 8,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.35,
-                                      ),
+                                      color:
+                                          ThemeData.estimateBrightnessForColor(
+                                                coverColor,
+                                              ) ==
+                                              Brightness.dark
+                                          ? Colors.black.withValues(alpha: 0.45)
+                                          : Colors.white.withValues(
+                                              alpha: 0.85,
+                                            ),
                                       borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color:
+                                            ThemeData.estimateBrightnessForColor(
+                                                  coverColor,
+                                                ) ==
+                                                Brightness.dark
+                                            ? const Color(
+                                                0xFFD4AF37,
+                                              ).withValues(alpha: 0.6)
+                                            : const Color(
+                                                0xFF8B5A2B,
+                                              ).withValues(alpha: 0.4),
+                                        width: 1,
+                                      ),
                                     ),
                                     child: Text(
                                       _titleController.text.trim().isEmpty
                                           ? 'Notebook Title'
                                           : _titleController.text.trim(),
-                                      maxLines: 2,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color:
+                                            ThemeData.estimateBrightnessForColor(
+                                                  coverColor,
+                                                ) ==
+                                                Brightness.dark
+                                            ? Colors.white
+                                            : const Color(0xFF1E1E1E),
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'Georgia',
@@ -404,7 +474,7 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Built-in Cover Palette Selector
+                        // Built-in Cover Palette Selector with Dynamic Contrast
                         Text(
                           'Preset Stationery Patterns',
                           style: theme.textTheme.labelMedium,
@@ -424,39 +494,50 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
                                   _customCoverBytes == null &&
                                   _customCoverPath == null;
                               final c = _parseColor(item.primaryColorHex);
+                              final isDark =
+                                  ThemeData.estimateBrightnessForColor(c) ==
+                                  Brightness.dark;
+                              final checkColor = isDark
+                                  ? Colors.white
+                                  : Colors.black87;
 
-                              return InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedCoverId = item.id;
-                                    _selectedCoverColor = item.primaryColorHex;
-                                    _customCoverBytes = null;
-                                    _customCoverPath = null;
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  width: 44,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: c,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? theme.colorScheme.primary
-                                          : Colors.black26,
-                                      width: isSelected ? 3 : 1,
+                              return Semantics(
+                                label: '${item.name} cover',
+                                selected: isSelected,
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedCoverId = item.id;
+                                      _selectedCoverColor =
+                                          item.primaryColorHex;
+                                      _customCoverBytes = null;
+                                      _customCoverPath = null;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    width: 44,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: c,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : Colors.black26,
+                                        width: isSelected ? 3 : 1,
+                                      ),
                                     ),
+                                    child: isSelected
+                                        ? Center(
+                                            child: Icon(
+                                              Icons.check_rounded,
+                                              color: checkColor,
+                                              size: 20,
+                                            ),
+                                          )
+                                        : null,
                                   ),
-                                  child: isSelected
-                                      ? const Center(
-                                          child: Icon(
-                                            Icons.check,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
-                                        )
-                                      : null,
                                 ),
                               );
                             },

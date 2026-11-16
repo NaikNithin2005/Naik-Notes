@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '437907946486',
     projectId: 'naik-notes',
     storageBucket: 'naik-notes.firebasestorage.app',
-    iosClientId: '437907946486-kl3gl5js6cku2otu7mlk8pug6dbln55q.apps.googleusercontent.com',
+    iosClientId:
+        '437907946486-kl3gl5js6cku2otu7mlk8pug6dbln55q.apps.googleusercontent.com',
     iosBundleId: 'com.naiknotes.app.naikNotes',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '437907946486',
     projectId: 'naik-notes',
     storageBucket: 'naik-notes.firebasestorage.app',
-    iosClientId: '437907946486-o9erc111oglg5c9grvnsr9pthaqbk8q6.apps.googleusercontent.com',
+    iosClientId:
+        '437907946486-o9erc111oglg5c9grvnsr9pthaqbk8q6.apps.googleusercontent.com',
     iosBundleId: 'com.naiknotes.naikNotes',
   );
 

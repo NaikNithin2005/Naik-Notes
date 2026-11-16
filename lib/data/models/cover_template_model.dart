@@ -5,7 +5,8 @@ class CoverTemplate {
   final String category;
   final String primaryColorHex;
   final String accentColorHex;
-  final String patternType; // 'leather' | 'linen' | 'geometric' | 'gradient' | 'floral' | 'nature' | 'minimal' | 'academic' | 'abstract'
+  final String
+  patternType; // 'leather' | 'linen' | 'geometric' | 'gradient' | 'floral' | 'nature' | 'minimal' | 'academic' | 'abstract'
   final String description;
   final String? customImagePath;
 

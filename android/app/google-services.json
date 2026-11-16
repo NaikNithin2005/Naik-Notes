@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "437907946486-9qfactgo43fg7422r877s82f20t6l42t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.naiknotes.app.naik_notes",
+            "certificate_hash": "bb420f07f90843693d54931a02a8099b46f866e7"
+          }
+        },
+        {
           "client_id": "437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com",
           "client_type": 3
         }
