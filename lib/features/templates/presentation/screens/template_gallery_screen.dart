@@ -74,6 +74,36 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
 
   IconData _iconForTemplate(PaperTemplateType type) {
     switch (type) {
+      case PaperTemplateType.mathematicsNotes:
+        return Icons.calculate_outlined;
+      case PaperTemplateType.physicsNotes:
+        return Icons.science_outlined;
+      case PaperTemplateType.chemistryNotes:
+        return Icons.biotech_outlined;
+      case PaperTemplateType.lectureNotes:
+        return Icons.menu_book_outlined;
+      case PaperTemplateType.habitTracker:
+        return Icons.check_circle_outline_rounded;
+      case PaperTemplateType.goalPlanner:
+        return Icons.flag_outlined;
+      case PaperTemplateType.sketchbook:
+        return Icons.draw_outlined;
+      case PaperTemplateType.bulletJournal:
+        return Icons.scatter_plot_outlined;
+      case PaperTemplateType.mindMapping:
+        return Icons.hub_outlined;
+      case PaperTemplateType.creativeJournal:
+        return Icons.brush_outlined;
+      case PaperTemplateType.ideaNotebook:
+        return Icons.lightbulb_outline;
+      case PaperTemplateType.projectPlanner:
+        return Icons.assignment_outlined;
+      case PaperTemplateType.researchJournal:
+        return Icons.auto_stories_outlined;
+      case PaperTemplateType.businessNotes:
+        return Icons.business_center_outlined;
+      case PaperTemplateType.projectDocumentation:
+        return Icons.integration_instructions_outlined;
       case PaperTemplateType.blankPaper:
         return Icons.crop_portrait_outlined;
       case PaperTemplateType.narrowRuled:

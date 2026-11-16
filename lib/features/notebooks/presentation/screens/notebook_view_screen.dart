@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import 'package:naik_notes/core/presentation/responsive_layout.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
+import 'package:naik_notes/data/models/page_model.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/data/models/search_index_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
@@ -20,6 +22,7 @@ import 'package:naik_notes/features/pdf/presentation/widgets/pdf_document_search
 import 'package:naik_notes/features/pdf/presentation/widgets/pdf_thumbnail_sidebar.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/sticky_note_widget.dart';
 import 'package:naik_notes/features/search/data/search_provider.dart';
+import 'package:naik_notes/features/notebooks/presentation/widgets/reading_mode_page_flip_view.dart';
 import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
 import 'package:naik_notes/features/version_history/presentation/widgets/version_history_sheet.dart';
@@ -40,42 +43,55 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   bool _showSearch = false;
   bool _showAudioBar = false;
   bool _isContinuousScroll = false;
+  bool _isReadingMode = false;
   String _searchQuery = '';
   int _activeMatchIndex = 0;
   late final TransformationController _transformationController =
       TransformationController();
+  final ScrollController _continuousScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final notebooks = ref.read(notebooksProvider);
-      final nb = notebooks.firstWhere(
-        (n) => n.id == widget.notebookId,
-        orElse: () => notebooks.first,
-      );
-      ref
-          .read(notebookPagesProvider.notifier)
-          .loadPages(
-            widget.notebookId,
-            templateId: nb.paperTemplateId,
-            pageSize: nb.pageSize,
-            orientation: nb.orientation,
-            count: nb.pageCount,
-          )
-          .then((_) {
-            final loaded =
-                ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
-            for (final p in loaded) {
-              ref.read(stickyNotesProvider.notifier).loadStickyNotes(p.id);
-            }
-          });
+      final nb = notebooks.where((n) => n.id == widget.notebookId).firstOrNull;
+      if (nb != null) {
+        ref
+            .read(notebookPagesProvider.notifier)
+            .loadPages(
+              widget.notebookId,
+              templateId: nb.paperTemplateId,
+              pageSize: nb.pageSize,
+              orientation: nb.orientation,
+              count: nb.pageCount,
+            )
+            .then((_) {
+              final loaded =
+                  ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+              for (final p in loaded) {
+                ref.read(stickyNotesProvider.notifier).loadStickyNotes(p.id);
+              }
+            });
+      } else {
+        ref
+            .read(notebookPagesProvider.notifier)
+            .loadPages(widget.notebookId, count: 1)
+            .then((_) {
+              final loaded =
+                  ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+              for (final p in loaded) {
+                ref.read(stickyNotesProvider.notifier).loadStickyNotes(p.id);
+              }
+            });
+      }
     });
   }
 
   @override
   void dispose() {
     _transformationController.dispose();
+    _continuousScrollController.dispose();
     super.dispose();
   }
 
@@ -146,7 +162,104 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
     );
   }
 
-  void _showAddPageDialog() {
+  void _duplicateCurrentPage(NotebookPage activePage) async {
+    final newPage = await ref
+        .read(notebookPagesProvider.notifier)
+        .duplicatePage(widget.notebookId, activePage.id);
+    if (newPage != null) {
+      final strokes =
+          ref.read(strokesNotifierProvider).pageStrokes[activePage.id] ?? [];
+      for (final s in strokes) {
+        final clonedStroke = s.copyWith(
+          id: const Uuid().v4(),
+          pageId: newPage.id,
+        );
+        await ref
+            .read(strokesNotifierProvider.notifier)
+            .addStroke(newPage.id, clonedStroke);
+      }
+      ref.read(currentPageIndexProvider.notifier).setPage(newPage.pageNumber);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Duplicated Page ${activePage.pageNumber} as Page ${newPage.pageNumber}',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _deleteCurrentPage(NotebookPage activePage, int totalPages) async {
+    if (totalPages <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot delete the only page in the notebook.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Page?'),
+        content: Text(
+          'Are you sure you want to delete Page ${activePage.pageNumber}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref
+          .read(notebookPagesProvider.notifier)
+          .deletePage(widget.notebookId, activePage.id);
+      ref
+          .read(currentPageIndexProvider.notifier)
+          .setPage((activePage.pageNumber - 1).clamp(1, totalPages - 1));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted Page ${activePage.pageNumber}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAddPageDialog({
+    String? referencePageId,
+    String initialPosition = 'end',
+  }) {
+    final pages = ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+    final currentPageIndex = ref.read(currentPageIndexProvider);
+    final clampedIndex = currentPageIndex.clamp(
+      1,
+      pages.isEmpty ? 1 : pages.length,
+    );
+    final activePage = referencePageId != null
+        ? pages.where((p) => p.id == referencePageId).firstOrNull
+        : (pages.isNotEmpty && clampedIndex <= pages.length
+              ? pages[clampedIndex - 1]
+              : null);
+
+    String selectedPosition = initialPosition;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -154,86 +267,170 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          minChildSize: 0.35,
-          maxChildSize: 0.85,
-          expand: false,
-          builder: (sheetCtx, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.65,
+              minChildSize: 0.40,
+              maxChildSize: 0.90,
+              expand: false,
+              builder: (innerCtx, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Insert New Page',
-                        style: Theme.of(sheetCtx).textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Insert New Page',
+                            style: Theme.of(sheetCtx).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.of(sheetCtx).pop(),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(sheetCtx).pop(),
+                      const SizedBox(height: 12),
+                      // Insertion Position Selector
+                      Text(
+                        'Page Placement',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: SegmentedButton<String>(
+                          segments: [
+                            const ButtonSegment<String>(
+                              value: 'end',
+                              label: Text('At End'),
+                              icon: Icon(Icons.last_page_rounded, size: 16),
+                            ),
+                            if (activePage != null)
+                              ButtonSegment<String>(
+                                value: 'before',
+                                label: Text(
+                                  'Before P.${activePage.pageNumber}',
+                                ),
+                                icon: const Icon(
+                                  Icons.arrow_upward_rounded,
+                                  size: 16,
+                                ),
+                              ),
+                            if (activePage != null)
+                              ButtonSegment<String>(
+                                value: 'after',
+                                label: Text('After P.${activePage.pageNumber}'),
+                                icon: const Icon(
+                                  Icons.arrow_downward_rounded,
+                                  size: 16,
+                                ),
+                              ),
+                          ],
+                          selected: {selectedPosition},
+                          onSelectionChanged: (newSelection) {
+                            setSheetState(
+                              () => selectedPosition = newSelection.first,
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Choose a paper template for this new page:',
+                        style: Theme.of(sheetCtx).textTheme.bodyMedium
+                            ?.copyWith(color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: ListView.separated(
+                          controller: scrollController,
+                          itemCount: PaperTemplateType.values.length,
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1),
+                          itemBuilder: (itemCtx, index) {
+                            final type = PaperTemplateType.values[index];
+                            return ListTile(
+                              title: Text(
+                                type.displayName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                type.description,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: const Icon(
+                                Icons.add_circle_outline,
+                                size: 20,
+                              ),
+                              onTap: () async {
+                                Navigator.of(sheetCtx).pop();
+                                NotebookPage newPage;
+                                String actionDescription;
+
+                                if (selectedPosition == 'before' &&
+                                    activePage != null) {
+                                  newPage = await ref
+                                      .read(notebookPagesProvider.notifier)
+                                      .insertPageBefore(
+                                        widget.notebookId,
+                                        activePage.id,
+                                        templateId: type.id,
+                                      );
+                                  actionDescription =
+                                      'Inserted Page ${newPage.pageNumber} before Page ${activePage.pageNumber}';
+                                } else if (selectedPosition == 'after' &&
+                                    activePage != null) {
+                                  newPage = await ref
+                                      .read(notebookPagesProvider.notifier)
+                                      .insertPageAfter(
+                                        widget.notebookId,
+                                        activePage.id,
+                                        templateId: type.id,
+                                      );
+                                  actionDescription =
+                                      'Inserted Page ${newPage.pageNumber} after Page ${activePage.pageNumber}';
+                                } else {
+                                  newPage = await ref
+                                      .read(notebookPagesProvider.notifier)
+                                      .addPage(
+                                        widget.notebookId,
+                                        templateId: type.id,
+                                      );
+                                  actionDescription =
+                                      'Added Page ${newPage.pageNumber} at end';
+                                }
+
+                                ref
+                                    .read(currentPageIndexProvider.notifier)
+                                    .setPage(newPage.pageNumber);
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '$actionDescription (${type.displayName})',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Choose a paper template for this new page:',
-                    style: Theme.of(sheetCtx).textTheme.bodyMedium
-                        ?.copyWith(color: Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.separated(
-                      controller: scrollController,
-                      itemCount: PaperTemplateType.values.length,
-                      separatorBuilder: (context, index) =>
-                          const Divider(height: 1),
-                      itemBuilder: (itemCtx, index) {
-                        final type = PaperTemplateType.values[index];
-                        return ListTile(
-                          title: Text(
-                            type.displayName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            type.description,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          trailing: const Icon(
-                            Icons.add_circle_outline,
-                            size: 20,
-                          ),
-                          onTap: () async {
-                            Navigator.of(sheetCtx).pop();
-                            final newPage = await ref
-                                .read(notebookPagesProvider.notifier)
-                                .addPage(
-                                  widget.notebookId,
-                                  templateId: type.id,
-                                );
-                            ref
-                                .read(currentPageIndexProvider.notifier)
-                                .setPage(newPage.pageNumber);
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Added Page ${newPage.pageNumber} (${type.displayName})',
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
@@ -245,10 +442,37 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final notebooks = ref.watch(notebooksProvider);
-    final notebook = notebooks.firstWhere(
-      (nb) => nb.id == widget.notebookId,
-      orElse: () => notebooks.first,
-    );
+    final notebook = notebooks
+        .where((nb) => nb.id == widget.notebookId)
+        .firstOrNull;
+
+    if (notebook == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Notebook'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go(RouteNames.dashboard),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text('Loading notebook...'),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Back to Library'),
+                onPressed: () => context.go(RouteNames.dashboard),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final pagesMap = ref.watch(notebookPagesProvider);
     final pages = pagesMap[widget.notebookId] ?? [];
@@ -304,7 +528,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
         : -1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E4DF),
+      backgroundColor: _isReadingMode
+          ? const Color(0xFFF3EEDC)
+          : const Color(0xFFE8E4DF),
       appBar: AppBar(
         backgroundColor: theme.colorScheme.surface,
         leading: IconButton(
@@ -339,6 +565,27 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                   tooltip: 'Page Thumbnails',
                   onPressed: () =>
                       setState(() => _showThumbnails = !_showThumbnails),
+                ),
+
+                // Reading Mode Toggle
+                IconButton(
+                  icon: Icon(
+                    _isReadingMode
+                        ? Icons.auto_stories
+                        : Icons.auto_stories_outlined,
+                  ),
+                  tooltip: _isReadingMode
+                      ? 'Exit Reading Mode'
+                      : 'Reading Mode',
+                  color: _isReadingMode ? theme.colorScheme.primary : null,
+                  onPressed: () {
+                    setState(() => _isReadingMode = !_isReadingMode);
+                    if (_isReadingMode) {
+                      ref
+                          .read(activeToolProvider.notifier)
+                          .setTool(ToolType.pan);
+                    }
+                  },
                 ),
 
                 // Undo & Redo
@@ -615,6 +862,27 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                       setState(() => _showThumbnails = !_showThumbnails),
                 ),
 
+                // Reading Mode Toggle
+                IconButton(
+                  icon: Icon(
+                    _isReadingMode
+                        ? Icons.auto_stories
+                        : Icons.auto_stories_outlined,
+                  ),
+                  tooltip: _isReadingMode
+                      ? 'Exit Reading Mode'
+                      : 'Reading Mode',
+                  color: _isReadingMode ? theme.colorScheme.primary : null,
+                  onPressed: () {
+                    setState(() => _isReadingMode = !_isReadingMode);
+                    if (_isReadingMode) {
+                      ref
+                          .read(activeToolProvider.notifier)
+                          .setTool(ToolType.pan);
+                    }
+                  },
+                ),
+
                 // Bookmark Page Toggle
                 if (activePage != null)
                   IconButton(
@@ -866,6 +1134,12 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                       .read(currentPageIndexProvider.notifier)
                       .setPage(pageIndex);
                 },
+                onInsertPage: (pageId, pos) {
+                  _showAddPageDialog(
+                    referencePageId: pageId,
+                    initialPosition: pos,
+                  );
+                },
                 onClose: () => setState(() => _showThumbnails = false),
               ),
 
@@ -952,8 +1226,56 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                       ),
                     ),
 
-                  // Dynamic Vector Handwriting & Inking Toolbar
-                  if (activePage != null)
+                  // Reading Mode Info Banner
+                  if (_isReadingMode)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0E6D2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFD8C7AB)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.auto_stories,
+                            size: 18,
+                            color: Color(0xFF5C4033),
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Reading Mode Active • Tools hidden for comfortable reading.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF5C4033),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            icon: const Icon(Icons.edit_note, size: 16),
+                            label: const Text(
+                              'Exit Reading Mode',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            onPressed: () =>
+                                setState(() => _isReadingMode = false),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Dynamic Vector Handwriting & Inking Toolbar (Hidden in Reading Mode)
+                  if (!_isReadingMode && activePage != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -962,73 +1284,90 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                       child: HandwritingToolbar(pageId: activePage.id),
                     ),
 
-                  // Workspace: Continuous Scroll vs. Interactive Single Page
+                  // Workspace: Reading Mode 3D Flip vs. Continuous Scroll vs. Interactive Single Page
                   Expanded(
                     child: activePage == null
                         ? const Center(child: CircularProgressIndicator())
+                        : _isReadingMode
+                        ? ReadingModePageFlipView(
+                            notebookId: widget.notebookId,
+                            pages: pages,
+                            initialPage: clampedIndex,
+                            onExitReadingMode: () =>
+                                setState(() => _isReadingMode = false),
+                          )
                         : _isContinuousScroll
-                        ? ListView.builder(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            itemCount: pages.length,
-                            itemBuilder: (ctx, idx) {
-                              final p = pages[idx];
-                              final pType = p.templateType;
-                              final pProps = p.properties;
-                              final stickyNotes = ref.watch(
-                                pageStickyNotesProvider(p.id),
-                              );
-                              final pMatches = allMatches
-                                  .where((m) => m.pageId == p.id)
-                                  .map((m) => m.box)
-                                  .toList();
-                              final pActiveBoxIdx =
-                                  (allMatches.isNotEmpty &&
-                                      _activeMatchIndex < allMatches.length &&
-                                      allMatches[_activeMatchIndex].pageId ==
-                                          p.id)
-                                  ? pMatches.indexOf(
-                                      allMatches[_activeMatchIndex].box,
-                                    )
-                                  : -1;
+                        ? Scrollbar(
+                            controller: _continuousScrollController,
+                            thumbVisibility: true,
+                            child: ListView.builder(
+                              controller: _continuousScrollController,
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              itemCount: pages.length,
+                              itemBuilder: (ctx, idx) {
+                                final p = pages[idx];
+                                final pType = p.templateType;
+                                final pProps = p.properties;
+                                final stickyNotes = ref.watch(
+                                  pageStickyNotesProvider(p.id),
+                                );
+                                final pMatches = allMatches
+                                    .where((m) => m.pageId == p.id)
+                                    .map((m) => m.box)
+                                    .toList();
+                                final pActiveBoxIdx =
+                                    (allMatches.isNotEmpty &&
+                                        _activeMatchIndex < allMatches.length &&
+                                        allMatches[_activeMatchIndex].pageId ==
+                                            p.id)
+                                    ? pMatches.indexOf(
+                                        allMatches[_activeMatchIndex].box,
+                                      )
+                                    : -1;
 
-                              return Center(
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 24),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.15,
+                                return Center(
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 24),
+                                    decoration: BoxDecoration(
+                                      color: _isReadingMode
+                                          ? const Color(0xFFFFFDF5)
+                                          : Colors.white,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 4),
                                         ),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        HandwritingCanvas(
+                                          pageId: p.id,
+                                          type: pType,
+                                          properties: pProps,
+                                          width: p.width,
+                                          height: p.height,
+                                          searchMatches: pMatches,
+                                          activeSearchIndex: pActiveBoxIdx,
+                                          readOnly:
+                                              _isReadingMode ||
+                                              ref.watch(activeToolProvider) ==
+                                                  ToolType.pan,
+                                        ),
+                                        ...stickyNotes.map(
+                                          (note) =>
+                                              StickyNoteWidget(note: note),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      HandwritingCanvas(
-                                        pageId: p.id,
-                                        type: pType,
-                                        properties: pProps,
-                                        width: p.width,
-                                        height: p.height,
-                                        searchMatches: pMatches,
-                                        activeSearchIndex: pActiveBoxIdx,
-                                        readOnly:
-                                            ref.watch(activeToolProvider) ==
-                                            ToolType.pan,
-                                      ),
-                                      ...stickyNotes.map(
-                                        (note) => StickyNoteWidget(note: note),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           )
                         : InteractiveViewer(
                             transformationController: _transformationController,
@@ -1036,6 +1375,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                             maxScale: 3.5,
                             boundaryMargin: const EdgeInsets.all(80),
                             panEnabled:
+                                _isReadingMode ||
                                 ref.watch(activeToolProvider) == ToolType.pan ||
                                 ref.watch(stylusOnlyModeProvider),
                             scaleEnabled: true,
@@ -1046,7 +1386,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                                 ),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: _isReadingMode
+                                        ? const Color(0xFFFFFDF5)
+                                        : Colors.white,
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(
@@ -1069,8 +1411,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                                         searchMatches: activeBoxesOnCurrentPage,
                                         activeSearchIndex: activeBoxIndexInPage,
                                         readOnly:
+                                            _isReadingMode ||
                                             ref.watch(activeToolProvider) ==
-                                            ToolType.pan,
+                                                ToolType.pan,
                                       ),
                                       ...ref
                                           .watch(
@@ -1090,110 +1433,180 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                           ),
                   ),
 
-                  // Bottom Page Navigation Bar
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, -2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Previous Page Button
-                        IconButton.filledTonal(
-                          icon: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            size: 16,
+                  // Bottom Page Navigation & Management Bar (Visible in Editing Mode)
+                  if (!_isReadingMode)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, -2),
                           ),
-                          tooltip: 'Previous Page',
-                          onPressed: clampedIndex > 1
-                              ? () {
-                                  ref
-                                      .read(currentPageIndexProvider.notifier)
-                                      .prevPage();
-                                }
-                              : null,
-                        ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              // Previous Page Button
+                              IconButton.filledTonal(
+                                icon: const Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  size: 16,
+                                ),
+                                tooltip: 'Previous Page',
+                                onPressed: clampedIndex > 1
+                                    ? () {
+                                        ref
+                                            .read(
+                                              currentPageIndexProvider.notifier,
+                                            )
+                                            .prevPage();
+                                      }
+                                    : null,
+                              ),
+                              const SizedBox(width: 8),
 
-                        // Page indicator & Template summary
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Page $clampedIndex / ${pages.isEmpty ? 1 : pages.length}',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                activeType.displayName,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onPrimaryContainer,
+                              // Page indicator & Template summary (Tap for overview / reorder)
+                              Tooltip(
+                                message:
+                                    'Tap to view thumbnails & reorder pages',
+                                child: InkWell(
+                                  onTap: () => setState(
+                                    () => _showThumbnails = !_showThumbnails,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 4,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Page $clampedIndex / ${pages.isEmpty ? 1 : pages.length}',
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: theme
+                                                .colorScheme
+                                                .primaryContainer,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            activeType.displayName,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: theme
+                                                  .colorScheme
+                                                  .onPrimaryContainer,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.view_sidebar_rounded,
+                                          size: 14,
+                                          color: theme
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                              const SizedBox(width: 8),
 
-                        // Next Page & Add Page Buttons
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton.filledTonal(
-                              icon: const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 16,
+                              // Next Page Button
+                              IconButton.filledTonal(
+                                icon: const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 16,
+                                ),
+                                tooltip: 'Next Page',
+                                onPressed: clampedIndex < pages.length
+                                    ? () {
+                                        ref
+                                            .read(
+                                              currentPageIndexProvider.notifier,
+                                            )
+                                            .nextPage(pages.length);
+                                      }
+                                    : null,
                               ),
-                              tooltip: 'Next Page',
-                              onPressed: clampedIndex < pages.length
-                                  ? () {
-                                      ref
-                                          .read(
-                                            currentPageIndexProvider.notifier,
-                                          )
-                                          .nextPage(pages.length);
-                                    }
-                                  : null,
-                            ),
-                            const SizedBox(width: 8),
-                            FilledButton.icon(
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('Add Page'),
-                              onPressed: _showAddPageDialog,
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
+                              const SizedBox(width: 16),
+
+                              // Duplicate Current Page
+                              if (activePage != null)
+                                IconButton.outlined(
+                                  icon: const Icon(
+                                    Icons.copy_rounded,
+                                    size: 16,
+                                  ),
+                                  tooltip: 'Duplicate Current Page',
+                                  onPressed: () =>
+                                      _duplicateCurrentPage(activePage),
+                                ),
+                              const SizedBox(width: 6),
+
+                              // Delete Current Page
+                              if (activePage != null)
+                                IconButton.outlined(
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 16,
+                                  ),
+                                  tooltip: 'Delete Current Page',
+                                  onPressed: pages.length > 1
+                                      ? () => _deleteCurrentPage(
+                                          activePage,
+                                          pages.length,
+                                        )
+                                      : null,
+                                ),
+                              const SizedBox(width: 12),
+
+                              // Add Page Button
+                              FilledButton.icon(
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('Add Page'),
+                                onPressed: _showAddPageDialog,
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

@@ -29,6 +29,7 @@ class NotebooksTable extends Table {
       text().withDefault(const Constant('classic_leather'))();
   TextColumn get coverColorHex =>
       text().withDefault(const Constant('#8B4513'))();
+  TextColumn get coverImageUrl => text().nullable()();
   TextColumn get paperTemplateId =>
       text().withDefault(const Constant('college_ruled'))();
   TextColumn get orientation =>
@@ -262,7 +263,19 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (Migrator m) async {
+      await m.createAll();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 10) {
+        await m.addColumn(notebooksTable, notebooksTable.coverImageUrl);
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'naik_notes_local');

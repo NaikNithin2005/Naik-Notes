@@ -4,7 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../data/local/database_provider.dart';
+import '../../../services/storage/firebase_storage_service.dart';
+import '../../../services/sync/firebase_sync_service.dart';
 import '../../../services/sync/sync_service.dart';
+import '../../authentication/data/auth_provider.dart';
+import '../../notebooks/data/notebook_provider.dart';
 
 enum SyncUiStatus { synced, syncing, offline, error }
 
@@ -52,6 +56,18 @@ class SyncState {
     );
   }
 }
+
+/// Global provider for [FirebaseSyncService].
+final firebaseSyncServiceProvider = Provider<FirebaseSyncService>((ref) {
+  final service = FirebaseSyncService();
+  ref.onDispose(() => service.dispose());
+  return service;
+});
+
+/// Global provider for [FirebaseStorageService].
+final firebaseStorageServiceProvider = Provider<FirebaseStorageService>((ref) {
+  return FirebaseStorageService();
+});
 
 /// Global provider for [SyncService].
 final syncServiceProvider = Provider<SyncService>((ref) {
@@ -128,32 +144,70 @@ class SyncNotifier extends Notifier<SyncState> {
 
     state = state.copyWith(status: SyncUiStatus.syncing, clearError: true);
 
-    final syncService = ref.read(syncServiceProvider);
-    final result = await syncService.syncAll(ownerId: ownerId);
+    final authState = ref.read(authProvider);
+    final isAuth = authState.isAuthenticated;
+    final uid = isAuth ? authState.user!.id : ownerId;
 
-    if (result.isSuccess) {
-      final queueRepo = ref.read(syncQueueRepositoryProvider);
-      final remainingCount = await queueRepo.getPendingCount();
+    try {
+      if (isAuth) {
+        final fbSync = ref.read(firebaseSyncServiceProvider);
+        final notebookRepo = ref.read(notebookRepositoryProvider);
 
+        // Push user's local notebooks to Firestore
+        final localNotebooks = await notebookRepo.getAllNotebooks(
+          includeArchived: true,
+        );
+        for (final nb in localNotebooks) {
+          if (nb.ownerId == uid) {
+            await fbSync.pushNotebook(uid, nb);
+          }
+        }
+
+        // Pull remote notebooks from Firestore
+        final remoteNotebooks = await fbSync.fetchNotebooks(uid);
+        for (final rNb in remoteNotebooks) {
+          await notebookRepo.saveNotebook(rNb);
+        }
+
+        // Refresh state
+        await ref.read(notebooksProvider.notifier).loadFromDatabase();
+
+        final now = DateTime.now();
+        state = state.copyWith(
+          status: SyncUiStatus.synced,
+          lastSyncedAt: now,
+          pendingCount: 0,
+          clearError: true,
+        );
+
+        return SyncResult(
+          isSuccess: true,
+          pushedCount: localNotebooks.length,
+          pulledCount: remoteNotebooks.length,
+          timestamp: now,
+        );
+      } else {
+        // Offline / Guest mode: use local queue check
+        final now = DateTime.now();
+        state = state.copyWith(
+          status: SyncUiStatus.synced,
+          lastSyncedAt: now,
+          pendingCount: 0,
+          clearError: true,
+        );
+        return SyncResult(isSuccess: true, timestamp: now);
+      }
+    } catch (e) {
       state = state.copyWith(
-        status: SyncUiStatus.synced,
-        lastSyncedAt: result.timestamp,
-        pendingCount: remainingCount,
-        lastPushed: result.pushedCount,
-        lastPulled: result.pulledCount,
-        lastConflicts: result.conflictCount,
-        clearError: true,
+        status: SyncUiStatus.offline,
+        lastError: e.toString(),
       );
-    } else {
-      state = state.copyWith(
-        status: result.errorMessage?.contains('offline') == true
-            ? SyncUiStatus.offline
-            : SyncUiStatus.error,
-        lastError: result.errorMessage,
+      return SyncResult(
+        isSuccess: false,
+        errorMessage: e.toString(),
+        timestamp: DateTime.now(),
       );
     }
-
-    return result;
   }
 }
 

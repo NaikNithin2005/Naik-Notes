@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/routing/route_names.dart';
+import '../../../../core/widgets/naik_notes_logo.dart';
 
 /// Responsive Application Shell adapting between Desktop/Tablet sidebar and Mobile bottom bar.
 class AppShell extends StatelessWidget {
@@ -13,7 +14,8 @@ class AppShell extends StatelessWidget {
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith(RouteNames.templateGallery)) return 1;
-    if (location.startsWith(RouteNames.settings)) return 2;
+    if (location.startsWith(RouteNames.profile)) return 2;
+    if (location.startsWith(RouteNames.settings)) return 3;
     return 0; // Dashboard
   }
 
@@ -26,6 +28,9 @@ class AppShell extends StatelessWidget {
         context.go(RouteNames.templateGallery);
         break;
       case 2:
+        context.go(RouteNames.profile);
+        break;
+      case 3:
         context.go(RouteNames.settings);
         break;
     }
@@ -51,30 +56,7 @@ class AppShell extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.35,
-                            ),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.draw_rounded,
-                          color: Colors.white,
-                          size: 26,
-                        ),
-                      ),
-                    ),
+                    const NaikNotesLogo(size: 38),
                     const SizedBox(height: 6),
                     Text(
                       'NAIK',
@@ -98,6 +80,11 @@ class AppShell extends StatelessWidget {
                   icon: Icon(Icons.dashboard_customize_outlined),
                   selectedIcon: Icon(Icons.dashboard_customize_rounded),
                   label: Text('Templates'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: Text('Profile'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.tune_outlined),
@@ -129,6 +116,11 @@ class AppShell extends StatelessWidget {
             icon: Icon(Icons.dashboard_customize_outlined),
             selectedIcon: Icon(Icons.dashboard_customize_rounded),
             label: 'Templates',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
           ),
           NavigationDestination(
             icon: Icon(Icons.tune_outlined),

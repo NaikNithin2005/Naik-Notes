@@ -1,155 +1,34 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-import 'app_typography.dart';
+import 'dark_theme.dart';
+import 'light_theme.dart';
+import 'reading_theme.dart';
+import 'theme_controller.dart';
 
-/// Application theme configurations (Light and Dark).
+export 'app_colors.dart';
+export 'app_typography.dart';
+export 'dark_theme.dart';
+export 'light_theme.dart';
+export 'reading_theme.dart';
+export 'theme_colors.dart';
+export 'theme_controller.dart';
+export 'theme_typography.dart';
+
+/// Central facade for application theme access in Naik Notes.
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get lightTheme {
-    const colorScheme = AppColors.lightColorScheme;
-    final textTheme = AppTypography.textTheme(colorScheme.onSurface);
+  static ThemeData get lightTheme => buildLightTheme();
+  static ThemeData get darkTheme => buildDarkTheme();
+  static ThemeData get readingTheme => buildReadingTheme();
 
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: colorScheme.surface,
-      textTheme: textTheme,
-      appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
-        elevation: 0,
-        centerTitle: false,
-        titleTextStyle: textTheme.titleLarge,
-      ),
-      cardTheme: CardThemeData(
-        color: colorScheme.surfaceContainerHighest,
-        elevation: 1.5,
-        shadowColor: colorScheme.shadow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
-        ),
-      ),
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.6,
-        ),
-        selectedIconTheme: IconThemeData(color: colorScheme.primary),
-        unselectedIconTheme: IconThemeData(
-          color: colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
-        indicatorColor: colorScheme.primaryContainer,
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: colorScheme.surfaceContainerHighest,
-        indicatorColor: colorScheme.primaryContainer,
-        elevation: 3,
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.5),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.5),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 1.8),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-      ),
-    );
-  }
-
-  static ThemeData get darkTheme {
-    const colorScheme = AppColors.darkColorScheme;
-    final textTheme = AppTypography.textTheme(colorScheme.onSurface);
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: colorScheme.surface,
-      textTheme: textTheme,
-      appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
-        elevation: 0,
-        centerTitle: false,
-        titleTextStyle: textTheme.titleLarge,
-      ),
-      cardTheme: CardThemeData(
-        color: colorScheme.surfaceContainerHighest,
-        elevation: 2,
-        shadowColor: colorScheme.shadow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
-        ),
-      ),
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.7,
-        ),
-        selectedIconTheme: IconThemeData(color: colorScheme.primary),
-        unselectedIconTheme: IconThemeData(
-          color: colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
-        indicatorColor: colorScheme.primaryContainer,
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: colorScheme.surfaceContainerHighest,
-        indicatorColor: colorScheme.primaryContainer,
-        elevation: 3,
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.4),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.4),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 1.8),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-      ),
-    );
+  /// Resolves the specific ThemeData for an [AppThemeMode].
+  static ThemeData getTheme(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.dark:
+        return buildDarkTheme();
+      case AppThemeMode.reading:
+        return buildReadingTheme();
+    }
   }
 }

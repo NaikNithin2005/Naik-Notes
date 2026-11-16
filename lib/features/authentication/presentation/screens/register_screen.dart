@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
+import 'package:naik_notes/core/widgets/naik_notes_logo.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 
-/// Registration screen with input validation and stationery aesthetic.
+/// Registration screen with input validation, stationery aesthetic,
+/// Google Sign-In, Apple Sign-In, and Phone OTP verification.
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -19,6 +21,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -41,6 +44,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (success && mounted) {
         context.go(RouteNames.dashboard);
       }
+    }
+  }
+
+  Future<void> _signUpWithGoogle() async {
+    final success = await ref.read(authProvider.notifier).signInWithGoogle();
+    if (success && mounted) {
+      context.go(RouteNames.dashboard);
+    }
+  }
+
+  Future<void> _signUpWithApple() async {
+    final success = await ref.read(authProvider.notifier).signInWithApple();
+    if (success && mounted) {
+      context.go(RouteNames.dashboard);
     }
   }
 
@@ -75,6 +92,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const Center(child: NaikNotesLogo(size: 64)),
+                      const SizedBox(height: 16),
                       Text(
                         'Join Naik Notes',
                         textAlign: TextAlign.center,
@@ -130,10 +149,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
+                        autofillHints: const [AutofillHints.name],
                         decoration: const InputDecoration(
                           labelText: 'Your Name',
-                          hintText: 'e.g. Dr. Nithin Naik',
-                          prefixIcon: Icon(Icons.person_outline_rounded),
+                          hintText: 'Jane Doe',
+                          prefixIcon: Icon(Icons.person_outline),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -148,6 +168,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
                         decoration: const InputDecoration(
                           labelText: 'Email Address',
                           hintText: 'name@example.com',
@@ -170,7 +191,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _passwordController,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
-                          labelText: 'Password (min. 6 characters)',
+                          labelText: 'Password',
                           prefixIcon: const Icon(Icons.lock_outline_rounded),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -186,7 +207,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.length < 6) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a password';
+                          }
+                          if (value.length < 6) {
                             return 'Password must be at least 6 characters';
                           }
                           return null;
@@ -197,10 +221,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       // Confirm Password input
                       TextFormField(
                         controller: _confirmPasswordController,
-                        obscureText: _obscurePassword,
-                        decoration: const InputDecoration(
+                        obscureText: _obscureConfirmPassword,
+                        decoration: InputDecoration(
                           labelText: 'Confirm Password',
-                          prefixIcon: Icon(Icons.lock_reset_rounded),
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed: () {
+                              setState(
+                                () => _obscureConfirmPassword =
+                                    !_obscureConfirmPassword,
+                              );
+                            },
+                          ),
                         ),
                         validator: (value) {
                           if (value != _passwordController.text) {
@@ -211,7 +248,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Submit Register button
+                      // Register button
                       FilledButton(
                         onPressed: authState.isLoading ? null : _submitRegister,
                         style: FilledButton.styleFrom(
@@ -236,7 +273,70 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Already have account link
+                      // Divider with OR
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'OR',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      OutlinedButton.icon(
+                        onPressed: authState.isLoading
+                            ? null
+                            : _signUpWithGoogle,
+                        icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
+                        label: const Text('Sign Up with Google'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      OutlinedButton.icon(
+                        onPressed: authState.isLoading
+                            ? null
+                            : _signUpWithApple,
+                        icon: const Icon(Icons.apple, size: 20),
+                        label: const Text('Sign Up with Apple'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      OutlinedButton.icon(
+                        onPressed: authState.isLoading
+                            ? null
+                            : () => context.push(RouteNames.phoneAuth),
+                        icon: const Icon(Icons.phone_iphone_rounded, size: 18),
+                        label: const Text('Sign Up with Phone & OTP'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Sign in navigation link
                       Wrap(
                         alignment: WrapAlignment.center,
                         crossAxisAlignment: WrapCrossAlignment.center,

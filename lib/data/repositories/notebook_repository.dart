@@ -40,6 +40,7 @@ class DriftNotebookRepository implements NotebookRepository {
       description: row.description,
       coverId: row.coverId,
       coverColorHex: row.coverColorHex,
+      coverImageUrl: row.coverImageUrl,
       paperTemplateId: row.paperTemplateId,
       orientation: row.orientation,
       pageSize: row.pageSize,
@@ -64,6 +65,7 @@ class DriftNotebookRepository implements NotebookRepository {
       description: Value(domain.description),
       coverId: Value(domain.coverId),
       coverColorHex: Value(domain.coverColorHex),
+      coverImageUrl: Value(domain.coverImageUrl),
       paperTemplateId: Value(domain.paperTemplateId),
       orientation: Value(domain.orientation),
       pageSize: Value(domain.pageSize),
@@ -232,71 +234,7 @@ class DriftNotebookRepository implements NotebookRepository {
 
   @override
   Future<void> populateDefaultSamplesIfEmpty() async {
-    final existing = await getAllNotebooks(includeArchived: true);
-    if (existing.isNotEmpty) return;
-
-    final now = DateTime.now();
-    final samples = [
-      Notebook(
-        id: 'nb-1-math',
-        ownerId: 'user-default',
-        folderId: 'folder-math-sci',
-        title: 'Advanced Mathematics & Calculus',
-        description: 'Derivatives, integrals, differential equations notes',
-        coverId: 'dark_academia_leather',
-        coverColorHex: '#1E2A38',
-        paperTemplateId: 'square_grid',
-        pageCount: 14,
-        isFavorite: true,
-        createdAt: now.subtract(const Duration(days: 4)),
-        updatedAt: now.subtract(const Duration(hours: 2)),
-      ),
-      Notebook(
-        id: 'nb-2-physics',
-        ownerId: 'user-default',
-        folderId: 'folder-math-sci',
-        title: 'Quantum Physics Lecture Notes',
-        description: 'Lecture recordings, diagrams and formulas',
-        coverId: 'academic_navy',
-        coverColorHex: '#1B365D',
-        paperTemplateId: 'cornell_notes',
-        pageCount: 28,
-        isFavorite: true,
-        createdAt: now.subtract(const Duration(days: 8)),
-        updatedAt: now.subtract(const Duration(hours: 5)),
-      ),
-      Notebook(
-        id: 'nb-3-planner',
-        ownerId: 'user-default',
-        folderId: 'folder-research',
-        title: '2026 Academic & Research Planner',
-        description: 'Weekly goals, exam schedules and project milestones',
-        coverId: 'pastel_sage',
-        coverColorHex: '#8A9E8E',
-        paperTemplateId: 'weekly_planner',
-        pageCount: 52,
-        isFavorite: false,
-        createdAt: now.subtract(const Duration(days: 15)),
-        updatedAt: now.subtract(const Duration(days: 1)),
-      ),
-      Notebook(
-        id: 'nb-4-ideas',
-        ownerId: 'user-default',
-        folderId: 'folder-personal',
-        title: 'Creative Sketches & Journal',
-        description: 'Freehand mind maps, thoughts and sketches',
-        coverId: 'nature_earth',
-        coverColorHex: '#9E4731',
-        paperTemplateId: 'dotted_paper',
-        pageCount: 9,
-        isFavorite: false,
-        createdAt: now.subtract(const Duration(days: 20)),
-        updatedAt: now.subtract(const Duration(days: 3)),
-      ),
-    ];
-
-    for (final sample in samples) {
-      await saveNotebook(sample);
-    }
+    // Production requirement: No hardcoded demo notebooks are populated.
+    // The notebook library starts clean and empty.
   }
 }

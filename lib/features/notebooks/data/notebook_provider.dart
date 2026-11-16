@@ -7,6 +7,8 @@ import '../../../data/models/sync_operation_model.dart';
 import '../../../data/repositories/notebook_repository.dart';
 import '../../sync/data/sync_provider.dart';
 
+import '../../authentication/data/auth_provider.dart';
+
 /// State notifier managing the reactive list of notebooks, backed by Drift SQLite.
 class NotebooksNotifier extends Notifier<List<Notebook>> {
   final _uuid = const Uuid();
@@ -15,86 +17,20 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
   @override
   List<Notebook> build() {
     _repository = ref.watch(notebookRepositoryProvider);
-    return _initialSampleNotebooks();
+    Future.microtask(() => loadFromDatabase());
+    return const [];
   }
 
   Future<void> loadFromDatabase() async {
-    await _repository.populateDefaultSamplesIfEmpty();
     final dbNotebooks = await _repository.getAllNotebooks(
       includeArchived: true,
     );
-    if (dbNotebooks.isNotEmpty) {
+    if (ref.mounted) {
       state = dbNotebooks;
     }
   }
 
   Future<void> loadNotebooks() => loadFromDatabase();
-
-  List<Notebook> _initialSampleNotebooks() {
-    final now = DateTime.now();
-    return [
-      Notebook(
-        id: 'nb-1-math',
-        ownerId: 'user-default',
-        folderId: 'folder-math-sci',
-        title: 'Advanced Mathematics & Calculus',
-        description: 'Derivatives, integrals, differential equations notes',
-        coverId: 'dark_academia_leather',
-        coverColorHex: '#1E2A38',
-        paperTemplateId: 'square_grid',
-        pageCount: 14,
-        isFavorite: true,
-        isArchived: false,
-        createdAt: now.subtract(const Duration(days: 4)),
-        updatedAt: now.subtract(const Duration(hours: 2)),
-      ),
-      Notebook(
-        id: 'nb-2-physics',
-        ownerId: 'user-default',
-        folderId: 'folder-math-sci',
-        title: 'Quantum Physics Lecture Notes',
-        description: 'Lecture recordings, diagrams and formulas',
-        coverId: 'academic_navy',
-        coverColorHex: '#1B365D',
-        paperTemplateId: 'cornell_notes',
-        pageCount: 28,
-        isFavorite: true,
-        isArchived: false,
-        createdAt: now.subtract(const Duration(days: 8)),
-        updatedAt: now.subtract(const Duration(hours: 5)),
-      ),
-      Notebook(
-        id: 'nb-3-planner',
-        ownerId: 'user-default',
-        folderId: 'folder-research',
-        title: '2026 Academic & Research Planner',
-        description: 'Weekly goals, exam schedules and project milestones',
-        coverId: 'pastel_sage',
-        coverColorHex: '#8A9E8E',
-        paperTemplateId: 'weekly_planner',
-        pageCount: 52,
-        isFavorite: false,
-        isArchived: false,
-        createdAt: now.subtract(const Duration(days: 15)),
-        updatedAt: now.subtract(const Duration(days: 1)),
-      ),
-      Notebook(
-        id: 'nb-4-ideas',
-        ownerId: 'user-default',
-        folderId: 'folder-personal',
-        title: 'Creative Sketches & Journal',
-        description: 'Freehand mind maps, thoughts and sketches',
-        coverId: 'nature_earth',
-        coverColorHex: '#9E4731',
-        paperTemplateId: 'dotted_paper',
-        pageCount: 9,
-        isFavorite: false,
-        isArchived: false,
-        createdAt: now.subtract(const Duration(days: 20)),
-        updatedAt: now.subtract(const Duration(days: 3)),
-      ),
-    ];
-  }
 
   Future<Notebook> addNotebook({
     required String title,
@@ -102,19 +38,22 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     String? folderId,
     required String coverId,
     required String coverColorHex,
+    String? coverImageUrl,
     required String paperTemplateId,
     String orientation = 'portrait',
     String pageSize = 'A4',
   }) async {
     final now = DateTime.now();
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
     final newNotebook = Notebook(
       id: _uuid.v4(),
-      ownerId: 'user-default',
+      ownerId: currentUserId,
       folderId: folderId,
       title: title,
       description: description,
       coverId: coverId,
       coverColorHex: coverColorHex,
+      coverImageUrl: coverImageUrl,
       paperTemplateId: paperTemplateId,
       orientation: orientation,
       pageSize: pageSize,
@@ -248,6 +187,40 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           .read(syncServiceProvider)
           .enqueueNotebookMutation(nb, SyncOperationType.update);
     } catch (_) {}
+  }
+
+  Future<void> updateCover(
+    String notebookId, {
+    String? coverId,
+    String? coverColorHex,
+    String? coverImageUrl,
+  }) async {
+    Notebook? updatedNb;
+    state = [
+      for (final nb in state)
+        if (nb.id == notebookId) ...[
+          () {
+            final updated = nb.copyWith(
+              coverId: coverId ?? nb.coverId,
+              coverColorHex: coverColorHex ?? nb.coverColorHex,
+              coverImageUrl: coverImageUrl ?? nb.coverImageUrl,
+              updatedAt: DateTime.now(),
+              revision: nb.revision + 1,
+            );
+            updatedNb = updated;
+            return updated;
+          }(),
+        ] else
+          nb,
+    ];
+    if (updatedNb != null) {
+      await _repository.saveNotebook(updatedNb!);
+      try {
+        await ref
+            .read(syncServiceProvider)
+            .enqueueNotebookMutation(updatedNb!, SyncOperationType.update);
+      } catch (_) {}
+    }
   }
 
   Future<void> deleteNotebook(String notebookId) async {

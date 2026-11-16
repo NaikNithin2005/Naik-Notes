@@ -10,7 +10,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('NotebooksNotifier Tests', () {
-    test('initializes with default sample notebooks', () async {
+    test('initializes with clean empty library in production', () async {
       final db = AppDatabase(NativeDatabase.memory());
       final repo = DriftNotebookRepository(db);
       final container = ProviderContainer(
@@ -21,8 +21,7 @@ void main() {
       );
 
       final notebooks = container.read(notebooksProvider);
-      expect(notebooks.isNotEmpty, true);
-      expect(notebooks.any((nb) => nb.title.contains('Mathematics')), true);
+      expect(notebooks.isEmpty, true);
 
       container.dispose();
       await db.close();
@@ -39,7 +38,6 @@ void main() {
       );
 
       final notifier = container.read(notebooksProvider.notifier);
-      final initialCount = container.read(notebooksProvider).length;
 
       await notifier.addNotebook(
         title: 'Biology 101',
@@ -50,7 +48,7 @@ void main() {
       );
 
       final updatedList = container.read(notebooksProvider);
-      expect(updatedList.length, initialCount + 1);
+      expect(updatedList.length, 1);
       expect(updatedList.first.title, 'Biology 101');
       expect(updatedList.first.coverId, 'minimal_sage');
 
@@ -69,14 +67,20 @@ void main() {
       );
 
       final notifier = container.read(notebooksProvider.notifier);
-      final firstNotebook = container.read(notebooksProvider).first;
-      final originalFav = firstNotebook.isFavorite;
+      final created = await notifier.addNotebook(
+        title: 'Chemistry',
+        description: 'Organic chemistry',
+        coverId: 'classic_leather',
+        coverColorHex: '#8B4513',
+        paperTemplateId: 'college_ruled',
+      );
+      final originalFav = created.isFavorite;
 
-      await notifier.toggleFavorite(firstNotebook.id);
+      await notifier.toggleFavorite(created.id);
 
       final updated = container
           .read(notebooksProvider)
-          .firstWhere((nb) => nb.id == firstNotebook.id);
+          .firstWhere((nb) => nb.id == created.id);
       expect(updated.isFavorite, !originalFav);
 
       container.dispose();
@@ -94,13 +98,19 @@ void main() {
       );
 
       final notifier = container.read(notebooksProvider.notifier);
-      final target = container.read(notebooksProvider).first;
+      final created = await notifier.addNotebook(
+        title: 'Draft Notes',
+        description: 'Temporary',
+        coverId: 'classic_leather',
+        coverColorHex: '#8B4513',
+        paperTemplateId: 'college_ruled',
+      );
 
-      await notifier.deleteNotebook(target.id);
+      await notifier.deleteNotebook(created.id);
 
       final exists = container
           .read(notebooksProvider)
-          .any((nb) => nb.id == target.id);
+          .any((nb) => nb.id == created.id);
       expect(exists, false);
 
       container.dispose();

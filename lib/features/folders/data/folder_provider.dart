@@ -15,45 +15,26 @@ class FoldersNotifier extends Notifier<List<Folder>> {
   @override
   List<Folder> build() {
     _repository = ref.watch(folderRepositoryProvider);
-    return _initialSampleFolders();
+    _loadInitial();
+    return [];
   }
 
-  List<Folder> _initialSampleFolders() {
-    final now = DateTime.now();
-    return [
-      Folder(
-        id: 'folder-math-sci',
-        ownerId: 'user-default',
-        name: 'Mathematics & Science',
-        colorHex: '#1E2A38',
-        createdAt: now.subtract(const Duration(days: 10)),
-        updatedAt: now.subtract(const Duration(days: 10)),
-      ),
-      Folder(
-        id: 'folder-personal',
-        ownerId: 'user-default',
-        name: 'Personal & Journal',
-        colorHex: '#8B4513',
-        createdAt: now.subtract(const Duration(days: 8)),
-        updatedAt: now.subtract(const Duration(days: 8)),
-      ),
-      Folder(
-        id: 'folder-research',
-        ownerId: 'user-default',
-        name: 'Research & Planning',
-        colorHex: '#4A6B53',
-        createdAt: now.subtract(const Duration(days: 6)),
-        updatedAt: now.subtract(const Duration(days: 6)),
-      ),
-    ];
+  void _loadInitial() {
+    _repository.getAllFolders().then((dbFolders) {
+      if (dbFolders.isNotEmpty) {
+        state = dbFolders;
+      }
+    });
+  }
+
+  Future<void> loadFolders() async {
+    final dbFolders = await _repository.getAllFolders();
+    state = dbFolders;
   }
 
   Future<void> loadFromDatabase() async {
-    await _repository.populateDefaultSampleFoldersIfEmpty();
     final dbFolders = await _repository.getAllFolders();
-    if (dbFolders.isNotEmpty) {
-      state = dbFolders;
-    }
+    state = dbFolders;
   }
 
   Future<Folder> createFolder({

@@ -45,9 +45,12 @@ class StrokePainter extends CustomPainter {
       canvas.restore();
     }
 
-    // Pass 2: Render standard ink strokes (ballpoint, fountain, brush, pencil, shape)
+    // Pass 2: Render standard ink strokes (ballpoint, fountain, brush, pencil, marker, shape)
     for (final s in standardStrokes) {
       final rendered = _builder.build(s);
+      if (rendered.fillPath != null && rendered.fillPaint != null) {
+        canvas.drawPath(rendered.fillPath!, rendered.fillPaint!);
+      }
       canvas.drawPath(rendered.path, rendered.paint);
     }
   }

@@ -151,13 +151,10 @@ void main() {
       expect(postDelete!.folderId, isNull);
     });
 
-    test('populates default sample folders when empty', () async {
+    test('does not populate demo folders in production when empty', () async {
       await folderRepo.populateDefaultSampleFoldersIfEmpty();
       final folders = await folderRepo.getAllFolders();
-      expect(folders.length, 3);
-      expect(folders.any((f) => f.name == 'Mathematics & Science'), true);
-      expect(folders.any((f) => f.name == 'Personal & Journal'), true);
-      expect(folders.any((f) => f.name == 'Research & Planning'), true);
+      expect(folders.isEmpty, true);
     });
   });
 }

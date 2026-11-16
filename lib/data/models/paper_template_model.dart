@@ -1,114 +1,214 @@
 import 'dart:convert';
 
-/// Complete catalog of all 19 supported paper template types in Naik Notes.
+/// Complete catalog of supported paper template types in Naik Notes.
+/// Features 20 distinct templates across Academic, Productivity, Creative, and Professional categories.
 enum PaperTemplateType {
-  blankPaper(
-    'blank_paper',
-    'Blank Paper',
-    'Clean canvas for freehand thinking',
-    'Blank & Plain',
+  // --- Academic (5) ---
+  mathematicsNotes(
+    'mathematics_notes',
+    'Mathematics Notes',
+    'Coordinate grid with formula margin and calculation zone',
+    'Academic',
   ),
-  narrowRuled(
-    'narrow_ruled',
-    'Narrow Ruled',
-    '6.35mm compact line ruling for dense note-taking',
-    'Ruled & Lined',
+  physicsNotes(
+    'physics_notes',
+    'Physics Notes',
+    'Graph layout with vector diagram box and laboratory constants column',
+    'Academic',
   ),
-  collegeRuled(
-    'college_ruled',
-    'College Ruled',
-    '7.1mm standard university line ruling',
-    'Ruled & Lined',
-  ),
-  wideRuled(
-    'wide_ruled',
-    'Wide Ruled',
-    '8.7mm spacious line ruling for larger handwriting',
-    'Ruled & Lined',
-  ),
-  dottedPaper(
-    'dotted_paper',
-    'Dotted Paper',
-    '5mm dot grid matrix for bullet journaling',
-    'Grids & Technical',
-  ),
-  squareGrid(
-    'square_grid',
-    'Square Grid',
-    '5mm quad grid for math, diagrams and tables',
-    'Grids & Technical',
-  ),
-  graphPaper(
-    'graph_paper',
-    'Graph Paper',
-    'Precision 1mm minor lines with 5mm major grid',
-    'Grids & Technical',
+  chemistryNotes(
+    'chemistry_notes',
+    'Chemistry Notes',
+    'Hexagonal molecular lattice grid with reaction equation rows',
+    'Academic',
   ),
   cornellNotes(
     'cornell_notes',
     'Cornell Notes',
-    'Classic system with left cue column & bottom summary',
-    'Academic & Productivity',
+    'Classic system with left cue column, note taking area, & bottom summary',
+    'Academic',
   ),
-  meetingNotes(
-    'meeting_notes',
-    'Meeting Notes',
-    'Structured headers, agenda, attendees and action items',
-    'Academic & Productivity',
+  lectureNotes(
+    'lecture_notes',
+    'Lecture Notes',
+    'Header block with topic, date, key takeaways, and split note columns',
+    'Academic',
   ),
+
+  // --- Productivity (5) ---
   dailyPlanner(
     'daily_planner',
     'Daily Planner',
-    'Hourly schedule timetable, priorities and to-dos',
-    'Planners & Organizers',
+    'Hourly schedule timetable, priorities, and to-do checklist',
+    'Productivity',
   ),
   weeklyPlanner(
     'weekly_planner',
     'Weekly Planner',
     '7-day overview with weekly goals and tasks',
-    'Planners & Organizers',
+    'Productivity',
   ),
   monthlyPlanner(
     'monthly_planner',
     'Monthly Planner',
     'Full monthly calendar grid with notes sidebar',
-    'Planners & Organizers',
+    'Productivity',
+  ),
+  habitTracker(
+    'habit_tracker',
+    'Habit Tracker',
+    '31-day habit checklist matrix for daily habit tracking',
+    'Productivity',
+  ),
+  goalPlanner(
+    'goal_planner',
+    'Goal Planner',
+    'Milestones, action items, target deadlines, and progress bars',
+    'Productivity',
+  ),
+
+  // --- Creative (5) ---
+  sketchbook(
+    'sketchbook',
+    'Sketchbook',
+    'Unbounded artistic frame with subtle border margin and drawing guides',
+    'Creative',
+  ),
+  bulletJournal(
+    'bullet_journal',
+    'Bullet Journal',
+    '5mm dot grid matrix with key index legend',
+    'Creative',
+  ),
+  mindMapping(
+    'mind_mapping',
+    'Mind Mapping',
+    'Central idea node with radial branched guideline hubs',
+    'Creative',
+  ),
+  creativeJournal(
+    'creative_journal',
+    'Creative Journal',
+    'Split doodle sketch canvas with ruled reflective prose area',
+    'Creative',
+  ),
+  ideaNotebook(
+    'idea_notebook',
+    'Idea Notebook',
+    'Problem statement, concept sketch box, and execution notes',
+    'Creative',
+  ),
+
+  // --- Professional (5) ---
+  meetingNotes(
+    'meeting_notes',
+    'Meeting Notes',
+    'Structured headers, agenda, attendees, and action items table',
+    'Professional',
+  ),
+  projectPlanner(
+    'project_planner',
+    'Project Planner',
+    'Project phases, deliverables checklist, and timeline roadmap',
+    'Professional',
+  ),
+  researchJournal(
+    'research_journal',
+    'Research Journal',
+    'Hypothesis, experimental methodology, observations, and findings',
+    'Professional',
+  ),
+  businessNotes(
+    'business_notes',
+    'Business Notes',
+    'Executive summary, KPI metrics, risk analysis, and decisions',
+    'Professional',
+  ),
+  projectDocumentation(
+    'project_documentation',
+    'Project Documentation',
+    'Technical architecture spec, component diagram box, and change log',
+    'Professional',
+  ),
+
+  // --- Standard & Specialty Classics ---
+  blankPaper(
+    'blank_paper',
+    'Blank Paper',
+    'Clean canvas for freehand thinking',
+    'Classic',
+  ),
+  narrowRuled(
+    'narrow_ruled',
+    'Narrow Ruled',
+    '6.35mm compact line ruling for dense note-taking',
+    'Classic',
+  ),
+  collegeRuled(
+    'college_ruled',
+    'College Ruled',
+    '7.1mm standard university line ruling',
+    'Classic',
+  ),
+  wideRuled(
+    'wide_ruled',
+    'Wide Ruled',
+    '8.7mm spacious line ruling for larger handwriting',
+    'Classic',
+  ),
+  dottedPaper(
+    'dotted_paper',
+    'Dotted Paper',
+    '5mm dot grid matrix for bullet journaling',
+    'Classic',
+  ),
+  squareGrid(
+    'square_grid',
+    'Square Grid',
+    '5mm quad grid for math, diagrams and tables',
+    'Classic',
+  ),
+  graphPaper(
+    'graph_paper',
+    'Graph Paper',
+    'Precision 1mm minor lines with 5mm major grid',
+    'Classic',
   ),
   studyPlanner(
     'study_planner',
     'Study Planner',
     'Subject breakdown, revision checklist and exam tracking',
-    'Planners & Organizers',
+    'Productivity',
   ),
   engineeringPaper(
     'engineering_paper',
     'Engineering Paper',
     'Top title block, border margins and 5x5 grid',
-    'Grids & Technical',
+    'Classic',
   ),
   isometricPaper(
     'isometric_paper',
     'Isometric Paper',
     '60° triangular isometric grid for 3D sketching',
-    'Grids & Technical',
+    'Classic',
   ),
   musicManuscript(
     'music_manuscript',
     'Music Manuscript',
     'Standard 5-line musical staves for composition',
-    'Specialty & Creative',
+    'Specialty',
   ),
   checklist(
     'checklist',
     'Checklist',
     'Checkbox circles and ruled lines for tasks & inventories',
-    'Specialty & Creative',
+    'Specialty',
   ),
   journalPages(
     'journal_pages',
     'Journal Pages',
     'Ornate stationery border with date, weather and lined body',
-    'Specialty & Creative',
+    'Specialty',
   ),
   customTemplate(
     'custom_template',
@@ -183,6 +283,214 @@ class PaperProperties {
     String backgroundColorHex = '#FDFBF7',
   }) {
     switch (type) {
+      case PaperTemplateType.mathematicsNotes:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#D2D6DC',
+          accentColorHex: '#2563EB',
+          gridSize: 14.17,
+          marginTop: 50.0,
+          marginBottom: 40.0,
+          marginLeft: 140.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.physicsNotes:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#CBD5E1',
+          accentColorHex: '#4F46E5',
+          gridSize: 14.17,
+          marginTop: 50.0,
+          marginBottom: 40.0,
+          marginLeft: 130.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.chemistryNotes:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#CBD5E1',
+          accentColorHex: '#0D9488',
+          gridSize: 18.0,
+          marginTop: 50.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.lectureNotes:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#64748B',
+          lineSpacing: 22.0,
+          marginTop: 64.0,
+          marginBottom: 40.0,
+          marginLeft: 140.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.habitTracker:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#10B981',
+          lineSpacing: 24.0,
+          marginTop: 60.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: 'landscape',
+        );
+
+      case PaperTemplateType.goalPlanner:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#F59E0B',
+          lineSpacing: 24.0,
+          marginTop: 60.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.sketchbook:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: 'transparent',
+          accentColorHex: '#CBD5E1',
+          marginTop: 32.0,
+          marginBottom: 32.0,
+          marginLeft: 32.0,
+          marginRight: 32.0,
+          hasHeaderArea: false,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.bulletJournal:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#94A3B8',
+          gridSize: 14.17, // 5mm dot matrix
+          marginTop: 50.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.mindMapping:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#8B5CF6',
+          marginTop: 40.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: 'landscape',
+        );
+
+      case PaperTemplateType.creativeJournal:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#EC4899',
+          lineSpacing: 22.0,
+          marginTop: 50.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.ideaNotebook:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#F97316',
+          lineSpacing: 22.0,
+          marginTop: 50.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.projectPlanner:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#0284C7',
+          lineSpacing: 24.0,
+          marginTop: 60.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: 'landscape',
+        );
+
+      case PaperTemplateType.researchJournal:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#475569',
+          lineSpacing: 22.0,
+          marginTop: 56.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.businessNotes:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#0F172A',
+          lineSpacing: 22.0,
+          marginTop: 60.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
+      case PaperTemplateType.projectDocumentation:
+        return PaperProperties(
+          backgroundColorHex: backgroundColorHex,
+          lineColorHex: '#E2E8F0',
+          accentColorHex: '#2563EB',
+          lineSpacing: 20.0,
+          marginTop: 56.0,
+          marginBottom: 40.0,
+          marginLeft: 40.0,
+          marginRight: 40.0,
+          pageSize: pageSize,
+          orientation: orientation,
+        );
+
       case PaperTemplateType.blankPaper:
         return PaperProperties(
           backgroundColorHex: backgroundColorHex,

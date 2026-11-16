@@ -1,0 +1,17 @@
+Created At: 2026-11-16T16:42:31+05:30
+Completed At: 2026-11-16T16:42:32+05:30
+Created At: 2026-11-16T16:42:31+05:30
+Completed At: 2026-11-16T16:42:32+05:30
+Task: 248fff71-a0a1-4e74-ba46-d4d6d2197102/task-6259
+Status: RUNNING
+Log: file:///C:/Users/nithi/.gemini/antigravity/brain/248fff71-a0a1-4e74-ba46-d4d6d2197102/.system_generated/tasks/task-6259.log
+Log output:
+<truncated 150 lines>
+ne
+Community catalog API fallback: ClientException with SocketException: The remote computer refused the network connection (OS Error: The remote computer refused the network connection, errno = 1225), address = localhost, port = 63505, uri=http://localhost:8000/v1/templates
+00:09 +138: D:/WORKS/Naik Notes/test/unit/template_store_service_test.dart: TemplateStoreService Tests fetchCommunityCatalog returns fallback seed templates when backend is offline
+00:09 +139: D:/WORKS/Naik Notes/test/unit/template_store_service_test.dart: TemplateStoreService Tests fetchCommunityCatalog returns fallback seed templates when backend is offline
+00:09 +140: D:/WORKS/Naik Notes/test/unit/template_store_service_test.dart: TemplateStoreService Tests fetchCommunityCatalog returns fallback seed templates when backend is offline
+00:09 +141: D:/WORKS/Naik Notes/test/unit/template_store_service_test.dart: TemplateStoreService Tests fetchCommunityCatalog returns fallback seed templates when backend is offline
+
+Last progress: 0s ago

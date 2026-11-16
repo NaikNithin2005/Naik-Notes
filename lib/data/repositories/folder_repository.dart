@@ -117,39 +117,6 @@ class DriftFolderRepository implements FolderRepository {
 
   @override
   Future<void> populateDefaultSampleFoldersIfEmpty() async {
-    final existing = await getAllFolders();
-    if (existing.isNotEmpty) return;
-
-    final now = DateTime.now();
-    final defaultFolders = [
-      Folder(
-        id: 'folder-math-sci',
-        ownerId: 'user-default',
-        name: 'Mathematics & Science',
-        colorHex: '#1E2A38',
-        createdAt: now.subtract(const Duration(days: 10)),
-        updatedAt: now.subtract(const Duration(days: 10)),
-      ),
-      Folder(
-        id: 'folder-personal',
-        ownerId: 'user-default',
-        name: 'Personal & Journal',
-        colorHex: '#8B4513',
-        createdAt: now.subtract(const Duration(days: 8)),
-        updatedAt: now.subtract(const Duration(days: 8)),
-      ),
-      Folder(
-        id: 'folder-research',
-        ownerId: 'user-default',
-        name: 'Research & Planning',
-        colorHex: '#4A6B53',
-        createdAt: now.subtract(const Duration(days: 6)),
-        updatedAt: now.subtract(const Duration(days: 6)),
-      ),
-    ];
-
-    for (final folder in defaultFolders) {
-      await saveFolder(folder);
-    }
+    // Production clean slate: no hardcoded demo folders.
   }
 }

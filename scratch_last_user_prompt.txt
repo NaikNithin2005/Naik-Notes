@@ -1,0 +1,1244 @@
+<USER_REQUEST>
+# NAIK NOTES – COMPLETE PRODUCTION-LEVEL DEVELOPMENT, REPAIR AND FEATURE EXPANSION
+
+## PROJECT ROLE AND RESPONSIBILITY
+
+Act as a Senior Flutter Architect, Firebase Backend Engineer, Cross-Platform Application Developer, Digital Handwriting Engine Engineer, UI/UX Designer and Quality Assurance Engineer.
+
+You are responsible for auditing, repairing, redesigning and upgrading my existing application, Naik Notes.
+
+Naik Notes is a cross-platform digital notebook, handwriting, drawing, painting and reading application.
+
+Supported platforms:
+1. Android smartphones and tablets.
+2. Apple iPad and iPadOS.
+3. Windows desktops and laptops.
+
+The objective is to create a production-quality application with a professional writing and drawing experience inspired by the functionality and interaction quality of Adobe Fresco.
+
+Use Adobe Fresco as a reference for:
+- Natural handwriting.
+- Pen and brush behavior.
+- Tool selection.
+- Stroke customization.
+- Eraser interaction.
+- Selection behavior.
+- Canvas navigation.
+- Color filling.
+- Drawing precision.
+- Professional creative workspace organization.
+
+Do not copy Adobe's proprietary assets, branding, source code or exact interface. Develop an original Naik Notes design system with comparable functional depth.
+
+## CRITICAL IMPLEMENTATION INSTRUCTIONS
+
+Before making modifications:
+
+1. Inspect the complete existing Flutter project.
+2. Audit the current Firebase implementation.
+3. Inspect the authentication screens and authentication state management.
+4. Inspect the existing drawing engine.
+5. Inspect the current selection and eraser implementations.
+6. Inspect notebook page management.
+7. Inspect the template gallery and settings.
+8. Inspect the responsive layouts of all three platforms.
+9. Identify the actual root causes of existing issues.
+
+Do not create a new application from scratch.
+
+Do not remove existing working functionality.
+
+Do not replace working components unnecessarily.
+
+Do not add decorative buttons that have no functional implementation.
+
+Do not use mock authentication, mock synchronization or hardcoded user data.
+
+Implement the actual features, test them and document their completion.
+
+---
+
+# PHASE 1 – COMPLETE FIREBASE AUTHENTICATION REPAIR
+
+This is the highest-priority requirement.
+
+Currently, authentication is not functioning properly on Android, iPadOS and Windows.
+
+### Existing problems
+
+- Clicking Sign In causes an infinite loading animation.
+- Clicking Register causes an infinite loading animation.
+- Authentication does not complete.
+- The application does not navigate to the dashboard.
+- Authentication state is not restored reliably.
+- Different authentication methods are not implemented correctly.
+- Firebase errors are not displayed properly.
+
+Perform a complete authentication architecture audit.
+
+## 1.1 Supported authentication methods
+
+Implement the following authentication methods:
+
+A. Email and Password.
+B. Phone Number and OTP.
+C. Google Sign-In.
+D. Apple Sign-In.
+
+All authentication methods must use the same Firebase Authentication user identity system.
+
+### Email and Password
+
+Implement:
+- Registration.
+- Sign In.
+- Password visibility toggle.
+- Email validation.
+- Password validation.
+- Confirm password.
+- Forgot password.
+- Password reset email.
+- Email verification where appropriate.
+- Existing account detection.
+- Invalid credential handling.
+- Account logout.
+
+After successful registration:
+- Create the Firebase Authentication account.
+- Retrieve the UID.
+- Create the user profile in Firestore.
+- Initialize user-specific preferences.
+- Navigate to the main dashboard.
+
+Never store plaintext passwords in Firestore.
+
+### Phone Number and OTP
+
+Implement complete phone authentication.
+
+Requirements:
+- Country code selection.
+- Phone number validation.
+- Send OTP.
+- OTP entry screen.
+- OTP resend functionality.
+- Resend countdown.
+- OTP verification.
+- Incorrect OTP handling.
+- Expired OTP handling.
+- Verification loading state.
+- Successful authentication.
+
+Support appropriate Firebase phone authentication flows on each platform.
+
+For Android, handle phone verification callbacks and app verification requirements.
+
+For iOS, configure the required Firebase phone authentication settings and platform-specific verification requirements.
+
+For Windows, verify SDK compatibility and implement an appropriate supported verification flow rather than displaying a nonfunctional phone-login option.
+
+### Google Authentication
+
+Implement Google authentication using Firebase Authentication.
+
+Requirements:
+- Google account selection.
+- Successful OAuth authentication.
+- Account cancellation handling.
+- Existing account linking.
+- Error handling.
+- Correct Firebase UID mapping.
+- User profile creation or retrieval.
+
+### Apple Authentication
+
+Implement Sign in with Apple.
+
+Requirements:
+- Apple account authorization.
+- Secure OAuth credential exchange with Firebase.
+- Nonce validation where required.
+- User profile retrieval.
+- Account linking.
+- Proper handling of private relay email addresses.
+- Cancellation and failure handling.
+
+Configure Apple Developer capabilities and Firebase provider settings where required.
+
+On platforms where a native Apple sign-in implementation is unavailable, use a supported secure OAuth flow.
+
+## 1.2 Fix infinite loading
+
+This problem must be addressed at the architecture level.
+
+Do not allow an authentication request to remain in a loading state indefinitely.
+
+Implement:
+- Explicit authentication states.
+- Request timeouts where appropriate.
+- Try/catch/finally handling.
+- Error recovery.
+- Duplicate request prevention.
+- Proper disposal of loading controllers.
+- Authentication state listeners.
+- Correct navigation after authentication.
+
+Expected flow:
+
+Idle → Loading → Success → Dashboard.
+
+Failure:
+
+Idle → Loading → Error → Retry.
+
+The loading indicator must always stop when an operation finishes or fails.
+
+Do not navigate to the dashboard until Firebase confirms successful authentication and the required profile initialization is complete.
+
+Avoid duplicate Firebase authentication listeners.
+
+## 1.3 Remove Guest Mode and Offline Login Mode
+
+Remove:
+- Continue as Guest.
+- Guest Account.
+- Offline Login.
+- Guest Dashboard.
+- Guest-created notebook mode.
+- Any bypass authentication functionality.
+
+Every user must authenticate before accessing the main notebook workspace.
+
+Do not introduce anonymous Firebase authentication as a replacement.
+
+Important distinction: removing guest access does not mean destroying local caching. Authenticated users should still be able to access previously downloaded content and work offline where supported, with synchronization after reconnecting.
+
+Unauthenticated users must not be allowed to access private notebook data.
+
+---
+
+# PHASE 2 – PROFESSIONAL LANDING PAGE AND APP BRANDING
+
+Design a completely improved landing and welcome experience.
+
+## 2.1 Landing page
+
+Create a visually impressive introduction to Naik Notes.
+
+The landing page should communicate the application's purpose:
+
+"Your thoughts. Your pages. Your creativity."
+
+Include:
+
+- Application logo.
+- Application name.
+- Short introduction.
+- Animated background or subtle visual elements.
+- Writing and drawing illustrations.
+- Feature highlights.
+- Sign In.
+- Create Account.
+- Available authentication options.
+
+Create smooth and professional animations.
+
+Use subtle page transitions, fade-in effects and carefully controlled motion.
+
+Avoid excessive animation that affects performance.
+
+The landing page must adapt to:
+- Android phone.
+- Android tablet.
+- iPad.
+- Windows.
+
+## 2.2 Design an original Naik Notes logo
+
+Create a professional application logo.
+
+Design direction:
+- Minimal.
+- Premium.
+- Recognizable.
+- Related to handwriting, notebooks and creativity.
+- Suitable for application icons.
+- Suitable for splash screens.
+- Suitable for light and dark backgrounds.
+
+Develop:
+- Primary logo.
+- App icon.
+- Monochrome logo.
+- Light-background version.
+- Dark-background version.
+
+Use vector assets where possible.
+
+Create the actual logo assets and integrate them into the project.
+
+Do not use generic placeholder icons.
+
+Ensure the logo renders correctly on Android, iPadOS and Windows.
+
+---
+
+# PHASE 3 – DASHBOARD REDESIGN
+
+Completely improve the main dashboard.
+
+The current dashboard has layout problems and unnecessary interface elements.
+
+Remove the FREE label and all unnecessary free-tier promotional elements from the dashboard.
+
+Do not show an Offline Mode button as an authentication alternative.
+
+## 3.1 Dashboard sections
+
+Provide:
+
+1. Welcome and user profile area.
+2. Application logo.
+3. Search.
+4. Create New Notebook.
+5. Import PDF.
+6. Notebook library.
+7. Recent notebooks.
+8. Favorite notebooks.
+9. Notebook folders.
+10. Template Store.
+11. Profile tab.
+12. Settings.
+
+## 3.2 Theme toggle
+
+Remove Light Mode from the theme selector.
+
+Retain only:
+
+- Dark Mode.
+- Reading Mode.
+
+Add a clearly accessible theme toggle on the dashboard homepage.
+
+The toggle should allow the user to switch between Dark Mode and Reading Mode.
+
+Use an appropriate icon and visually clear selected state.
+
+Persist the selected preference.
+
+Synchronize it across authenticated devices through Firestore.
+
+Do not reset the user's notebook page background or handwriting colors when changing themes.
+
+## 3.3 Profile tab
+
+Introduce a dedicated Profile tab.
+
+Display:
+- Profile image.
+- User name.
+- Email address.
+- Account information.
+- Authentication provider.
+- Registered devices.
+- Appearance preference.
+- Account settings.
+- Logout.
+- Account deletion option with confirmation.
+
+Make profile information editable where appropriate.
+
+---
+
+# PHASE 4 – PROFESSIONAL WRITING EXPERIENCE INSPIRED BY ADOBE FRESCO
+
+This is a core feature of Naik Notes.
+
+Improve the complete writing engine.
+
+Writing must feel natural, smooth, responsive and accurate.
+
+## 4.1 Handwriting performance
+
+Implement:
+- Low-latency stroke rendering.
+- Smooth interpolation.
+- Accurate pointer tracking.
+- Pressure sensitivity where supported.
+- Natural stroke thickness.
+- Smooth curves.
+- Proper stroke endings.
+- Accurate diagonal writing.
+- Palm rejection.
+- Stylus detection.
+- Finger and stylus input separation.
+- High-performance vector rendering.
+
+Use appropriate curve algorithms and preserve the original pointer data.
+
+Do not distort the user's handwriting through excessive smoothing.
+
+Avoid gaps, jitter, jagged edges and unexpected stroke interruptions.
+
+## 4.2 Professional writing tools
+
+Provide:
+
+- Fountain Pen.
+- Ballpoint Pen.
+- Pencil.
+- Brush Pen.
+- Marker.
+- Highlighter.
+- Calligraphy Pen.
+- Technical Pen.
+- Custom Brush.
+
+Each tool should have its own rendering behavior.
+
+Do not implement every tool as the same stroke with a different icon.
+
+## 4.3 Tool customization
+
+When a user taps a drawing tool, show its contextual settings.
+
+Provide:
+- Stroke size.
+- Color.
+- Opacity.
+- Pressure response where supported.
+- Stroke smoothing.
+- Stroke style.
+- Texture where applicable.
+- Preview of the selected tool.
+
+Every tool must remember its individual configuration.
+
+Example:
+
+Pencil:
+- Size: 2.5 px.
+- Color: Graphite.
+- Opacity: 85%.
+
+Ballpoint Pen:
+- Size: 1.5 px.
+- Color: Blue.
+- Opacity: 100%.
+
+Highlighter:
+- Size: 10 px.
+- Color: Yellow.
+- Opacity: 35%.
+
+Use a visually intuitive size slider with immediate preview.
+
+## 4.4 Writing cursor
+
+While writing, display an optional real-time stylus or brush cursor.
+
+The cursor must:
+- Follow the actual pointer.
+- Show the selected brush size.
+- Reflect the current tool.
+- Reflect the selected color.
+- Indicate the actual drawing position.
+
+The cursor must not obstruct handwriting.
+
+On devices where cursor previews are inappropriate or unavailable, use an equivalent visual feedback mechanism.
+
+---
+
+# PHASE 5 – ADVANCED ERASER REPAIR
+
+The existing eraser is not functioning properly.
+
+It sometimes removes entire objects unexpectedly.
+
+Completely audit and repair its hit-testing and stroke intersection logic.
+
+Do not add geometrical shape options to the eraser.
+
+Provide only these eraser modes:
+
+### A. Complete Stroke Eraser
+
+When the eraser touches a stroke, remove the complete stroke.
+
+Do not accidentally remove neighboring strokes.
+
+### B. Partial Stroke Eraser
+
+Erase only the specific section of a stroke that the eraser touches.
+
+Preserve the unaffected portions.
+
+Split the original stroke into editable remaining segments where necessary.
+
+### Eraser customization
+
+Provide:
+- Adjustable size.
+- Circular eraser cursor.
+- Visible eraser boundary.
+- Accurate contact detection.
+- Immediate visual erasing feedback.
+
+When erasing, show a cursor that clearly indicates the affected area.
+
+The eraser cursor must follow the actual pointer and reflect the selected eraser size.
+
+Do not display a decorative cursor that is disconnected from the real erasing operation.
+
+### Eraser visual feedback
+
+When the user erases:
+- Show the affected stroke disappearing immediately.
+- Provide smooth visual feedback.
+- Prevent flickering.
+- Prevent delayed deletion.
+- Avoid deleting unrelated objects.
+
+Both modes must support Undo and Redo.
+
+Persist erasing changes through the existing local and Firebase synchronization architecture.
+
+---
+
+# PHASE 6 – SELECTION TOOL REBUILD
+
+The existing selection tool is unreliable.
+
+Rebuild its interaction and selection logic.
+
+Support:
+- Lasso selection.
+- Individual stroke selection.
+- Multiple stroke selection.
+- Text selection.
+- Shape selection.
+- Image selection.
+
+When the user activates the selection tool, display a visible selection cursor.
+
+When the user draws a lasso:
+1. Display the actual lasso path.
+2. Show the selection boundary.
+3. Identify the objects intersecting the lasso according to the selected selection mode.
+4. Highlight selected objects.
+5. Allow movement, resizing, rotation and deletion.
+
+Do not select objects magically without showing the selection process.
+
+Provide visible resize handles.
+
+Ensure that:
+- Selected objects remain selected until deselected.
+- Touch and stylus gestures work correctly.
+- Multiple selection is supported.
+- Accidental selection is prevented.
+- Selection does not conflict with drawing.
+- The tool works across all platforms.
+
+---
+
+# PHASE 7 – TWO-FINGER GESTURE AND ZIGZAG BUG FIX
+
+There is an important bug in the notebook editor.
+
+When two fingers touch the page simultaneously, the application sometimes produces unwanted zigzag handwriting.
+
+This occurs across multiple drawing tools and shapes.
+
+Find the actual root cause.
+
+### Required behavior
+
+Single-finger or single-stylus input:
+- Draw normally when the appropriate drawing tool is selected.
+
+Two-finger input:
+- Must not generate handwriting strokes.
+- Must not create zigzag marks.
+- Must not produce accidental shapes.
+- Must not corrupt an existing stroke.
+
+Two-finger gestures should be used for:
+- Zooming.
+- Panning.
+- Canvas navigation where appropriate.
+
+Implement robust multi-pointer gesture recognition.
+
+Requirements:
+- Track individual pointer IDs.
+- Distinguish stylus and touch input.
+- Detect pointer-count changes.
+- Cancel or safely finalize an active stroke when a second finger initiates navigation.
+- Avoid accidental connection of separate pointer paths.
+- Restore drawing input correctly after gesture completion.
+
+Ensure the same behavior across pen, pencil, marker, highlighter, eraser and shape tools.
+
+Test with real Android touchscreens, Apple Pencil and Windows touch devices where available.
+
+---
+
+# PHASE 8 – PAINT BUCKET AND COLOR FILLING SYSTEM
+
+Introduce a proper color-filling system.
+
+The application should allow users to fill pages and enclosed drawing areas with colors.
+
+### Fill Bucket Tool
+
+Implement:
+- Page background filling.
+- Enclosed region filling.
+- Custom color selection.
+- Opacity adjustment.
+- Fill tolerance.
+- Undo and Redo.
+
+### Page filling
+
+Allow users to:
+1. Select the Fill Bucket.
+2. Choose a color.
+3. Tap the notebook page background.
+4. Fill the page with the selected color.
+
+### Enclosed region filling
+
+Where supported, allow users to fill enclosed vector regions.
+
+Examples:
+- Circle.
+- Rectangle.
+- Triangle.
+- Custom closed paths.
+
+The fill must remain inside the selected region.
+
+Avoid spilling into nearby areas.
+
+### Preservation
+
+Do not permanently flatten handwriting into a background image.
+
+Keep fill data and vector objects editable.
+
+Ensure page colors synchronize across devices.
+
+---
+
+# PHASE 9 – PAGE MANAGEMENT AND ADD PAGE BUTTON
+
+Improve notebook page navigation.
+
+Add a clearly visible Add Page icon at the bottom corner of the notebook editor layout.
+
+Important:
+The button must be part of the editor interface, outside the actual paper content.
+
+Do not place the button inside the writable page.
+
+The button should remain accessible while writing.
+
+When tapped:
+- Create a new page.
+- Generate a unique page ID.
+- Apply the appropriate page template.
+- Update the page count.
+- Open the new page.
+- Save changes.
+- Synchronize through Firebase.
+
+Provide:
+- Add Page.
+- Duplicate Page.
+- Delete Page.
+- Previous Page.
+- Next Page.
+- Page Thumbnails.
+- Page Reordering.
+
+Support continuous vertical page navigation as an optional mode.
+
+Do not impose arbitrary page limits.
+
+Use lazy loading and efficient rendering for large notebooks.
+
+---
+
+# PHASE 10 – READING MODE WITH PAGE-FLIPPING ANIMATION
+
+Reading Mode must provide a realistic digital book-reading experience.
+
+Remove Light Mode entirely.
+
+Keep:
+- Dark Mode.
+- Reading Mode.
+
+When Reading Mode is activated, provide a page-flipping animation.
+
+### Page-flipping experience
+
+Implement:
+- Natural page-turn animation.
+- Smooth transitions.
+- Realistic page movement.
+- Appropriate shadows.
+- Page curvature where performance permits.
+- Correct front/back page transitions.
+- Page navigation controls.
+
+Support:
+- Swipe left and right.
+- Touch navigation.
+- Stylus-compatible navigation where appropriate.
+- Previous Page.
+- Next Page.
+
+For Windows:
+- Mouse-based page turning.
+- Keyboard navigation.
+- Appropriate trackpad interaction.
+
+The animation must remain smooth on supported devices.
+
+Do not introduce heavy 3D rendering that makes the notebook lag.
+
+Maintain correct page order and page content.
+
+Switching back to editing must restore the normal editable notebook experience.
+
+---
+
+# PHASE 11 – COMMUNITY TEMPLATE STORE
+
+Improve the existing Template Store completely.
+
+The current template layout is not properly organized.
+
+Create a professional Community Template Store with at least 20 distinct built-in templates.
+
+### Template categories
+
+Academic:
+1. Mathematics Notes.
+2. Physics Notes.
+3. Chemistry Notes.
+4. Cornell Notes.
+5. Lecture Notes.
+
+Productivity:
+6. Daily Planner.
+7. Weekly Planner.
+8. Monthly Planner.
+9. Habit Tracker.
+10. Goal Planner.
+
+Creative:
+11. Sketchbook.
+12. Bullet Journal.
+13. Mind Mapping.
+14. Creative Journal.
+15. Idea Notebook.
+
+Professional:
+16. Meeting Notes.
+17. Project Planner.
+18. Research Journal.
+19. Business Notes.
+20. Project Documentation.
+
+Each template must have:
+- Actual page layout.
+- Visual thumbnail.
+- Template name.
+- Description.
+- Category.
+- Preview.
+- Customization options.
+
+Do not create 20 identical templates with only different names.
+
+Each template must provide its own meaningful page design.
+
+### Community features
+
+Design the store to support:
+- Template discovery.
+- Categories.
+- Search.
+- Filtering.
+- Preview.
+- Import template.
+- Favorite template.
+- Custom template upload where supported.
+- Community contributions as a future extensible feature.
+
+Do not display fake community users, fake ratings or fake download counts.
+
+---
+
+# PHASE 12 – ADVANCED TEMPLATE CUSTOMIZATION
+
+When users select More Customization, provide meaningful editing options.
+
+Allow customization of:
+
+- Page size.
+- Page orientation.
+- Page background.
+- Page color.
+- Line spacing.
+- Line color.
+- Line thickness.
+- Grid spacing.
+- Grid color.
+- Dot spacing.
+- Margin size.
+- Header and footer.
+- Page numbering.
+- Font style.
+- Font size.
+- Background image.
+- Custom paper elements.
+
+Display a live visual preview.
+
+The preview must update when customization settings change.
+
+Allow users to save customized templates.
+
+Allow users to apply templates to:
+- New notebooks.
+- Existing notebooks.
+- Individual pages.
+
+Preserve existing page content when changing templates.
+
+---
+
+# PHASE 13 – COMPLETE RESPONSIVE LAYOUT REPAIR
+
+The existing application has several layout and overflow problems.
+
+Perform a complete layout audit.
+
+Prioritize:
+- Template Store.
+- Template Preview.
+- Settings.
+- Registered Devices.
+- Notebook Dashboard.
+- Profile.
+- Authentication screens.
+- Notebook Editor.
+- Tool Customization Panels.
+
+### Android
+
+Optimize for:
+- Small smartphones.
+- Large smartphones.
+- Tablets.
+
+### iPadOS
+
+Optimize for:
+- Portrait.
+- Landscape.
+- Apple Pencil.
+- Split-screen and resized windows where supported.
+
+### Windows
+
+Optimize for:
+- Small windows.
+- Maximized windows.
+- Mouse.
+- Keyboard.
+- Touchscreen.
+
+Fix:
+- RenderFlex overflow.
+- Horizontal clipping.
+- Incorrect scrolling.
+- Misaligned cards.
+- Text overflow.
+- Inconsistent typography.
+- Fixed-width component problems.
+- Incorrect safe-area handling.
+- Navigation layout conflicts.
+
+Do not simply hide overflow.
+
+Use responsive constraints and adaptive navigation.
+
+---
+
+# PHASE 14 – SETTINGS AND REGISTERED DEVICES
+
+Redesign the Settings screen.
+
+Organize it into:
+
+1. Profile and Account.
+2. Appearance.
+3. Cloud Synchronization.
+4. Registered Devices.
+5. Backup and Export.
+6. Writing and Stylus.
+7. Application Information.
+8. Security.
+
+## 14.1 Registered Devices
+
+The current registered-device display is misleading.
+
+Implement actual device registration.
+
+Example:
+
+If the user logs in on Android only:
+
+Android: Registered.
+
+iPad: Not registered.
+
+Windows: Not registered.
+
+When the user signs in on iPad:
+
+Android: Registered.
+
+iPad: Registered.
+
+Windows: Not registered.
+
+When the user signs in on Windows:
+
+All three devices should show their respective actual registration status.
+
+Display:
+- Device name.
+- Platform.
+- Last active time.
+- Registration status.
+- Device identifier where appropriate.
+- Current device indicator.
+
+Do not populate fake devices.
+
+Register a device only after successful authentication and a successful registration operation.
+
+Implement device-session management.
+
+Provide the ability to remove a registered device securely.
+
+Do not expose sensitive device identifiers to other users.
+
+---
+
+# PHASE 15 – FIX FIREBASE SYNCHRONIZATION
+
+The existing synchronization system needs a complete reliability audit.
+
+Remove unnecessary manual synchronization controls from the dashboard.
+
+Synchronization should happen automatically.
+
+If a manual Sync Now action is retained in Settings, implement it correctly.
+
+It must:
+- Trigger an actual synchronization request.
+- Display accurate progress.
+- Stop when synchronization completes.
+- Stop when synchronization fails.
+- Prevent duplicate simultaneous sync requests.
+- Provide clear error feedback.
+- Never rotate indefinitely.
+
+Display meaningful states:
+
+- Up to date.
+- Synchronizing.
+- Waiting for connection.
+- Sync failed.
+- Local changes pending.
+
+Do not claim that data is synchronized before Firebase confirms the relevant operation.
+
+Implement:
+- Firestore synchronization.
+- Firebase Storage uploads.
+- Retry handling.
+- Offline queues for authenticated users.
+- Conflict resolution.
+- Data integrity.
+- User-specific data isolation.
+
+All notebooks must remain separate for different Firebase users.
+
+---
+
+# PHASE 16 – FIREBASE DATA AND DRAWING STORAGE
+
+Ensure that all new functionality is compatible with the existing Firebase architecture.
+
+Persist:
+- Notebook information.
+- Page information.
+- Handwriting strokes.
+- Brush settings.
+- Drawing objects.
+- Shape data.
+- Fill data.
+- Eraser operations.
+- Page templates.
+- Page order.
+- User preferences.
+- Device registrations.
+
+Keep editable vector data wherever appropriate.
+
+Do not flatten the complete notebook into one image.
+
+Use efficient storage strategies for large notebooks.
+
+Use Firebase Storage for uploaded assets.
+
+Use Firestore for metadata and appropriately sized structured data.
+
+Maintain strict user-specific Firestore and Storage Security Rules.
+
+Do not introduce a continuously running local Python server.
+
+Use Firebase services directly from the application wherever supported.
+
+For any Firebase feature that is unsupported by a platform's current SDK, identify and implement a secure alternative rather than silently disabling it.
+
+---
+
+# PHASE 17 – THEME MANAGEMENT
+
+Remove Light Mode.
+
+Retain only two visual modes.
+
+### Dark Mode
+
+- Dark charcoal background.
+- Dark cards.
+- Light text.
+- Proper contrast.
+- Professional accent color.
+
+### Reading Mode
+
+- Warm paper-like appearance.
+- Comfortable typography.
+- Reduced visual distractions.
+- Appropriate reading margins.
+
+Add a dashboard theme toggle.
+
+Persist the theme preference locally and synchronize it through Firebase for authenticated users.
+
+Switching themes must not modify actual notebook paper, handwriting or uploaded backgrounds.
+
+All components must work in both modes.
+
+---
+
+# PHASE 18 – AUTOMATED TESTING AND QUALITY ASSURANCE
+
+Do not consider the work complete after writing code.
+
+Test all major functionality.
+
+### Authentication
+
+Test:
+- Email registration.
+- Email login.
+- Phone OTP.
+- Google login.
+- Apple login.
+- Password reset.
+- Account logout.
+- Authentication persistence.
+- Navigation after login.
+- Failed authentication recovery.
+
+### Drawing
+
+Test:
+- Every pen.
+- Pencil.
+- Brush.
+- Highlighter.
+- Marker.
+- Stroke customization.
+- Cursor.
+- Selection.
+- Partial eraser.
+- Complete stroke eraser.
+- Shapes.
+- Fill bucket.
+- Undo.
+- Redo.
+
+### Gesture testing
+
+Test:
+- One-finger writing.
+- Two-finger zoom.
+- Two-finger pan.
+- Stylus writing.
+- Palm rejection.
+- Pointer transitions.
+- Tool switching during gestures.
+
+### Page testing
+
+Test:
+- Add page.
+- Duplicate page.
+- Delete page.
+- Reorder page.
+- Page flipping.
+- Continuous scrolling.
+- Page template changes.
+
+### Synchronization
+
+Test:
+- Android to iPad.
+- iPad to Windows.
+- Windows to Android.
+- Different users.
+- Offline editing by authenticated users.
+- Reconnection.
+- Conflict handling.
+
+### UI testing
+
+Test all major screens on all three platforms.
+
+Verify:
+- No overflow.
+- No clipped content.
+- No infinite loading.
+- No broken navigation.
+- No incorrect theme colors.
+- No invisible text.
+- No unresponsive buttons.
+
+---
+
+# PHASE 19 – IMPLEMENTATION PRIORITY
+
+Work in this order:
+
+1. Audit existing source code.
+2. Fix Firebase authentication loops.
+3. Implement all supported authentication providers.
+4. Remove guest and offline login modes.
+5. Build landing page and original branding.
+6. Redesign dashboard and profile.
+7. Fix two-finger gesture and zigzag issues.
+8. Repair the drawing engine.
+9. Repair eraser.
+10. Rebuild selection.
+11. Improve writing tools and cursor feedback.
+12. Implement color filling.
+13. Improve page creation and navigation.
+14. Implement Reading Mode page flipping.
+15. Build 20 distinct notebook templates.
+16. Improve template customization.
+17. Fix responsive layouts.
+18. Implement actual registered-device tracking.
+19. Repair automatic synchronization.
+20. Perform full regression testing.
+
+Do not break existing Firebase data while implementing these changes.
+
+---
+
+# PHASE 20 – FINAL DELIVERY REPORT
+
+After implementation, provide a detailed report containing:
+
+1. Existing issues discovered.
+2. Root cause of authentication failures.
+3. Authentication providers implemented.
+4. Firebase platform compatibility.
+5. Landing page and branding files.
+6. Dashboard and profile changes.
+7. Drawing engine architecture.
+8. Writing tools implemented.
+9. Eraser and selection improvements.
+10. Multi-touch gesture fixes.
+11. Fill bucket implementation.
+12. Page navigation improvements.
+13. Reading Mode animation implementation.
+14. Community template store implementation.
+15. Settings and registered-device improvements.
+16. Synchronization improvements.
+17. Files created.
+18. Files modified.
+19. Files removed and reasons.
+20. Test results for Android, iPadOS and Windows.
+21. Remaining limitations.
+22. Exact commands to run and build each platform.
+
+Clearly distinguish between features that are fully implemented, features that are tested on real devices, and features that are only verified through automated tests.
+
+Do not claim successful implementation without evidence.
+
+# FINAL PRODUCT VISION
+
+Naik Notes should become a professional cross-platform creative notebook application.
+
+It should combine:
+- Natural handwriting.
+- Professional drawing tools.
+- Precision selection.
+- Accurate erasing.
+- Color filling.
+- Geometrical drawing.
+- Continuous notebook pages.
+- Realistic digital reading.
+- Extensive notebook templates.
+- Reliable Firebase authentication.
+- Automatic cross-device synchronization.
+- A polished responsive dashboard.
+
+The application must be reliable, responsive, secure and visually consistent across Android, iPad and Windows.
+
+Most importantly, every tool must work as expected. Do not deliver decorative controls, mock functionality or incomplete implementations.
+
+Work directly on the existing Naik Notes project, preserve existing user data and verify every major feature before declaring completion. 
+
+One additional recommendation: Make the drawing tools context-sensitive. When the user taps Pencil, show pencil-specific controls; when they tap Eraser, show eraser size and shape; when they tap Shapes, show the geometry gallery. This keeps the editor clean instead of displaying every possible setting simultaneously.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-16T16:41:17+05:30.
+
+The user's current state is as follows:
+Active Document: d:\WORKS\Naik Notes\lib\features\authentication\presentation\screens\login_screen.dart (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- d:\WORKS\Naik Notes\lib\features\notebooks\presentation\screens\notebook_view_screen.dart (LANGUAGE_UNSPECIFIED)
+- d:\WORKS\Naik Notes\lib\features\canvas\presentation\widgets\handwriting_canvas.dart (LANGUAGE_UNSPECIFIED)
+- d:\WORKS\Naik Notes\lib\features\canvas\data\stroke_provider.dart (LANGUAGE_UNSPECIFIED)
+- d:\WORKS\Naik Notes\android\gradle\wrapper\gradle-wrapper.properties (LANGUAGE_UNSPECIFIED)
+- d:\WORKS\Naik Notes\android\settings.gradle.kts (LANGUAGE_UNSPECIFIED)
+</ADDITIONAL_METADATA>

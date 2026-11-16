@@ -13,9 +13,13 @@ class ActiveStrokePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (activeStroke == null || activeStroke!.points.isEmpty) return;
+    if (activeStroke == null) return;
+    if (activeStroke!.points.isEmpty && activeStroke!.shapeType == null) return;
 
     final rendered = _builder.build(activeStroke!);
+    if (rendered.fillPath != null && rendered.fillPaint != null) {
+      canvas.drawPath(rendered.fillPath!, rendered.fillPaint!);
+    }
     canvas.drawPath(rendered.path, rendered.paint);
   }
 

@@ -160,10 +160,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(capturedRef.read(activeToolProvider), ToolType.ballpointPen);
 
-      // Tap "Bold" width chip
-      await tester.tap(find.text('Bold'));
+      // Tap highlighter tool
+      await tester.tap(find.byIcon(Icons.highlight));
       await tester.pumpAndSettle();
-      expect(capturedRef.read(strokeWidthProvider), 5.0);
+      expect(capturedRef.read(activeToolProvider), ToolType.highlighter);
+
+      // Tap quick customizer pill to open tool customizer sheet
+      await tester.tap(find.byTooltip('Customize active tool'));
+      await tester.pumpAndSettle();
+      expect(find.text('Highlighter Settings'), findsOneWidget);
     });
 
     testWidgets(

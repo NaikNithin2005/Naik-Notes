@@ -1,16 +1,25 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:ui';
+
+import 'shape_model.dart';
 
 /// Tools supported by the Naik Notes handwriting engine.
 enum ToolType {
-  ballpointPen('ballpoint_pen', 'Ballpoint Pen', 2.0, 1.0),
   fountainPen('fountain_pen', 'Fountain Pen', 3.0, 1.0),
+  ballpointPen('ballpoint_pen', 'Ballpoint Pen', 2.0, 1.0),
   pencil('pencil', 'Pencil', 2.5, 0.85),
   brushPen('brush_pen', 'Brush Pen', 4.5, 1.0),
+  marker('marker', 'Marker', 6.0, 1.0),
   highlighter('highlighter', 'Highlighter', 16.0, 0.35),
+  calligraphyPen('calligraphy_pen', 'Calligraphy Pen', 4.0, 1.0),
+  technicalPen('technical_pen', 'Technical Pen', 1.5, 1.0),
+  customBrush('custom_brush', 'Custom Brush', 5.0, 0.9),
+  fillBucket('fill_bucket', 'Fill Bucket', 0.0, 1.0),
   eraser('eraser', 'Eraser', 20.0, 1.0),
-  lasso('lasso', 'Lasso Select', 1.0, 1.0),
+  lasso('lasso', 'Selection Tool', 1.0, 1.0),
   shape('shape', 'Shape Tool', 2.5, 1.0),
+  text('text', 'Text Tool', 16.0, 1.0),
   laserPointer('laser_pointer', 'Laser Pointer', 8.0, 0.9),
   pan('pan', 'Pan & Zoom', 0.0, 0.0);
 
@@ -26,10 +35,39 @@ enum ToolType {
     this.defaultOpacity,
   );
 
+  bool get isWritingTool =>
+      this == ToolType.fountainPen ||
+      this == ToolType.ballpointPen ||
+      this == ToolType.pencil ||
+      this == ToolType.brushPen ||
+      this == ToolType.marker ||
+      this == ToolType.highlighter ||
+      this == ToolType.calligraphyPen ||
+      this == ToolType.technicalPen ||
+      this == ToolType.customBrush;
+
   static ToolType fromId(String id) {
     return ToolType.values.firstWhere(
       (t) => t.id == id,
       orElse: () => ToolType.ballpointPen,
+    );
+  }
+}
+
+/// Outline and stroke line patterns.
+enum StrokeStyle {
+  solid('solid', 'Solid'),
+  dashed('dashed', 'Dashed'),
+  dotted('dotted', 'Dotted');
+
+  final String id;
+  final String label;
+  const StrokeStyle(this.id, this.label);
+
+  static StrokeStyle fromId(String? id) {
+    return StrokeStyle.values.firstWhere(
+      (s) => s.id == id,
+      orElse: () => StrokeStyle.solid,
     );
   }
 }
@@ -98,6 +136,12 @@ class Stroke {
   final int revision;
   final DateTime createdAt;
   final DateTime? deletedAt;
+  final StrokeStyle strokeStyle;
+  final ShapeType? shapeType;
+  final int? fillColorValue;
+  final double fillOpacity;
+  final bool isFilled;
+  final double rotation;
 
   Stroke({
     required this.id,
@@ -111,6 +155,12 @@ class Stroke {
     this.revision = 1,
     required this.createdAt,
     this.deletedAt,
+    this.strokeStyle = StrokeStyle.solid,
+    this.shapeType,
+    this.fillColorValue,
+    this.fillOpacity = 1.0,
+    this.isFilled = false,
+    this.rotation = 0.0,
   }) : boundingBox = boundingBox ?? computeBoundingBox(points, width);
 
   Color get color => Color(colorValue).withValues(alpha: opacity);
@@ -193,6 +243,222 @@ class Stroke {
     );
   }
 
+  /// Creates a rotated copy of this stroke by [angleRadians] around [origin].
+  Stroke rotated(double angleRadians, Offset origin) {
+    final cosA = math.cos(angleRadians);
+    final sinA = math.sin(angleRadians);
+    final rotatedPoints = points.map((p) {
+      final relX = p.x - origin.dx;
+      final relY = p.y - origin.dy;
+      return p.copyWith(
+        x: origin.dx + (relX * cosA - relY * sinA),
+        y: origin.dy + (relX * sinA + relY * cosA),
+      );
+    }).toList();
+
+    return copyWith(
+      points: rotatedPoints,
+      boundingBox: computeBoundingBox(rotatedPoints, width),
+    );
+  }
+
+  /// Partially erases the portion of this stroke covered by the eraser circle at [eraserCenter]
+  /// with [radius], splitting the remaining portions into new contiguous stroke segments.
+  /// If the stroke does not intersect the circle, returns `[this]`.
+  /// If the stroke is completely erased, returns an empty list `[]`.
+  List<Stroke> splitByEraserCircle(
+    Offset eraserCenter,
+    double radius,
+    String Function() idGenerator,
+  ) {
+    if (points.isEmpty) return [];
+
+    // Fast bounding box intersection test
+    final eraserBBox = Rect.fromCircle(center: eraserCenter, radius: radius);
+    if (!boundingBox.inflate(radius).overlaps(eraserBBox)) {
+      return [this];
+    }
+
+    final remainingSegments = <List<StrokePoint>>[];
+    List<StrokePoint> currentSegment = [];
+    bool didIntersect = false;
+
+    for (int i = 0; i < points.length; i++) {
+      final pt = points[i];
+      final dist = (pt.offset - eraserCenter).distance;
+      final insideCircle = dist <= radius;
+
+      if (insideCircle) {
+        didIntersect = true;
+        if (currentSegment.length >= 2) {
+          remainingSegments.add(currentSegment);
+        }
+        currentSegment = [];
+      } else {
+        if (currentSegment.isNotEmpty && i > 0) {
+          final pPrev = points[i - 1].offset;
+          if (_distanceToSegment(eraserCenter, pPrev, pt.offset) <= radius) {
+            didIntersect = true;
+            if (currentSegment.length >= 2) {
+              remainingSegments.add(currentSegment);
+            }
+            currentSegment = [];
+          }
+        }
+        currentSegment.add(pt);
+      }
+    }
+
+    // Also check if isolated 2-point stroke segment was crossed
+    if (!didIntersect && points.length >= 2) {
+      for (int i = 0; i < points.length - 1; i++) {
+        if (_distanceToSegment(
+              eraserCenter,
+              points[i].offset,
+              points[i + 1].offset,
+            ) <=
+            radius) {
+          didIntersect = true;
+          break;
+        }
+      }
+      if (didIntersect) {
+        // If it intersected across the segment but points were on opposite sides,
+        // split or clear
+        currentSegment = [];
+      }
+    }
+
+    if (currentSegment.length >= 2) {
+      remainingSegments.add(currentSegment);
+    }
+
+    if (!didIntersect) {
+      return [this];
+    }
+
+    if (remainingSegments.isEmpty) {
+      return [];
+    }
+
+    return remainingSegments.map((segment) {
+      return Stroke(
+        id: idGenerator(),
+        pageId: pageId,
+        tool: tool,
+        colorValue: colorValue,
+        width: width,
+        opacity: opacity,
+        points: segment,
+        boundingBox: computeBoundingBox(segment, width),
+        revision: revision + 1,
+        createdAt: createdAt,
+        strokeStyle: strokeStyle,
+        shapeType: shapeType,
+        fillColorValue: fillColorValue,
+        fillOpacity: fillOpacity,
+        isFilled: isFilled,
+        rotation: rotation,
+      );
+    }).toList();
+  }
+
+  /// Partially erases the portion of this stroke covered by the square eraser with [halfSize]
+  /// centered at [eraserCenter].
+  List<Stroke> splitByEraserSquare(
+    Offset eraserCenter,
+    double halfSize,
+    String Function() idGenerator,
+  ) {
+    if (points.isEmpty) return [];
+
+    final eraserBBox = Rect.fromCenter(
+      center: eraserCenter,
+      width: halfSize * 2.0,
+      height: halfSize * 2.0,
+    );
+
+    if (!boundingBox.inflate(halfSize).overlaps(eraserBBox)) {
+      return [this];
+    }
+
+    final remainingSegments = <List<StrokePoint>>[];
+    List<StrokePoint> currentSegment = [];
+    bool didIntersect = false;
+
+    for (int i = 0; i < points.length; i++) {
+      final pt = points[i];
+      final insideSquare =
+          (pt.x - eraserCenter.dx).abs() <= halfSize &&
+          (pt.y - eraserCenter.dy).abs() <= halfSize;
+
+      if (insideSquare) {
+        didIntersect = true;
+        if (currentSegment.length >= 2) {
+          remainingSegments.add(currentSegment);
+        }
+        currentSegment = [];
+      } else {
+        if (currentSegment.isNotEmpty && i > 0) {
+          final pPrev = points[i - 1].offset;
+          if (_distanceToSegment(eraserCenter, pPrev, pt.offset) <= halfSize) {
+            didIntersect = true;
+            if (currentSegment.length >= 2) {
+              remainingSegments.add(currentSegment);
+            }
+            currentSegment = [];
+          }
+        }
+        currentSegment.add(pt);
+      }
+    }
+
+    if (!didIntersect && points.length >= 2) {
+      for (int i = 0; i < points.length - 1; i++) {
+        if (_distanceToSegment(
+              eraserCenter,
+              points[i].offset,
+              points[i + 1].offset,
+            ) <=
+            halfSize) {
+          didIntersect = true;
+          break;
+        }
+      }
+      if (didIntersect) {
+        currentSegment = [];
+      }
+    }
+
+    if (currentSegment.length >= 2) {
+      remainingSegments.add(currentSegment);
+    }
+
+    if (!didIntersect) return [this];
+    if (remainingSegments.isEmpty) return [];
+
+    return remainingSegments.map((segment) {
+      return Stroke(
+        id: idGenerator(),
+        pageId: pageId,
+        tool: tool,
+        colorValue: colorValue,
+        width: width,
+        opacity: opacity,
+        points: segment,
+        boundingBox: computeBoundingBox(segment, width),
+        revision: revision + 1,
+        createdAt: createdAt,
+        strokeStyle: strokeStyle,
+        shapeType: shapeType,
+        fillColorValue: fillColorValue,
+        fillOpacity: fillOpacity,
+        isFilled: isFilled,
+        rotation: rotation,
+      );
+    }).toList();
+  }
+
   Stroke copyWith({
     String? id,
     String? pageId,
@@ -206,6 +472,14 @@ class Stroke {
     DateTime? createdAt,
     DateTime? deletedAt,
     bool clearDeletedAt = false,
+    StrokeStyle? strokeStyle,
+    ShapeType? shapeType,
+    bool clearShapeType = false,
+    int? fillColorValue,
+    bool clearFillColorValue = false,
+    double? fillOpacity,
+    bool? isFilled,
+    double? rotation,
   }) {
     return Stroke(
       id: id ?? this.id,
@@ -219,6 +493,14 @@ class Stroke {
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
+      strokeStyle: strokeStyle ?? this.strokeStyle,
+      shapeType: clearShapeType ? null : (shapeType ?? this.shapeType),
+      fillColorValue: clearFillColorValue
+          ? null
+          : (fillColorValue ?? this.fillColorValue),
+      fillOpacity: fillOpacity ?? this.fillOpacity,
+      isFilled: isFilled ?? this.isFilled,
+      rotation: rotation ?? this.rotation,
     );
   }
 
@@ -240,6 +522,12 @@ class Stroke {
       'revision': revision,
       'createdAt': createdAt.toIso8601String(),
       'deletedAt': deletedAt?.toIso8601String(),
+      'strokeStyle': strokeStyle.id,
+      'shapeType': shapeType?.id,
+      'fillColorValue': fillColorValue,
+      'fillOpacity': fillOpacity,
+      'isFilled': isFilled,
+      'rotation': rotation,
     };
   }
 
@@ -274,6 +562,14 @@ class Stroke {
       deletedAt: json['deletedAt'] != null
           ? DateTime.parse(json['deletedAt'] as String)
           : null,
+      strokeStyle: StrokeStyle.fromId(json['strokeStyle'] as String?),
+      shapeType: json['shapeType'] != null
+          ? ShapeType.fromId(json['shapeType'] as String)
+          : null,
+      fillColorValue: json['fillColorValue'] as int?,
+      fillOpacity: (json['fillOpacity'] as num?)?.toDouble() ?? 1.0,
+      isFilled: json['isFilled'] as bool? ?? false,
+      rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

@@ -1,11 +1,167 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
+import 'package:naik_notes/data/models/shape_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/data/repositories/stroke_repository.dart';
 import 'package:naik_notes/features/audio/data/audio_provider.dart';
+import 'package:naik_notes/features/pdf/data/sticky_note_provider.dart';
 import 'package:naik_notes/services/recognition/handwriting_recognition_provider.dart';
 import 'package:uuid/uuid.dart';
+
+/// Configuration memory for an individual drawing tool.
+class ToolConfig {
+  final ToolType tool;
+  final double width;
+  final Color color;
+  final double opacity;
+  final StrokeStyle strokeStyle;
+
+  const ToolConfig({
+    required this.tool,
+    required this.width,
+    required this.color,
+    required this.opacity,
+    this.strokeStyle = StrokeStyle.solid,
+  });
+
+  double get strokeWidth => width;
+
+  ToolConfig copyWith({
+    double? width,
+    Color? color,
+    double? opacity,
+    StrokeStyle? strokeStyle,
+  }) {
+    return ToolConfig(
+      tool: tool,
+      width: width ?? this.width,
+      color: color ?? this.color,
+      opacity: opacity ?? this.opacity,
+      strokeStyle: strokeStyle ?? this.strokeStyle,
+    );
+  }
+}
+
+/// State notifier managing per-tool configuration memory.
+class ToolConfigsNotifier extends Notifier<Map<ToolType, ToolConfig>> {
+  @override
+  Map<ToolType, ToolConfig> build() {
+    return {
+      ToolType.fountainPen: const ToolConfig(
+        tool: ToolType.fountainPen,
+        width: 3.0,
+        color: PenColors.inkSlate,
+        opacity: 1.0,
+      ),
+      ToolType.ballpointPen: const ToolConfig(
+        tool: ToolType.ballpointPen,
+        width: 2.0,
+        color: PenColors.royalBlue,
+        opacity: 1.0,
+      ),
+      ToolType.pencil: const ToolConfig(
+        tool: ToolType.pencil,
+        width: 2.5,
+        color: Color(0xFF4B5563),
+        opacity: 0.85,
+      ),
+      ToolType.brushPen: const ToolConfig(
+        tool: ToolType.brushPen,
+        width: 4.5,
+        color: Color(0xFF111827),
+        opacity: 1.0,
+      ),
+      ToolType.highlighter: const ToolConfig(
+        tool: ToolType.highlighter,
+        width: 16.0,
+        color: PenColors.highlighterYellow,
+        opacity: 0.35,
+      ),
+      ToolType.marker: const ToolConfig(
+        tool: ToolType.marker,
+        width: 6.0,
+        color: Color(0xFFDC2626),
+        opacity: 1.0,
+      ),
+      ToolType.calligraphyPen: const ToolConfig(
+        tool: ToolType.calligraphyPen,
+        width: 4.0,
+        color: Color(0xFF1E293B),
+        opacity: 1.0,
+      ),
+      ToolType.technicalPen: const ToolConfig(
+        tool: ToolType.technicalPen,
+        width: 1.5,
+        color: Color(0xFF0F172A),
+        opacity: 1.0,
+      ),
+      ToolType.customBrush: const ToolConfig(
+        tool: ToolType.customBrush,
+        width: 5.0,
+        color: Color(0xFF4338CA),
+        opacity: 0.9,
+      ),
+      ToolType.fillBucket: const ToolConfig(
+        tool: ToolType.fillBucket,
+        width: 0.0,
+        color: Color(0xFF3B82F6),
+        opacity: 1.0,
+      ),
+      ToolType.shape: const ToolConfig(
+        tool: ToolType.shape,
+        width: 2.5,
+        color: PenColors.inkSlate,
+        opacity: 1.0,
+      ),
+    };
+  }
+
+  void updateConfig(
+    ToolType tool, {
+    double? width,
+    Color? color,
+    double? opacity,
+    StrokeStyle? strokeStyle,
+  }) {
+    final current =
+        state[tool] ??
+        ToolConfig(
+          tool: tool,
+          width: tool.defaultWidth,
+          color: PenColors.inkSlate,
+          opacity: tool.defaultOpacity,
+        );
+    state = {
+      ...state,
+      tool: current.copyWith(
+        width: width,
+        color: color,
+        opacity: opacity,
+        strokeStyle: strokeStyle,
+      ),
+    };
+  }
+
+  void updateWidth(ToolType tool, double width) =>
+      updateConfig(tool, width: width);
+
+  void updateColor(ToolType tool, Color color) =>
+      updateConfig(tool, color: color);
+
+  void updateOpacity(ToolType tool, double opacity) =>
+      updateConfig(tool, opacity: opacity);
+
+  void updateStyle(ToolType tool, StrokeStyle style) =>
+      updateConfig(tool, strokeStyle: style);
+
+  void resetToDefaults() => state = build();
+}
+
+final toolConfigsProvider =
+    NotifierProvider<ToolConfigsNotifier, Map<ToolType, ToolConfig>>(
+      ToolConfigsNotifier.new,
+    );
 
 /// Available standard color palette for the digital pens.
 class PenColors {
@@ -39,6 +195,69 @@ class PenColors {
   ];
 }
 
+/// Available eraser operating modes.
+enum EraserMode {
+  stroke('stroke', 'Stroke Eraser (Whole Stroke)'),
+  partial('partial', 'Partial Eraser (Segment Split)'),
+  object('object', 'Object Eraser (Whole Object)');
+
+  final String id;
+  final String label;
+  const EraserMode(this.id, this.label);
+
+  static EraserMode fromId(String id) {
+    return EraserMode.values.firstWhere(
+      (m) => m.id == id,
+      orElse: () => EraserMode.object,
+    );
+  }
+}
+
+class EraserModeNotifier extends Notifier<EraserMode> {
+  @override
+  EraserMode build() => EraserMode.object;
+  void setMode(EraserMode mode) => state = mode;
+  void toggle() => state = state == EraserMode.partial
+      ? EraserMode.object
+      : EraserMode.partial;
+}
+
+/// Global provider for active eraser mode (stroke, partial, object).
+final eraserModeProvider = NotifierProvider<EraserModeNotifier, EraserMode>(
+  EraserModeNotifier.new,
+);
+
+/// Geometric boundary shape for the eraser tool.
+enum EraserShape {
+  circle('circle', 'Circular Eraser'),
+  square('square', 'Square Eraser');
+
+  final String id;
+  final String label;
+  const EraserShape(this.id, this.label);
+}
+
+class EraserShapeNotifier extends Notifier<EraserShape> {
+  @override
+  EraserShape build() => EraserShape.circle;
+  void setShape(EraserShape shape) => state = shape;
+}
+
+final eraserShapeProvider = NotifierProvider<EraserShapeNotifier, EraserShape>(
+  EraserShapeNotifier.new,
+);
+
+class EraserRadiusNotifier extends Notifier<double> {
+  @override
+  double build() => 20.0;
+  void setRadius(double radius) => state = radius;
+}
+
+/// Global provider for eraser radius size.
+final eraserRadiusProvider = NotifierProvider<EraserRadiusNotifier, double>(
+  EraserRadiusNotifier.new,
+);
+
 class ActiveToolNotifier extends Notifier<ToolType> {
   ToolType _previousTool = ToolType.fountainPen;
 
@@ -50,6 +269,24 @@ class ActiveToolNotifier extends Notifier<ToolType> {
       _previousTool = state;
     }
     state = tool;
+
+    // Synchronize active drawing parameters to the selected tool's remembered config
+    final configs = ref.read(toolConfigsProvider);
+    final config = configs[tool];
+    if (config != null) {
+      ref
+          .read(strokeWidthProvider.notifier)
+          .setWidth(config.width, syncConfig: false);
+      ref
+          .read(strokeColorProvider.notifier)
+          .setColor(config.color, syncConfig: false);
+      ref
+          .read(strokeOpacityProvider.notifier)
+          .setOpacity(config.opacity, syncConfig: false);
+      ref
+          .read(strokeStyleProvider.notifier)
+          .setStyle(config.strokeStyle, syncConfig: false);
+    }
   }
 
   void toggleEraser() {
@@ -132,7 +369,15 @@ final stylusHoverProvider =
 class StrokeColorNotifier extends Notifier<Color> {
   @override
   Color build() => PenColors.inkSlate;
-  void setColor(Color color) => state = color;
+  void setColor(Color color, {bool syncConfig = true}) {
+    state = color;
+    if (syncConfig) {
+      final activeTool = ref.read(activeToolProvider);
+      ref
+          .read(toolConfigsProvider.notifier)
+          .updateConfig(activeTool, color: color);
+    }
+  }
 }
 
 /// Current active stroke color.
@@ -143,7 +388,15 @@ final strokeColorProvider = NotifierProvider<StrokeColorNotifier, Color>(
 class StrokeWidthNotifier extends Notifier<double> {
   @override
   double build() => 3.0;
-  void setWidth(double width) => state = width;
+  void setWidth(double width, {bool syncConfig = true}) {
+    state = width;
+    if (syncConfig) {
+      final activeTool = ref.read(activeToolProvider);
+      ref
+          .read(toolConfigsProvider.notifier)
+          .updateConfig(activeTool, width: width);
+    }
+  }
 }
 
 /// Current stroke width in document points.
@@ -154,12 +407,105 @@ final strokeWidthProvider = NotifierProvider<StrokeWidthNotifier, double>(
 class StrokeOpacityNotifier extends Notifier<double> {
   @override
   double build() => 1.0;
-  void setOpacity(double opacity) => state = opacity;
+  void setOpacity(double opacity, {bool syncConfig = true}) {
+    state = opacity;
+    if (syncConfig) {
+      final activeTool = ref.read(activeToolProvider);
+      ref
+          .read(toolConfigsProvider.notifier)
+          .updateConfig(activeTool, opacity: opacity);
+    }
+  }
 }
 
 /// Current stroke opacity (0.0 to 1.0).
 final strokeOpacityProvider = NotifierProvider<StrokeOpacityNotifier, double>(
   StrokeOpacityNotifier.new,
+);
+
+class StrokeStyleNotifier extends Notifier<StrokeStyle> {
+  @override
+  StrokeStyle build() => StrokeStyle.solid;
+  void setStyle(StrokeStyle style, {bool syncConfig = true}) {
+    state = style;
+    if (syncConfig) {
+      final activeTool = ref.read(activeToolProvider);
+      ref
+          .read(toolConfigsProvider.notifier)
+          .updateConfig(activeTool, strokeStyle: style);
+    }
+  }
+}
+
+/// Current stroke style (solid, dashed, dotted).
+final strokeStyleProvider = NotifierProvider<StrokeStyleNotifier, StrokeStyle>(
+  StrokeStyleNotifier.new,
+);
+
+class SelectedShapeTypeNotifier extends Notifier<ShapeType> {
+  @override
+  ShapeType build() => ShapeType.rectangle;
+  void setShapeType(ShapeType type) => state = type;
+}
+
+final selectedShapeTypeProvider =
+    NotifierProvider<SelectedShapeTypeNotifier, ShapeType>(
+      SelectedShapeTypeNotifier.new,
+    );
+
+class ShapeFillColorNotifier extends Notifier<Color?> {
+  @override
+  Color? build() => null;
+  void setColor(Color? color) => state = color;
+}
+
+final shapeFillColorProvider = NotifierProvider<ShapeFillColorNotifier, Color?>(
+  ShapeFillColorNotifier.new,
+);
+
+class ShapeFillOpacityNotifier extends Notifier<double> {
+  @override
+  double build() => 0.5;
+  void setOpacity(double opacity) => state = opacity;
+}
+
+final shapeFillOpacityProvider =
+    NotifierProvider<ShapeFillOpacityNotifier, double>(
+      ShapeFillOpacityNotifier.new,
+    );
+
+class ShapeIsFilledNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void toggle() => state = !state;
+  void setFilled(bool filled) => state = filled;
+}
+
+final shapeIsFilledProvider = NotifierProvider<ShapeIsFilledNotifier, bool>(
+  ShapeIsFilledNotifier.new,
+);
+
+class ShapeStrokeStyleNotifier extends Notifier<StrokeStyle> {
+  @override
+  StrokeStyle build() => StrokeStyle.solid;
+  void setStyle(StrokeStyle style) => state = style;
+}
+
+final shapeStrokeStyleProvider =
+    NotifierProvider<ShapeStrokeStyleNotifier, StrokeStyle>(
+      ShapeStrokeStyleNotifier.new,
+    );
+
+class SnappingEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() => true;
+  void toggle() => state = !state;
+  void setEnabled(bool enabled) => state = enabled;
+}
+
+/// Global toggle for precision shape and line snapping.
+final snappingEnabledProvider = NotifierProvider<SnappingEnabledNotifier, bool>(
+  SnappingEnabledNotifier.new,
 );
 
 class PalmRejectionNotifier extends Notifier<bool> {
@@ -306,6 +652,22 @@ class StrokesNotifier extends Notifier<StrokesState> {
     }
   }
 
+  /// Updates or saves an existing stroke.
+  Future<void> saveStroke(Stroke stroke) async {
+    final pageId = stroke.pageId;
+    final currentList = List<Stroke>.from(state.pageStrokes[pageId] ?? []);
+    final index = currentList.indexWhere((s) => s.id == stroke.id);
+    if (index != -1) {
+      currentList[index] = stroke;
+    } else {
+      currentList.add(stroke);
+    }
+    final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
+    updatedMap[pageId] = currentList;
+    state = state.copyWith(pageStrokes: updatedMap);
+    await _repo.saveStroke(stroke);
+  }
+
   /// Indexes handwriting strokes for full-text search recognition.
   Future<void> indexPageStrokes(String pageId, String notebookId) async {
     final strokes =
@@ -318,46 +680,256 @@ class StrokesNotifier extends Notifier<StrokesState> {
     );
   }
 
-  /// Erases any strokes at [point] within [tolerance].
+  /// Erases strokes at [point] using [tolerance], [mode] (stroke, partial, object), and [shape] (circle, square).
   Future<List<String>> eraseAt(
     String pageId,
     Offset point, {
-    double tolerance = 16.0,
+    double tolerance = 20.0,
+    EraserMode mode = EraserMode.object,
+    EraserShape shape = EraserShape.circle,
   }) async {
     final currentList = List<Stroke>.from(state.pageStrokes[pageId] ?? []);
-    final erasedStrokes = <Stroke>[];
-    final remainingStrokes = <Stroke>[];
+    if (currentList.isEmpty) return [];
 
-    for (final s in currentList) {
-      if (s.containsPoint(point, tolerance: tolerance)) {
-        erasedStrokes.add(s);
-      } else {
-        remainingStrokes.add(s);
+    if (mode == EraserMode.stroke || mode == EraserMode.object) {
+      final erasedStrokes = <Stroke>[];
+      final remainingStrokes = <Stroke>[];
+
+      for (final s in currentList) {
+        bool hit = false;
+        if (shape == EraserShape.circle) {
+          hit = s.containsPoint(point, tolerance: tolerance);
+        } else {
+          final box = Rect.fromCenter(
+            center: point,
+            width: tolerance * 2.0,
+            height: tolerance * 2.0,
+          );
+          hit =
+              s.boundingBox.inflate(tolerance).overlaps(box) &&
+              (s.containsPoint(point, tolerance: tolerance) ||
+                  s.boundingBox.overlaps(box));
+        }
+
+        if (hit) {
+          erasedStrokes.add(s);
+        } else {
+          remainingStrokes.add(s);
+        }
+      }
+
+      if (mode == EraserMode.object) {
+        final notes = ref.read(pageStickyNotesProvider(pageId));
+        for (final n in notes) {
+          final noteBox = Rect.fromLTWH(n.x, n.y, n.width, n.height);
+          if (noteBox.inflate(tolerance).contains(point)) {
+            ref
+                .read(stickyNotesProvider.notifier)
+                .deleteStickyNote(pageId, n.id);
+          }
+        }
+      }
+
+      if (erasedStrokes.isEmpty) return [];
+
+      final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
+      updatedMap[pageId] = remainingStrokes;
+
+      final currentUndo = List<StrokeAction>.from(
+        state.undoStacks[pageId] ?? [],
+      );
+      currentUndo.add(DeleteStrokesAction(erasedStrokes));
+
+      final updatedUndo = Map<String, List<StrokeAction>>.from(
+        state.undoStacks,
+      );
+      updatedUndo[pageId] = currentUndo;
+
+      final updatedRedo = Map<String, List<StrokeAction>>.from(
+        state.redoStacks,
+      );
+      updatedRedo[pageId] = [];
+
+      state = state.copyWith(
+        pageStrokes: updatedMap,
+        undoStacks: updatedUndo,
+        redoStacks: updatedRedo,
+      );
+
+      await _repo.softDeleteStrokes(erasedStrokes.map((s) => s.id).toList());
+      return erasedStrokes.map((s) => s.id).toList();
+    } else {
+      // Partial stroke splitting
+      bool anyModified = false;
+      final beforeList = <Stroke>[];
+      final afterList = <Stroke>[];
+      final updatedStrokes = <Stroke>[];
+      final deletedIds = <String>[];
+
+      for (final s in currentList) {
+        if (!s.boundingBox.inflate(tolerance).contains(point)) {
+          updatedStrokes.add(s);
+          continue;
+        }
+
+        final split = shape == EraserShape.circle
+            ? s.splitByEraserCircle(
+                point,
+                tolerance,
+                () => 'stroke-${_uuid.v4()}',
+              )
+            : s.splitByEraserSquare(
+                point,
+                tolerance,
+                () => 'stroke-${_uuid.v4()}',
+              );
+
+        if (split.length == 1 && split.first.id == s.id) {
+          updatedStrokes.add(s);
+        } else {
+          anyModified = true;
+          beforeList.add(s);
+          afterList.addAll(split);
+          updatedStrokes.addAll(split);
+          deletedIds.add(s.id);
+        }
+      }
+
+      if (!anyModified) return [];
+
+      final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
+      updatedMap[pageId] = updatedStrokes;
+
+      final currentUndo = List<StrokeAction>.from(
+        state.undoStacks[pageId] ?? [],
+      );
+      currentUndo.add(
+        TransformStrokesAction(before: beforeList, after: afterList),
+      );
+
+      final updatedUndo = Map<String, List<StrokeAction>>.from(
+        state.undoStacks,
+      );
+      updatedUndo[pageId] = currentUndo;
+
+      final updatedRedo = Map<String, List<StrokeAction>>.from(
+        state.redoStacks,
+      );
+      updatedRedo[pageId] = [];
+
+      state = state.copyWith(
+        pageStrokes: updatedMap,
+        undoStacks: updatedUndo,
+        redoStacks: updatedRedo,
+      );
+
+      if (deletedIds.isNotEmpty) {
+        await _repo.softDeleteStrokes(deletedIds);
+      }
+      if (afterList.isNotEmpty) {
+        await _repo.saveStrokes(afterList);
+      }
+      return deletedIds;
+    }
+  }
+
+  /// Selects or toggles an individual stroke at [point].
+  void selectStrokeAt(String pageId, Offset point, {double tolerance = 12.0}) {
+    final currentList = state.pageStrokes[pageId] ?? [];
+    String? hitStrokeId;
+    for (int i = currentList.length - 1; i >= 0; i--) {
+      if (currentList[i].containsPoint(point, tolerance: tolerance)) {
+        hitStrokeId = currentList[i].id;
+        break;
       }
     }
 
-    if (erasedStrokes.isEmpty) return [];
+    final updatedSelections = Map<String, Set<String>>.from(
+      state.selectedStrokeIds,
+    );
+    if (hitStrokeId != null) {
+      updatedSelections[pageId] = {hitStrokeId};
+    } else {
+      updatedSelections[pageId] = {};
+    }
+    state = state.copyWith(selectedStrokeIds: updatedSelections);
+  }
+
+  /// Rotates currently selected strokes by [angleRadians] around [origin].
+  Future<void> rotateSelected(
+    String pageId,
+    double angleRadians,
+    Offset origin,
+  ) async {
+    final selectedIds = state.selectedStrokeIds[pageId] ?? {};
+    if (selectedIds.isEmpty) return;
+
+    final currentList = state.pageStrokes[pageId] ?? [];
+    final beforeStrokes = <Stroke>[];
+    final afterStrokes = <Stroke>[];
+    final updatedList = <Stroke>[];
+
+    for (final s in currentList) {
+      if (selectedIds.contains(s.id)) {
+        beforeStrokes.add(s);
+        final rotated = s
+            .rotated(angleRadians, origin)
+            .copyWith(revision: s.revision + 1);
+        afterStrokes.add(rotated);
+        updatedList.add(rotated);
+      } else {
+        updatedList.add(s);
+      }
+    }
 
     final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
-    updatedMap[pageId] = remainingStrokes;
+    updatedMap[pageId] = updatedList;
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(DeleteStrokesAction(erasedStrokes));
+    currentUndo.add(
+      TransformStrokesAction(before: beforeStrokes, after: afterStrokes),
+    );
 
     final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
     updatedUndo[pageId] = currentUndo;
 
-    final updatedRedo = Map<String, List<StrokeAction>>.from(state.redoStacks);
-    updatedRedo[pageId] = [];
+    state = state.copyWith(pageStrokes: updatedMap, undoStacks: updatedUndo);
+    await _repo.saveStrokes(afterStrokes);
+  }
+
+  /// Deletes currently selected strokes on [pageId].
+  Future<void> deleteSelected(String pageId) async {
+    final selectedIds = state.selectedStrokeIds[pageId] ?? {};
+    if (selectedIds.isEmpty) return;
+
+    final currentList = state.pageStrokes[pageId] ?? [];
+    final toDelete = currentList
+        .where((s) => selectedIds.contains(s.id))
+        .toList();
+    final remaining = currentList
+        .where((s) => !selectedIds.contains(s.id))
+        .toList();
+
+    final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
+    updatedMap[pageId] = remaining;
+
+    final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
+    currentUndo.add(DeleteStrokesAction(toDelete));
+
+    final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
+    updatedUndo[pageId] = currentUndo;
+
+    final updatedSelections = Map<String, Set<String>>.from(
+      state.selectedStrokeIds,
+    );
+    updatedSelections[pageId] = {};
 
     state = state.copyWith(
       pageStrokes: updatedMap,
       undoStacks: updatedUndo,
-      redoStacks: updatedRedo,
+      selectedStrokeIds: updatedSelections,
     );
-
-    await _repo.softDeleteStrokes(erasedStrokes.map((s) => s.id).toList());
-    return erasedStrokes.map((s) => s.id).toList();
+    await _repo.softDeleteStrokes(toDelete.map((s) => s.id).toList());
   }
 
   /// Selects strokes falling within the closed lasso polygon.
@@ -514,46 +1086,6 @@ class StrokesNotifier extends Notifier<StrokesState> {
     );
 
     await _repo.saveStrokes(duplicates);
-  }
-
-  /// Deletes currently selected strokes.
-  Future<void> deleteSelected(String pageId) async {
-    final selectedIds = state.selectedStrokeIds[pageId] ?? {};
-    if (selectedIds.isEmpty) return;
-
-    final currentList = state.pageStrokes[pageId] ?? [];
-    final deletedStrokes = <Stroke>[];
-    final remainingStrokes = <Stroke>[];
-
-    for (final s in currentList) {
-      if (selectedIds.contains(s.id)) {
-        deletedStrokes.add(s);
-      } else {
-        remainingStrokes.add(s);
-      }
-    }
-
-    final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
-    updatedMap[pageId] = remainingStrokes;
-
-    final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(DeleteStrokesAction(deletedStrokes));
-
-    final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
-    updatedUndo[pageId] = currentUndo;
-
-    final updatedSelections = Map<String, Set<String>>.from(
-      state.selectedStrokeIds,
-    );
-    updatedSelections[pageId] = {};
-
-    state = state.copyWith(
-      pageStrokes: updatedMap,
-      undoStacks: updatedUndo,
-      selectedStrokeIds: updatedSelections,
-    );
-
-    await _repo.softDeleteStrokes(deletedStrokes.map((s) => s.id).toList());
   }
 
   /// Copies selected strokes to the in-memory clipboard.

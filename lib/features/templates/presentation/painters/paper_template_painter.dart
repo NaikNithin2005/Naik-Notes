@@ -45,6 +45,51 @@ class PaperTemplatePainter extends CustomPainter {
 
     // 2. Draw Specific Vector Template
     switch (type) {
+      case PaperTemplateType.mathematicsNotes:
+        _drawMathematicsNotes(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.physicsNotes:
+        _drawPhysicsNotes(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.chemistryNotes:
+        _drawChemistryNotes(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.lectureNotes:
+        _drawLectureNotes(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.habitTracker:
+        _drawHabitTracker(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.goalPlanner:
+        _drawGoalPlanner(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.sketchbook:
+        _drawSketchbook(canvas, size, accentColor);
+        break;
+      case PaperTemplateType.bulletJournal:
+        _drawBulletJournal(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.mindMapping:
+        _drawMindMapping(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.creativeJournal:
+        _drawCreativeJournal(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.ideaNotebook:
+        _drawIdeaNotebook(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.projectPlanner:
+        _drawProjectPlanner(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.researchJournal:
+        _drawResearchJournal(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.businessNotes:
+        _drawBusinessNotes(canvas, size, lineColor, accentColor);
+        break;
+      case PaperTemplateType.projectDocumentation:
+        _drawProjectDocumentation(canvas, size, lineColor, accentColor);
+        break;
       case PaperTemplateType.blankPaper:
         _drawBlank(canvas, size);
         break;
@@ -873,6 +918,913 @@ class PaperTemplatePainter extends CustomPainter {
       _drawSquareGrid(canvas, size, lineColor);
     } else {
       _drawRuled(canvas, size, lineColor, accentColor);
+    }
+  }
+
+  void _drawMathematicsNotes(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final marginX = properties.marginLeft;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+    final right = size.width - properties.marginRight;
+
+    final marginPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.7)
+      ..strokeWidth = 1.2;
+    canvas.drawLine(Offset(marginX, top), Offset(marginX, bottom), marginPaint);
+
+    _drawLabel(
+      canvas,
+      Offset(properties.marginLeft - 120, top - 24),
+      'FORMULAS & CUES',
+    );
+    _drawLabel(
+      canvas,
+      Offset(marginX + 16, top - 24),
+      'MATHEMATICS / PROOFS & CALCULATIONS',
+    );
+
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.6)
+      ..strokeWidth = 0.6;
+    for (double y = top; y <= bottom; y += 24.0) {
+      canvas.drawLine(Offset(24, y), Offset(marginX - 12, y), linePaint);
+    }
+
+    final gridPaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.7)
+      ..strokeWidth = 0.5;
+    final grid = properties.gridSize > 0 ? properties.gridSize : 14.17;
+    for (double x = marginX; x <= right; x += grid) {
+      canvas.drawLine(Offset(x, top), Offset(x, bottom), gridPaint);
+    }
+    for (double y = top; y <= bottom; y += grid) {
+      canvas.drawLine(Offset(marginX, y), Offset(right, y), gridPaint);
+    }
+  }
+
+  void _drawPhysicsNotes(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'PHYSICS EXPERIMENT & CALCULATIONS',
+    );
+
+    final boxWidth = (right - left) * 0.45;
+    const boxHeight = 160.0;
+    final boxRect = Rect.fromLTWH(right - boxWidth, top, boxWidth, boxHeight);
+    final boxPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(boxRect, const Radius.circular(6)),
+      boxPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(boxRect.left + 12, boxRect.top + 8),
+      'DIAGRAM / APPARATUS',
+    );
+
+    final constWidth = left + 100.0;
+    final dividerPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.7)
+      ..strokeWidth = 1.0;
+    canvas.drawLine(
+      Offset(constWidth, top),
+      Offset(constWidth, bottom),
+      dividerPaint,
+    );
+    _drawLabel(canvas, Offset(left + 4, top + 8), 'VARIABLES & UNITS');
+
+    final gridPaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.6)
+      ..strokeWidth = 0.5;
+    const grid = 14.17;
+    for (double x = constWidth; x <= right; x += grid) {
+      canvas.drawLine(
+        Offset(x, top + boxHeight + 16),
+        Offset(x, bottom),
+        gridPaint,
+      );
+    }
+    for (double y = top + boxHeight + 16; y <= bottom; y += grid) {
+      canvas.drawLine(Offset(constWidth, y), Offset(right, y), gridPaint);
+    }
+  }
+
+  void _drawChemistryNotes(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'ORGANIC CHEMISTRY / MOLECULAR STRUCTURES',
+    );
+
+    final hexRadius = properties.gridSize > 0 ? properties.gridSize : 16.0;
+    final hexPaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+
+    final latticeBottom = top + (bottom - top) * 0.6;
+    final dx = hexRadius * math.sqrt(3);
+    final dy = hexRadius * 1.5;
+
+    for (double y = top + hexRadius; y <= latticeBottom; y += dy) {
+      final row = ((y - top) / dy).round();
+      final rowOffset = (row % 2 == 1) ? dx / 2 : 0.0;
+      for (
+        double x = left + hexRadius + rowOffset;
+        x <= right - hexRadius;
+        x += dx
+      ) {
+        final path = Path();
+        for (int i = 0; i < 6; i++) {
+          final angle = (i * 60.0 - 30.0) * math.pi / 180.0;
+          final px = x + hexRadius * math.cos(angle);
+          final py = y + hexRadius * math.sin(angle);
+          if (i == 0) {
+            path.moveTo(px, py);
+          } else {
+            path.lineTo(px, py);
+          }
+        }
+        path.close();
+        canvas.drawPath(path, hexPaint);
+      }
+    }
+
+    final sepPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.7)
+      ..strokeWidth = 1.0;
+    canvas.drawLine(
+      Offset(left, latticeBottom + 16),
+      Offset(right, latticeBottom + 16),
+      sepPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left, latticeBottom + 22),
+      'REACTION MECHANISMS & BALANCED EQUATIONS',
+    );
+
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.8)
+      ..strokeWidth = 0.6;
+    for (double y = latticeBottom + 50; y <= bottom; y += 26.0) {
+      canvas.drawLine(Offset(left, y), Offset(right, y), linePaint);
+    }
+  }
+
+  void _drawLectureNotes(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    final headerPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.15)
+      ..style = PaintingStyle.fill;
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final headerRect = Rect.fromLTWH(left, top, right - left, 44);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(headerRect, const Radius.circular(6)),
+      headerPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(headerRect, const Radius.circular(6)),
+      borderPaint,
+    );
+
+    _drawLabel(
+      canvas,
+      Offset(left + 12, top + 14),
+      'TOPIC: _____________________   PROFESSOR: _________________   DATE: _________',
+    );
+
+    final cueWidth = left + 140.0;
+    final bodyTop = top + 56.0;
+    const summaryHeight = 90.0;
+    final bodyBottom = bottom - summaryHeight - 16;
+
+    final cuePaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..strokeWidth = 1.0;
+    canvas.drawLine(
+      Offset(cueWidth, bodyTop),
+      Offset(cueWidth, bodyBottom),
+      cuePaint,
+    );
+
+    _drawLabel(canvas, Offset(left + 6, bodyTop + 6), 'KEY CONCEPTS');
+    _drawLabel(
+      canvas,
+      Offset(cueWidth + 12, bodyTop + 6),
+      'DETAILED NOTES & DIAGRAMS',
+    );
+
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.7)
+      ..strokeWidth = 0.6;
+    for (
+      double y = bodyTop + 24;
+      y <= bodyBottom;
+      y += properties.lineSpacing
+    ) {
+      canvas.drawLine(Offset(cueWidth + 8, y), Offset(right, y), linePaint);
+    }
+
+    final summaryRect = Rect.fromLTWH(
+      left,
+      bottom - summaryHeight,
+      right - left,
+      summaryHeight,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(summaryRect, const Radius.circular(6)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, bottom - summaryHeight + 10),
+      'SUMMARY & TAKEAWAYS',
+    );
+  }
+
+  void _drawHabitTracker(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'MONTHLY HABIT MATRIX (DAYS 1 - 31)',
+      size: 10,
+    );
+
+    const habitColWidth = 130.0;
+    final dayWidth = (right - left - habitColWidth) / 31.0;
+    const rowHeight = 22.0;
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.7)
+      ..strokeWidth = 1.0;
+    final gridPaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.8)
+      ..strokeWidth = 0.5;
+
+    for (int day = 1; day <= 31; day++) {
+      final dx = left + habitColWidth + (day - 1) * dayWidth;
+      _drawLabel(canvas, Offset(dx + 2, top + 4), '$day', size: 7.0);
+    }
+
+    int rowIdx = 0;
+    for (double y = top + 20; y <= bottom - rowHeight; y += rowHeight) {
+      rowIdx++;
+      canvas.drawLine(Offset(left, y), Offset(right, y), gridPaint);
+      _drawLabel(
+        canvas,
+        Offset(left + 4, y + 5),
+        'Habit $rowIdx: ________________',
+        size: 7.5,
+      );
+    }
+
+    canvas.drawLine(
+      Offset(left + habitColWidth, top + 20),
+      Offset(left + habitColWidth, bottom),
+      borderPaint,
+    );
+    for (int day = 1; day <= 31; day++) {
+      final dx = left + habitColWidth + day * dayWidth;
+      canvas.drawLine(Offset(dx, top + 20), Offset(dx, bottom), gridPaint);
+    }
+  }
+
+  void _drawGoalPlanner(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final goalRect = Rect.fromLTWH(left, top, right - left, 54);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(goalRect, const Radius.circular(8)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, top + 10),
+      'PRIMARY GOAL / VISION: _________________________________________',
+      weight: FontWeight.bold,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, top + 32),
+      'DEADLINE: ___________   MEASURE OF SUCCESS: ___________________________',
+    );
+
+    _drawLabel(
+      canvas,
+      Offset(left, top + 74),
+      'KEY MILESTONES & TIMELINE',
+      weight: FontWeight.bold,
+    );
+    final cardW = (right - left - 36) / 4.0;
+    for (int i = 0; i < 4; i++) {
+      final cx = left + i * (cardW + 12);
+      final mRect = Rect.fromLTWH(cx, top + 92, cardW, 80);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(mRect, const Radius.circular(6)),
+        borderPaint,
+      );
+      _drawLabel(
+        canvas,
+        Offset(cx + 8, top + 98),
+        'Milestone 0${i + 1}',
+        weight: FontWeight.bold,
+      );
+      _drawLabel(canvas, Offset(cx + 8, top + 116), 'Due: ________', size: 8.0);
+    }
+
+    _drawLabel(
+      canvas,
+      Offset(left, top + 196),
+      'ACTION STEPS & DELIVERABLES',
+      weight: FontWeight.bold,
+    );
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.7)
+      ..strokeWidth = 0.6;
+    for (double y = top + 220; y <= bottom; y += properties.lineSpacing) {
+      final boxRect = Rect.fromLTWH(left + 4, y - 6, 12, 12);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(boxRect, const Radius.circular(2)),
+        borderPaint,
+      );
+      canvas.drawLine(
+        Offset(left + 26, y + 4),
+        Offset(right, y + 4),
+        linePaint,
+      );
+    }
+  }
+
+  void _drawSketchbook(Canvas canvas, Size size, Color accentColor) {
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final left = properties.marginLeft;
+    final top = properties.marginTop;
+    final right = size.width - properties.marginRight;
+    final bottom = size.height - properties.marginBottom;
+
+    canvas.drawRect(Rect.fromLTRB(left, top, right, bottom), borderPaint);
+
+    final thirdX1 = left + (right - left) / 3;
+    final thirdX2 = left + 2 * (right - left) / 3;
+    final thirdY1 = top + (bottom - top) / 3;
+    final thirdY2 = top + 2 * (bottom - top) / 3;
+
+    final tickPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.4)
+      ..strokeWidth = 1.0;
+
+    canvas.drawLine(Offset(thirdX1, top), Offset(thirdX1, top + 8), tickPaint);
+    canvas.drawLine(Offset(thirdX2, top), Offset(thirdX2, top + 8), tickPaint);
+    canvas.drawLine(
+      Offset(thirdX1, bottom - 8),
+      Offset(thirdX1, bottom),
+      tickPaint,
+    );
+    canvas.drawLine(
+      Offset(thirdX2, bottom - 8),
+      Offset(thirdX2, bottom),
+      tickPaint,
+    );
+
+    canvas.drawLine(
+      Offset(left, thirdY1),
+      Offset(left + 8, thirdY1),
+      tickPaint,
+    );
+    canvas.drawLine(
+      Offset(left, thirdY2),
+      Offset(left + 8, thirdY2),
+      tickPaint,
+    );
+    canvas.drawLine(
+      Offset(right - 8, thirdY1),
+      Offset(right, thirdY1),
+      tickPaint,
+    );
+    canvas.drawLine(
+      Offset(right - 8, thirdY2),
+      Offset(right, thirdY2),
+      tickPaint,
+    );
+
+    _drawLabel(
+      canvas,
+      Offset(right - 140, bottom - 18),
+      'ARTIST: ____________',
+      size: 8.0,
+    );
+  }
+
+  void _drawBulletJournal(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    _drawDotted(canvas, size, lineColor);
+    const legend =
+        '• Task   x Done   > Migrated   - Note   * Priority   ○ Event';
+    _drawLabel(
+      canvas,
+      Offset(properties.marginLeft, properties.marginTop - 22),
+      legend,
+      size: 8.0,
+    );
+  }
+
+  void _drawMindMapping(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    final nodePaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final fillPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.7)
+      ..style = PaintingStyle.fill;
+
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.8)
+      ..strokeWidth = 1.2;
+
+    final centerRect = Rect.fromCenter(
+      center: Offset(cx, cy),
+      width: 140,
+      height: 60,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(centerRect, const Radius.circular(16)),
+      fillPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(centerRect, const Radius.circular(16)),
+      nodePaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(cx - 50, cy - 6),
+      'CENTRAL CONCEPT',
+      weight: FontWeight.bold,
+    );
+
+    final angles = [
+      -math.pi * 0.75,
+      -math.pi * 0.25,
+      -math.pi * 0.0,
+      math.pi * 0.25,
+      math.pi * 0.75,
+      math.pi * 1.0,
+    ];
+
+    final dist = math.min(size.width, size.height) * 0.32;
+
+    for (int i = 0; i < angles.length; i++) {
+      final a = angles[i];
+      final hx = cx + dist * math.cos(a);
+      final hy = cy + dist * math.sin(a);
+
+      canvas.drawLine(Offset(cx, cy), Offset(hx, hy), linePaint);
+
+      final subRect = Rect.fromCenter(
+        center: Offset(hx, hy),
+        width: 100,
+        height: 42,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(subRect, const Radius.circular(10)),
+        fillPaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(subRect, const Radius.circular(10)),
+        nodePaint,
+      );
+      _drawLabel(
+        canvas,
+        Offset(hx - 36, hy - 5),
+        'Subtopic ${i + 1}',
+        size: 8.5,
+      );
+    }
+  }
+
+  void _drawCreativeJournal(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'CREATIVE JOURNAL / SKETCH & PROSE',
+    );
+
+    final midX = (left + right) / 2;
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final sketchRect = Rect.fromLTWH(left, top, midX - left - 12, bottom - top);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(sketchRect, const Radius.circular(8)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, top + 10),
+      'VISUAL EXPRESSION / SKETCH',
+    );
+
+    _drawLabel(canvas, Offset(midX + 12, top + 10), 'THOUGHTS & REFLECTIONS');
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.7)
+      ..strokeWidth = 0.6;
+    for (double y = top + 36; y <= bottom; y += properties.lineSpacing) {
+      canvas.drawLine(Offset(midX + 12, y), Offset(right, y), linePaint);
+    }
+  }
+
+  void _drawIdeaNotebook(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final p1 = Rect.fromLTWH(left, top, right - left, 70);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(p1, const Radius.circular(6)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, top + 8),
+      '1. PROBLEM STATEMENT & OPPORTUNITY',
+      weight: FontWeight.bold,
+    );
+
+    final p2Height = (bottom - top - 170);
+    final p2 = Rect.fromLTWH(left, top + 84, right - left, p2Height);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(p2, const Radius.circular(6)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, top + 92),
+      '2. CONCEPT ARCHITECTURE & SKETCH',
+      weight: FontWeight.bold,
+    );
+
+    final dotPaint = Paint()..color = lineColor.withValues(alpha: 0.5);
+    for (double x = left + 20; x <= right - 20; x += 18) {
+      for (double y = top + 116; y <= top + 84 + p2Height - 16; y += 18) {
+        canvas.drawCircle(Offset(x, y), 0.7, dotPaint);
+      }
+    }
+
+    final p3 = Rect.fromLTWH(left, bottom - 70, right - left, 70);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(p3, const Radius.circular(6)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, bottom - 62),
+      '3. VALUE PROPOSITION & NEXT EXPERIMENTS',
+      weight: FontWeight.bold,
+    );
+  }
+
+  void _drawProjectPlanner(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'PROJECT ROADMAP & EXECUTION PLAN',
+    );
+
+    final hRect = Rect.fromLTWH(left, top, right - left, 36);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(hRect, const Radius.circular(6)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 10, top + 10),
+      'PROJECT: ____________________   LEAD: ______________   TARGET LAUNCH: ____________',
+    );
+
+    final phases = [
+      'Phase 1: Research & Discovery',
+      'Phase 2: UI/UX & Architecture',
+      'Phase 3: Development & Integration',
+      'Phase 4: QA & Release',
+    ];
+    const pHeight = 28.0;
+    for (int i = 0; i < phases.length; i++) {
+      final y = top + 50 + i * pHeight;
+      canvas.drawLine(Offset(left, y), Offset(right, y), borderPaint);
+      _drawLabel(canvas, Offset(left + 8, y + 6), phases[i], size: 8.5);
+    }
+
+    _drawLabel(
+      canvas,
+      Offset(left, top + 180),
+      'DELIVERABLES & MILESTONES',
+      weight: FontWeight.bold,
+    );
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.7)
+      ..strokeWidth = 0.6;
+    for (double y = top + 204; y <= bottom; y += properties.lineSpacing) {
+      final boxRect = Rect.fromLTWH(left + 4, y - 6, 12, 12);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(boxRect, const Radius.circular(2)),
+        borderPaint,
+      );
+      canvas.drawLine(
+        Offset(left + 26, y + 4),
+        Offset(right, y + 4),
+        linePaint,
+      );
+    }
+  }
+
+  void _drawResearchJournal(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'SCIENTIFIC RESEARCH / LAB NOTEBOOK',
+    );
+
+    final sH = (bottom - top - 36) / 4.0;
+    final sections = [
+      '1. RESEARCH QUESTION & HYPOTHESIS',
+      '2. EXPERIMENTAL METHODOLOGY',
+      '3. EMPIRICAL OBSERVATIONS & DATA',
+      '4. CONCLUSIONS & NEXT HYPOTHESES',
+    ];
+
+    for (int i = 0; i < 4; i++) {
+      final sy = top + i * (sH + 10);
+      final r = Rect.fromLTWH(left, sy, right - left, sH);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r, const Radius.circular(6)),
+        borderPaint,
+      );
+      _drawLabel(
+        canvas,
+        Offset(left + 10, sy + 8),
+        sections[i],
+        weight: FontWeight.bold,
+      );
+    }
+  }
+
+  void _drawBusinessNotes(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'EXECUTIVE BRIEFING & STRATEGY REVIEW',
+    );
+
+    final cardW = (right - left - 24) / 3.0;
+    for (int i = 0; i < 3; i++) {
+      final cx = left + i * (cardW + 12);
+      final r = Rect.fromLTWH(cx, top, cardW, 50);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r, const Radius.circular(6)),
+        borderPaint,
+      );
+      _drawLabel(
+        canvas,
+        Offset(cx + 8, top + 8),
+        'KPI 0${i + 1}: ____________',
+        weight: FontWeight.bold,
+      );
+      _drawLabel(
+        canvas,
+        Offset(cx + 8, top + 28),
+        'TARGET: ________',
+        size: 8.0,
+      );
+    }
+
+    _drawLabel(
+      canvas,
+      Offset(left, top + 68),
+      'STRATEGIC DECISIONS & ACTIONS',
+      weight: FontWeight.bold,
+    );
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.7)
+      ..strokeWidth = 0.6;
+    for (double y = top + 94; y <= bottom; y += properties.lineSpacing) {
+      canvas.drawLine(Offset(left, y), Offset(right, y), linePaint);
+    }
+  }
+
+  void _drawProjectDocumentation(
+    Canvas canvas,
+    Size size,
+    Color lineColor,
+    Color accentColor,
+  ) {
+    final left = properties.marginLeft;
+    final right = size.width - properties.marginRight;
+    final top = properties.marginTop;
+    final bottom = size.height - properties.marginBottom;
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    _drawLabel(
+      canvas,
+      Offset(left, top - 24),
+      'ENGINEERING & ARCHITECTURE SPECIFICATION',
+    );
+
+    final diagHeight = (bottom - top) * 0.55;
+    final diagRect = Rect.fromLTWH(left, top, right - left, diagHeight);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(diagRect, const Radius.circular(6)),
+      borderPaint,
+    );
+    _drawLabel(
+      canvas,
+      Offset(left + 12, top + 8),
+      'SYSTEM ARCHITECTURE DIAGRAM',
+      weight: FontWeight.bold,
+    );
+
+    final gridPaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.4)
+      ..strokeWidth = 0.5;
+    for (double x = left + 20; x <= right - 20; x += 20) {
+      canvas.drawLine(
+        Offset(x, top + 28),
+        Offset(x, top + diagHeight - 8),
+        gridPaint,
+      );
+    }
+    for (double y = top + 28; y <= top + diagHeight - 8; y += 20) {
+      canvas.drawLine(Offset(left + 8, y), Offset(right - 8, y), gridPaint);
+    }
+
+    _drawLabel(
+      canvas,
+      Offset(left, top + diagHeight + 16),
+      'API INTERFACES & SCHEMA',
+      weight: FontWeight.bold,
+    );
+    final linePaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.7)
+      ..strokeWidth = 0.6;
+    for (
+      double y = top + diagHeight + 36;
+      y <= bottom;
+      y += properties.lineSpacing
+    ) {
+      canvas.drawLine(Offset(left, y), Offset(right, y), linePaint);
     }
   }
 

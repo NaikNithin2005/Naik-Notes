@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
+import 'package:naik_notes/core/widgets/naik_notes_logo.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 
-/// Login screen with stationery branding, credential validation, and offline guest mode.
+/// Login screen with Naik Notes original branding, credential validation,
+/// Google Sign-In, Apple Sign-In, and Phone OTP verification.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -36,9 +38,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _continueAsGuest() {
-    ref.read(authProvider.notifier).continueAsGuest();
-    context.go(RouteNames.dashboard);
+  Future<void> _loginWithGoogle() async {
+    final success = await ref.read(authProvider.notifier).signInWithGoogle();
+    if (success && mounted) {
+      context.go(RouteNames.dashboard);
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    final success = await ref.read(authProvider.notifier).signInWithApple();
+    if (success && mounted) {
+      context.go(RouteNames.dashboard);
+    }
+  }
+
+  void _showForgotPasswordDialog(BuildContext context) {
+    final resetEmailController = TextEditingController(
+      text: _emailController.text,
+    );
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your email address and we will send you a password reset link:',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email Address',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final email = resetEmailController.text.trim();
+              Navigator.of(ctx).pop();
+              if (email.isNotEmpty) {
+                await ref.read(authProvider.notifier).sendPasswordReset(email);
+              }
+            },
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -65,31 +122,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // App Icon & Stationery Logo
-                      Center(
-                        child: Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withValues(
-                                  alpha: 0.35,
-                                ),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.draw_rounded,
-                            color: Colors.white,
-                            size: 36,
-                          ),
-                        ),
-                      ),
+                      // Official Naik Notes Logo
+                      const Center(child: NaikNotesLogo(size: 64)),
                       const SizedBox(height: 16),
 
                       Text(
@@ -138,6 +172,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: theme.colorScheme.onErrorContainer,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Success message banner
+                      if (authState.successMessage != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  authState.successMessage!,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
@@ -196,7 +268,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 24),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => _showForgotPasswordDialog(context),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text('Forgot Password?'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
                       // Sign in button
                       FilledButton(
@@ -221,17 +303,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 style: TextStyle(fontSize: 16),
                               ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
 
-                      // Continue as Guest (Offline Mode)
+                      // Divider with OR
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'OR',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Social & Phone Authentication Providers
                       OutlinedButton.icon(
                         onPressed: authState.isLoading
                             ? null
-                            : _continueAsGuest,
-                        icon: const Icon(Icons.offline_bolt_outlined, size: 18),
-                        label: const Text('Continue Offline (Guest Mode)'),
+                            : _loginWithGoogle,
+                        icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
+                        label: const Text('Continue with Google'),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      OutlinedButton.icon(
+                        onPressed: authState.isLoading ? null : _loginWithApple,
+                        icon: const Icon(Icons.apple, size: 20),
+                        label: const Text('Continue with Apple'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      OutlinedButton.icon(
+                        onPressed: authState.isLoading
+                            ? null
+                            : () => context.push(RouteNames.phoneAuth),
+                        icon: const Icon(Icons.phone_iphone_rounded, size: 18),
+                        label: const Text('Sign In with Phone & OTP'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

@@ -1,16 +1,19 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/data/models/search_index_model.dart';
+import 'package:naik_notes/data/models/shape_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/features/canvas/data/stroke_provider.dart';
 import 'package:naik_notes/features/canvas/rendering/active_stroke_painter.dart';
 import 'package:naik_notes/features/canvas/rendering/lasso_painter.dart';
 import 'package:naik_notes/features/canvas/rendering/search_highlight_painter.dart';
 import 'package:naik_notes/features/canvas/rendering/stroke_painter.dart';
+import 'package:naik_notes/features/notebooks/data/page_provider.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/paper_template_view.dart';
 import 'package:naik_notes/platform/models/stylus_event.dart';
 import 'package:naik_notes/platform/platform_input_adapter.dart';
@@ -50,10 +53,19 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   final _uuid = const Uuid();
 
   Stroke? _activeStroke;
+  Offset? _shapeStartPoint;
   List<Offset> _lassoPoints = [];
   bool _isStylusDetected = false;
+  Offset? _selectionDragStart;
+  bool _isDraggingSelection = false;
   StreamSubscription<StylusEvent>? _stylusSub;
   ToolType? _toolBeforeBarrelButton;
+
+  // Multi-pointer ID tracking for gesture isolation & anti-zigzag engine
+  final Set<int> _activePointerIds = <int>{};
+  int? _activeInkingPointerId;
+  bool _isMultiTouchActive = false;
+  Offset? _cursorPosition;
 
   @override
   void initState() {
@@ -134,6 +146,26 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   void _onPointerDown(PointerDownEvent event) {
     if (widget.readOnly) return;
 
+    _activePointerIds.add(event.pointer);
+
+    // Multi-touch isolation (Anti-Zigzag): if two or more touches are detected,
+    // this is a two-finger pinch-zoom/pan gesture. Cancel active drawing stroke
+    // immediately so no zigzag lines connect the two fingers!
+    if (_activePointerIds.length > 1) {
+      _isMultiTouchActive = true;
+      if (_activeStroke != null || _lassoPoints.isNotEmpty) {
+        setState(() {
+          _activeStroke = null;
+          _shapeStartPoint = null;
+          _lassoPoints = [];
+        });
+      }
+      return;
+    }
+
+    _isMultiTouchActive = false;
+    _activeInkingPointerId = event.pointer;
+
     final isStylus =
         event.kind == PointerDeviceKind.stylus ||
         event.kind == PointerDeviceKind.invertedStylus;
@@ -167,6 +199,39 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
     if (tool == ToolType.pan) return;
 
     final docPoint = event.localPosition;
+    setState(() => _cursorPosition = docPoint);
+
+    // Paint Bucket Tool: Fill page background or tapped vector closed shape
+    if (tool == ToolType.fillBucket) {
+      final color = ref.read(strokeColorProvider);
+      final strokes = ref.read(pageStrokesProvider(widget.pageId));
+      Stroke? hitShape;
+      for (int i = strokes.length - 1; i >= 0; i--) {
+        final s = strokes[i];
+        if (s.boundingBox.inflate(12.0).contains(docPoint)) {
+          hitShape = s;
+          break;
+        }
+      }
+      if (hitShape != null) {
+        final updatedShape = hitShape.copyWith(
+          isFilled: true,
+          fillColorValue: color.toARGB32(),
+          fillOpacity: ref.read(strokeOpacityProvider),
+          revision: hitShape.revision + 1,
+        );
+        ref.read(strokesNotifierProvider.notifier).saveStroke(updatedShape);
+      } else {
+        // Fill canvas paper background
+        final hex =
+            '#${color.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
+        final newProps = widget.properties.copyWith(backgroundColorHex: hex);
+        ref
+            .read(notebookPagesProvider.notifier)
+            .updatePageProperties(pageId: widget.pageId, properties: newProps);
+      }
+      return;
+    }
 
     // Check if tapping outside lasso selection to clear selection
     final selectedIds = ref.read(selectedStrokesProvider(widget.pageId));
@@ -181,27 +246,75 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
     }
 
     if (tool == ToolType.eraser) {
+      final radius = ref.read(eraserRadiusProvider);
+      final mode = ref.read(eraserModeProvider);
       ref
           .read(strokesNotifierProvider.notifier)
-          .eraseAt(
-            widget.pageId,
-            docPoint,
-            tolerance: ref.read(strokeWidthProvider) * 1.5,
-          );
+          .eraseAt(widget.pageId, docPoint, tolerance: radius, mode: mode);
       return;
     }
 
     if (tool == ToolType.lasso) {
+      if (selectedIds.isNotEmpty) {
+        final strokes = ref.read(pageStrokesProvider(widget.pageId));
+        final bbox = _computeSelectionBoundingBox(strokes, selectedIds);
+        if (bbox != null && bbox.inflate(15.0).contains(docPoint)) {
+          _isDraggingSelection = true;
+          _selectionDragStart = docPoint;
+          return;
+        }
+      }
+      _isDraggingSelection = false;
+      _selectionDragStart = null;
       setState(() {
         _lassoPoints = [docPoint];
       });
       return;
     }
 
-    // Drawing tool
+    // 1. Shape Tool: interactive vector shape creation with snapping
+    if (tool == ToolType.shape) {
+      _shapeStartPoint = docPoint;
+      final shapeType = ref.read(selectedShapeTypeProvider);
+      final color = ref.read(strokeColorProvider);
+      final width = ref.read(strokeWidthProvider);
+      final opacity = ref.read(strokeOpacityProvider);
+      final strokeStyle = ref.read(shapeStrokeStyleProvider);
+      final isFilled = ref.read(shapeIsFilledProvider);
+      final fillColor = ref.read(shapeFillColorProvider) ?? color;
+      final fillOpacity = ref.read(shapeFillOpacityProvider);
+
+      final newShape = Stroke(
+        id: 'stroke-${_uuid.v4()}',
+        pageId: widget.pageId,
+        tool: ToolType.shape,
+        shapeType: shapeType,
+        colorValue: color.toARGB32(),
+        width: width,
+        opacity: opacity,
+        strokeStyle: strokeStyle,
+        isFilled: isFilled,
+        fillColorValue: isFilled ? fillColor.toARGB32() : null,
+        fillOpacity: fillOpacity,
+        boundingBox: Rect.fromPoints(docPoint, docPoint),
+        points: [
+          StrokePoint(x: docPoint.dx, y: docPoint.dy, timestamp: 0),
+          StrokePoint(x: docPoint.dx, y: docPoint.dy, timestamp: 1),
+        ],
+        createdAt: DateTime.now(),
+      );
+
+      setState(() {
+        _activeStroke = newShape;
+      });
+      return;
+    }
+
+    // 2. Standard Handwriting Drawing tools (Pen, Pencil, Brush, Marker, Highlighter)
     final color = ref.read(strokeColorProvider);
     final width = ref.read(strokeWidthProvider);
     final opacity = ref.read(strokeOpacityProvider);
+    final strokeStyle = ref.read(strokeStyleProvider);
     final pressureEnabled = ref.read(pressureSensitivityEnabledProvider);
 
     final initialPressure = pressureEnabled && event.pressure != 0.0
@@ -217,6 +330,7 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
       colorValue: color.toARGB32(),
       width: width,
       opacity: opacity,
+      strokeStyle: strokeStyle,
       points: [
         StrokePoint(
           x: docPoint.dx,
@@ -237,6 +351,13 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   void _onPointerMove(PointerMoveEvent event) {
     if (widget.readOnly) return;
 
+    // Multi-touch isolation: do not append points if more than 1 pointer is down
+    if (_isMultiTouchActive || _activePointerIds.length > 1) return;
+    if (_activeInkingPointerId != null &&
+        event.pointer != _activeInkingPointerId) {
+      return;
+    }
+
     final stylusOnly = ref.read(stylusOnlyModeProvider);
     if (stylusOnly && event.kind == PointerDeviceKind.touch) {
       return;
@@ -256,24 +377,88 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
         ? ToolType.eraser
         : ref.read(activeToolProvider);
 
-    if (tool == ToolType.pan) return;
+    if (tool == ToolType.pan || tool == ToolType.fillBucket) return;
 
     final docPoint = event.localPosition;
+    setState(() => _cursorPosition = docPoint);
 
     if (tool == ToolType.eraser) {
+      final radius = ref.read(eraserRadiusProvider);
+      final mode = ref.read(eraserModeProvider);
       ref
           .read(strokesNotifierProvider.notifier)
-          .eraseAt(
-            widget.pageId,
-            docPoint,
-            tolerance: ref.read(strokeWidthProvider) * 1.5,
-          );
+          .eraseAt(widget.pageId, docPoint, tolerance: radius, mode: mode);
       return;
     }
 
-    if (tool == ToolType.lasso && _lassoPoints.isNotEmpty) {
+    if (tool == ToolType.lasso) {
+      if (_isDraggingSelection && _selectionDragStart != null) {
+        final delta = docPoint - _selectionDragStart!;
+        _selectionDragStart = docPoint;
+        ref
+            .read(strokesNotifierProvider.notifier)
+            .translateSelected(widget.pageId, delta);
+        return;
+      }
+      if (_lassoPoints.isNotEmpty) {
+        setState(() {
+          _lassoPoints.add(docPoint);
+        });
+        return;
+      }
+    }
+
+    // Dynamic Shape drag preview with precision snapping assistance
+    if (tool == ToolType.shape &&
+        _shapeStartPoint != null &&
+        _activeStroke != null) {
+      var currentPoint = docPoint;
+      final snapping = ref.read(snappingEnabledProvider);
+      final shapeType = _activeStroke!.shapeType ?? ShapeType.rectangle;
+
+      if (snapping) {
+        if (shapeType.isLineLike) {
+          // Angle snapping: 0°, 45°, 90°, 135°, 180°
+          final dx = currentPoint.dx - _shapeStartPoint!.dx;
+          final dy = currentPoint.dy - _shapeStartPoint!.dy;
+          final dist = math.sqrt(dx * dx + dy * dy);
+          if (dist > 12) {
+            final angle = math.atan2(dy, dx);
+            const snapAngle = math.pi / 4.0; // 45 degrees
+            final nearestSnap = (angle / snapAngle).round() * snapAngle;
+            if ((angle - nearestSnap).abs() < 0.16) {
+              currentPoint = Offset(
+                _shapeStartPoint!.dx + dist * math.cos(nearestSnap),
+                _shapeStartPoint!.dy + dist * math.sin(nearestSnap),
+              );
+            }
+          }
+        } else if (shapeType.isSquareAspect) {
+          // 1:1 proportion lock
+          final dx = currentPoint.dx - _shapeStartPoint!.dx;
+          final dy = currentPoint.dy - _shapeStartPoint!.dy;
+          final side = math.max(dx.abs(), dy.abs());
+          currentPoint = Offset(
+            _shapeStartPoint!.dx + side * (dx < 0 ? -1.0 : 1.0),
+            _shapeStartPoint!.dy + side * (dy < 0 ? -1.0 : 1.0),
+          );
+        }
+      }
+
+      final shapeBBox = Rect.fromPoints(_shapeStartPoint!, currentPoint);
+      final updatedShape = _activeStroke!.copyWith(
+        boundingBox: shapeBBox,
+        points: [
+          StrokePoint(
+            x: _shapeStartPoint!.dx,
+            y: _shapeStartPoint!.dy,
+            timestamp: 0,
+          ),
+          StrokePoint(x: currentPoint.dx, y: currentPoint.dy, timestamp: 1),
+        ],
+      );
       setState(() {
-        _lassoPoints.add(docPoint);
+        _activeStroke = updatedShape;
       });
       return;
     }
@@ -303,8 +488,23 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
 
   void _onPointerUp(PointerUpEvent event) {
     ref.read(stylusHoverProvider.notifier).clearHover();
+    _shapeStartPoint = null;
+
+    _activePointerIds.remove(event.pointer);
+    if (_isMultiTouchActive) {
+      if (_activePointerIds.isEmpty) {
+        _isMultiTouchActive = false;
+        _activeInkingPointerId = null;
+      }
+      return;
+    }
 
     if (widget.readOnly) return;
+    if (_activeInkingPointerId != null &&
+        event.pointer != _activeInkingPointerId) {
+      return;
+    }
+    _activeInkingPointerId = null;
 
     final isBarrelButtonPressed = (event.buttons & kSecondaryMouseButton) != 0;
     final tool =
@@ -313,12 +513,24 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
         ? ToolType.eraser
         : ref.read(activeToolProvider);
 
-    if (tool == ToolType.pan) return;
+    if (tool == ToolType.pan || tool == ToolType.fillBucket) return;
 
-    if (tool == ToolType.lasso && _lassoPoints.length > 2) {
-      ref
-          .read(strokesNotifierProvider.notifier)
-          .selectWithLasso(widget.pageId, _lassoPoints);
+    if (tool == ToolType.lasso) {
+      if (_isDraggingSelection) {
+        _isDraggingSelection = false;
+        _selectionDragStart = null;
+        return;
+      }
+      if (_lassoPoints.length > 2) {
+        ref
+            .read(strokesNotifierProvider.notifier)
+            .selectWithLasso(widget.pageId, _lassoPoints);
+      } else if (_lassoPoints.isNotEmpty) {
+        // Single tap selects or deselects stroke directly at point
+        ref
+            .read(strokesNotifierProvider.notifier)
+            .selectStrokeAt(widget.pageId, _lassoPoints.first);
+      }
       setState(() {
         _lassoPoints = [];
       });
@@ -340,6 +552,19 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
     }
   }
 
+  void _onPointerCancel(PointerCancelEvent event) {
+    _activePointerIds.remove(event.pointer);
+    if (_activePointerIds.isEmpty) {
+      _isMultiTouchActive = false;
+      _activeInkingPointerId = null;
+    }
+    setState(() {
+      _activeStroke = null;
+      _shapeStartPoint = null;
+      _lassoPoints = [];
+    });
+  }
+
   void _onPointerHover(PointerHoverEvent event) {
     if (widget.readOnly) return;
     if (event.kind == PointerDeviceKind.stylus ||
@@ -352,13 +577,6 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
             distance: event.distance,
           );
     }
-  }
-
-  void _onPointerCancel(PointerCancelEvent event) {
-    setState(() {
-      _activeStroke = null;
-      _lassoPoints = [];
-    });
   }
 
   Rect? _computeSelectionBoundingBox(
@@ -433,18 +651,21 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
               ),
             ),
 
-          // Layer 3.5: Real-time Stylus Hover Reticle
-          if (hoverState.isHovering && !isPanMode)
+          // Layer 3.5: Real-time Stylus & Brush Reticle Cursor (Fresco Inspired)
+          if (!isPanMode && (hoverState.isHovering || _cursorPosition != null))
             Positioned.fill(
               child: IgnorePointer(
                 child: CustomPaint(
                   painter: StylusHoverPainter(
-                    position: hoverState.position,
-                    radius: (ref.watch(strokeWidthProvider) / 2).clamp(
-                      2.0,
-                      40.0,
-                    ),
-                    color: ref.watch(strokeColorProvider),
+                    position: hoverState.isHovering
+                        ? hoverState.position
+                        : _cursorPosition!,
+                    radius: activeTool == ToolType.eraser
+                        ? ref.watch(eraserRadiusProvider)
+                        : (ref.watch(strokeWidthProvider) / 2).clamp(1.5, 50.0),
+                    color: activeTool == ToolType.eraser
+                        ? const Color(0xFFEF4444)
+                        : ref.watch(strokeColorProvider),
                   ),
                 ),
               ),
@@ -537,6 +758,26 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
                     duration: Duration(seconds: 1),
                   ),
                 );
+              },
+            ),
+            IconButton(
+              tooltip: 'Rotate 90°',
+              icon: const Icon(Icons.rotate_right_rounded, size: 18),
+              onPressed: () {
+                final selectedIds = ref.read(
+                  selectedStrokesProvider(widget.pageId),
+                );
+                final strokes = ref.read(pageStrokesProvider(widget.pageId));
+                final bbox = _computeSelectionBoundingBox(strokes, selectedIds);
+                if (bbox != null) {
+                  ref
+                      .read(strokesNotifierProvider.notifier)
+                      .rotateSelected(
+                        widget.pageId,
+                        1.57079632679, // pi / 2
+                        bbox.center,
+                      );
+                }
               },
             ),
             IconButton(

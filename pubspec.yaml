@@ -45,6 +45,11 @@ dependencies:
   sqlite3_flutter_libs: ^0.6.0+eol
   pdf: ^3.13.1
   file_picker: ^13.3.3
+  firebase_core: ^5.1.0
+  firebase_auth: ^7.0.1
+  cloud_firestore: ^7.1.0
+  firebase_storage: ^14.0.1
+  archive: ^4.7.1
 
 dev_dependencies:
   flutter_test:

@@ -15,7 +15,10 @@ import 'package:naik_notes/features/notebooks/presentation/widgets/create_notebo
 import 'package:naik_notes/features/notebooks/presentation/widgets/move_to_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/rename_notebook_dialog.dart';
 import 'package:naik_notes/features/search/data/search_provider.dart';
+import 'package:naik_notes/features/sync/data/sync_provider.dart';
 import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
+import 'package:naik_notes/core/theme/theme_controller.dart';
+import 'package:naik_notes/core/widgets/naik_notes_logo.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
 import '../widgets/notebook_card.dart';
@@ -86,6 +89,79 @@ class DashboardScreen extends ConsumerWidget {
           SnackBar(
             content: Text('Notebook "${nb.title}" deleted'),
             behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _changeCoverImage(
+    BuildContext context,
+    WidgetRef ref,
+    Notebook nb,
+  ) async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+      );
+      if (result.isEmpty) return;
+      final file = result.first;
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return;
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text('Uploading custom cover to cloud storage...'),
+              ],
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+      final authState = ref.read(authProvider);
+      final uid = authState.user?.id ?? 'guest';
+      final storageService = ref.read(firebaseStorageServiceProvider);
+
+      final extension = file.extension ?? 'jpg';
+      final downloadUrl = await storageService.uploadNotebookCover(
+        uid: uid,
+        notebookId: nb.id,
+        imageBytes: bytes,
+        extension: extension,
+      );
+
+      await ref
+          .read(notebooksProvider.notifier)
+          .updateCover(nb.id, coverImageUrl: downloadUrl);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cover image updated for "${nb.title}"!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update cover image: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -200,6 +276,8 @@ class DashboardScreen extends ConsumerWidget {
       return true;
     }).toList();
 
+    final isCompact = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -211,219 +289,341 @@ class DashboardScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // App Bar Row with User Greeting & Sync Status
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  if (isCompact) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const NaikNotesLogo(size: 32, showText: true),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                Text(
-                                  'Naik Notes',
-                                  style: theme.textTheme.displaySmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'FREE',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                      color:
-                                          theme.colorScheme.onPrimaryContainer,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            // Theme toggle button (Dark vs Reading Mode)
+                            IconButton(
+                              icon: Icon(
+                                ref.watch(themeControllerProvider).themeMode ==
+                                        AppThemeMode.dark
+                                    ? Icons.auto_stories_outlined
+                                    : Icons.dark_mode_outlined,
+                                size: 20,
+                              ),
+                              tooltip:
+                                  ref
+                                          .watch(themeControllerProvider)
+                                          .themeMode ==
+                                      AppThemeMode.dark
+                                  ? 'Switch to Reading Mode'
+                                  : 'Switch to Dark Mode',
+                              onPressed: () => ref
+                                  .read(themeControllerProvider.notifier)
+                                  .toggleTheme(),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Welcome back. What would you like to study today?',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.7,
+                            IconButton(
+                              icon: const Icon(
+                                Icons.storefront_outlined,
+                                size: 20,
+                              ),
+                              tooltip: 'Template Store',
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (ctx) => const TemplateStoreSheet(),
+                                );
+                              },
+                            ),
+                            const SyncStatusBadge(),
+                            const SizedBox(width: 4),
+                            InkWell(
+                              onTap: () => context.go(RouteNames.profile),
+                              borderRadius: BorderRadius.circular(20),
+                              child: CircleAvatar(
+                                radius: 14,
+                                backgroundColor: theme.colorScheme.primary,
+                                child: Text(
+                                  (currentUser?.displayName ?? 'U')
+                                      .substring(0, 1)
+                                      .toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Your thoughts. Your pages. Your creativity.',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
-
-                      // Sync Status Badge, Template Store, User Profile & Settings
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.storefront_outlined),
-                            tooltip: 'Community Template Store',
-                            onPressed: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (ctx) => const TemplateStoreSheet(),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 4),
-                          const SyncStatusBadge(),
-                          const SizedBox(width: 10),
-                          InkWell(
-                            onTap: () {
-                              if (currentUser == null || currentUser.isGuest) {
-                                context.go(RouteNames.login);
-                              } else {
-                                context.go(RouteNames.settings);
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    theme.colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: theme.colorScheme.outline.withValues(
-                                    alpha: 0.3,
+                    ),
+                  ] else ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const NaikNotesLogo(size: 40, showText: true),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Your thoughts. Your pages. Your creativity.',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.7,
                                   ),
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 10,
-                                    backgroundColor: theme.colorScheme.primary,
-                                    child: Text(
-                                      (currentUser?.displayName ?? 'G')
-                                          .substring(0, 1)
-                                          .toUpperCase(),
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Actions: Theme Toggle, Template Store, Sync, Profile
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                ref.watch(themeControllerProvider).themeMode ==
+                                        AppThemeMode.dark
+                                    ? Icons.auto_stories_outlined
+                                    : Icons.dark_mode_outlined,
+                              ),
+                              tooltip:
+                                  ref
+                                          .watch(themeControllerProvider)
+                                          .themeMode ==
+                                      AppThemeMode.dark
+                                  ? 'Switch to Reading Mode'
+                                  : 'Switch to Dark Mode',
+                              onPressed: () => ref
+                                  .read(themeControllerProvider.notifier)
+                                  .toggleTheme(),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.storefront_outlined),
+                              tooltip: 'Community Template Store',
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (ctx) => const TemplateStoreSheet(),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 4),
+                            const SyncStatusBadge(),
+                            const SizedBox(width: 10),
+                            InkWell(
+                              onTap: () => context.go(RouteNames.profile),
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: theme.colorScheme.outline.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 10,
+                                      backgroundColor:
+                                          theme.colorScheme.primary,
+                                      child: Text(
+                                        (currentUser?.displayName ?? 'U')
+                                            .substring(0, 1)
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    currentUser?.isGuest ?? true
-                                        ? 'Guest (Sign In)'
-                                        : (currentUser?.displayName ?? 'User'),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: theme.colorScheme.onSurface,
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      currentUser?.displayName ?? 'User',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.settings_outlined),
-                            tooltip: 'Settings',
-                            onPressed: () => context.go(RouteNames.settings),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.settings_outlined),
+                              tooltip: 'Settings',
+                              onPressed: () => context.go(RouteNames.settings),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
 
                   const SizedBox(height: 18),
 
-                  // Search Bar and Quick Actions
-                  Row(
-                    children: [
-                      // Search Bar
-                      Expanded(
-                        child: SearchBar(
-                          hintText:
-                              'Search notebooks, handwritten notes, tags...',
-                          leading: const Icon(Icons.search_rounded),
-                          trailing: searchQuery.isNotEmpty
-                              ? [
-                                  IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      ref
-                                          .read(searchQueryProvider.notifier)
-                                          .clear();
-                                    },
-                                  ),
-                                ]
-                              : null,
-                          onChanged: (val) {
-                            ref
-                                .read(searchQueryProvider.notifier)
-                                .setQuery(val);
-                          },
-                          elevation: const WidgetStatePropertyAll(0.5),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      // Import PDF button
-                      OutlinedButton.icon(
-                        onPressed: () => _importPdf(context, ref),
-                        icon: const Icon(
-                          Icons.picture_as_pdf_outlined,
-                          size: 18,
-                        ),
-                        label: const Text('Import PDF'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  // Search Bar and Quick Actions (Responsive)
+                  if (isCompact) ...[
+                    SearchBar(
+                      hintText: 'Search notebooks, handwriting, tags...',
+                      leading: const Icon(Icons.search_rounded),
+                      trailing: searchQuery.isNotEmpty
+                          ? [
+                              IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  ref
+                                      .read(searchQueryProvider.notifier)
+                                      .clear();
+                                },
+                              ),
+                            ]
+                          : null,
+                      onChanged: (val) {
+                        ref.read(searchQueryProvider.notifier).setQuery(val);
+                      },
+                      elevation: const WidgetStatePropertyAll(0.5),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _showCreateNotebookDialog(
+                              context,
+                              folderId: selectedFolderId == '__unfiled__'
+                                  ? null
+                                  : selectedFolderId,
+                            ),
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('New Notebook'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-
-                      // Create Notebook button
-                      FilledButton.icon(
-                        onPressed: () => _showCreateNotebookDialog(
-                          context,
-                          folderId: selectedFolderId == '__unfiled__'
-                              ? null
-                              : selectedFolderId,
-                        ),
-                        icon: const Icon(Icons.add_rounded, size: 20),
-                        label: const Text('New Notebook'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 14,
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _importPdf(context, ref),
+                          icon: const Icon(
+                            Icons.picture_as_pdf_outlined,
+                            size: 18,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                          label: const Text('Import PDF'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SearchBar(
+                            hintText:
+                                'Search notebooks, handwritten notes, tags...',
+                            leading: const Icon(Icons.search_rounded),
+                            trailing: searchQuery.isNotEmpty
+                                ? [
+                                    IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        ref
+                                            .read(searchQueryProvider.notifier)
+                                            .clear();
+                                      },
+                                    ),
+                                  ]
+                                : null,
+                            onChanged: (val) {
+                              ref
+                                  .read(searchQueryProvider.notifier)
+                                  .setQuery(val);
+                            },
+                            elevation: const WidgetStatePropertyAll(0.5),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: () => _importPdf(context, ref),
+                          icon: const Icon(
+                            Icons.picture_as_pdf_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Import PDF'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: () => _showCreateNotebookDialog(
+                            context,
+                            folderId: selectedFolderId == '__unfiled__'
+                                ? null
+                                : selectedFolderId,
+                          ),
+                          icon: const Icon(Icons.add_rounded, size: 20),
+                          label: const Text('New Notebook'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
 
                   const SizedBox(height: 16),
 
@@ -507,41 +707,43 @@ class DashboardScreen extends ConsumerWidget {
 
                   // Filter Segment & View Mode Toggle
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SegmentedButton<int>(
-                          segments: const [
-                            ButtonSegment(
-                              value: 0,
-                              label: Text('All Notebooks'),
-                              icon: Icon(Icons.book_outlined, size: 16),
-                            ),
-                            ButtonSegment(
-                              value: 1,
-                              label: Text('Recent'),
-                              icon: Icon(Icons.history_rounded, size: 16),
-                            ),
-                            ButtonSegment(
-                              value: 2,
-                              label: Text('Favorites'),
-                              icon: Icon(Icons.star_rounded, size: 16),
-                            ),
-                            ButtonSegment(
-                              value: 3,
-                              label: Text('Archived'),
-                              icon: Icon(Icons.archive_outlined, size: 16),
-                            ),
-                          ],
-                          selected: {filterTab},
-                          onSelectionChanged: (set) {
-                            ref
-                                .read(dashboardFilterProvider.notifier)
-                                .setFilter(set.first);
-                          },
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SegmentedButton<int>(
+                            segments: const [
+                              ButtonSegment(
+                                value: 0,
+                                label: Text('All Notebooks'),
+                                icon: Icon(Icons.book_outlined, size: 16),
+                              ),
+                              ButtonSegment(
+                                value: 1,
+                                label: Text('Recent'),
+                                icon: Icon(Icons.history_rounded, size: 16),
+                              ),
+                              ButtonSegment(
+                                value: 2,
+                                label: Text('Favorites'),
+                                icon: Icon(Icons.star_rounded, size: 16),
+                              ),
+                              ButtonSegment(
+                                value: 3,
+                                label: Text('Archived'),
+                                icon: Icon(Icons.archive_outlined, size: 16),
+                              ),
+                            ],
+                            selected: {filterTab},
+                            onSelectionChanged: (set) {
+                              ref
+                                  .read(dashboardFilterProvider.notifier)
+                                  .setFilter(set.first);
+                            },
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
 
                       // View Mode (Grid / List)
                       IconButton(
@@ -787,10 +989,15 @@ class DashboardScreen extends ConsumerWidget {
                     Text(
                       filterTab == 3
                           ? 'No archived notebooks'
+                          : (notebooks.isEmpty &&
+                                searchQuery.isEmpty &&
+                                selectedFolderId == null)
+                          ? 'No notebooks yet'
                           : 'No notebooks found in this view',
                       style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.7,
+                          alpha: 0.8,
                         ),
                       ),
                     ),
@@ -800,8 +1007,14 @@ class DashboardScreen extends ConsumerWidget {
                           ? 'Try modifying your search query'
                           : filterTab == 3
                           ? 'Archived notebooks will appear here'
+                          : (notebooks.isEmpty && selectedFolderId == null)
+                          ? 'No notebooks yet. Create your first notebook to get started.'
                           : 'Create a notebook or change the active folder filter',
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
                     ),
                     if (filterTab != 3) ...[
                       const SizedBox(height: 16),
@@ -863,6 +1076,8 @@ class DashboardScreen extends ConsumerWidget {
                             );
                           }
                         },
+                        onChangeCover: () =>
+                            _changeCoverImage(context, ref, nb),
                         onMoveToFolder: () =>
                             _showMoveToFolderDialog(context, nb),
                         onArchive: () async {
@@ -915,12 +1130,24 @@ class DashboardScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: _parseColor(nb.coverColorHex),
                           borderRadius: BorderRadius.circular(6),
+                          image:
+                              nb.coverImageUrl != null &&
+                                  nb.coverImageUrl!.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(nb.coverImageUrl!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
                         ),
-                        child: const Icon(
-                          Icons.book,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                        child:
+                            nb.coverImageUrl != null &&
+                                nb.coverImageUrl!.isNotEmpty
+                            ? null
+                            : const Icon(
+                                Icons.book,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                       ),
                       title: Text(
                         nb.title,
@@ -959,6 +1186,9 @@ class DashboardScreen extends ConsumerWidget {
                                       .read(notebooksProvider.notifier)
                                       .duplicateNotebook(nb.id);
                                   break;
+                                case 'changeCover':
+                                  _changeCoverImage(context, ref, nb);
+                                  break;
                                 case 'move':
                                   _showMoveToFolderDialog(context, nb);
                                   break;
@@ -986,6 +1216,10 @@ class DashboardScreen extends ConsumerWidget {
                               const PopupMenuItem(
                                 value: 'duplicate',
                                 child: Text('Duplicate'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'changeCover',
+                                child: Text('Change Cover Image'),
                               ),
                               const PopupMenuItem(
                                 value: 'move',

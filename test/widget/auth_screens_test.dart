@@ -26,7 +26,7 @@ void main() {
       expect(find.text('Email Address'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Sign In'), findsOneWidget);
-      expect(find.text('Continue Offline (Guest Mode)'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Create Account'), findsOneWidget);
     });
 

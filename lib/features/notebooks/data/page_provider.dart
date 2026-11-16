@@ -75,15 +75,14 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
     // Update notebook page count in notebooksProvider
     final notebooksNotifier = ref.read(notebooksProvider.notifier);
     final notebooks = ref.read(notebooksProvider);
-    final notebook = notebooks.firstWhere(
-      (n) => n.id == notebookId,
-      orElse: () => notebooks.first,
-    );
-    await notebooksNotifier.renameNotebook(
-      notebookId,
-      notebook.title,
-      newDescription: notebook.description,
-    );
+    final notebook = notebooks.where((n) => n.id == notebookId).firstOrNull;
+    if (notebook != null) {
+      await notebooksNotifier.renameNotebook(
+        notebookId,
+        notebook.title,
+        newDescription: notebook.description,
+      );
+    }
 
     return newPage;
   }
@@ -111,6 +110,34 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
     await _repository.updatePageTemplate(pageId, templateId, properties);
   }
 
+  /// Updates paper properties for a specific page across notebooks.
+  Future<void> updatePageProperties({
+    required String pageId,
+    required PaperProperties properties,
+  }) async {
+    for (final entry in state.entries) {
+      final notebookId = entry.key;
+      final pages = entry.value;
+      final index = pages.indexWhere((p) => p.id == pageId);
+      if (index != -1) {
+        final current = pages[index];
+        final updated = current.copyWith(
+          properties: properties,
+          updatedAt: DateTime.now(),
+        );
+        final updatedList = List<NotebookPage>.from(pages);
+        updatedList[index] = updated;
+        state = {...state, notebookId: updatedList};
+        await _repository.updatePageTemplate(
+          pageId,
+          updated.templateId,
+          properties,
+        );
+        break;
+      }
+    }
+  }
+
   Future<void> toggleBookmark(String notebookId, String pageId) async {
     final currentPages = state[notebookId] ?? [];
     final updatedList = [
@@ -122,6 +149,24 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
     ];
     state = {...state, notebookId: updatedList};
     await _repository.toggleBookmark(pageId);
+  }
+
+  Future<NotebookPage?> duplicatePage(String notebookId, String pageId) async {
+    final currentPages = state[notebookId] ?? [];
+    final targetIndex = currentPages.indexWhere((p) => p.id == pageId);
+    if (targetIndex == -1) return null;
+    final sourcePage = currentPages[targetIndex];
+    final now = DateTime.now();
+    final newPage = sourcePage.copyWith(
+      id: _uuid.v4(),
+      pageNumber: currentPages.length + 1,
+      createdAt: now,
+      updatedAt: now,
+    );
+    final updatedList = [...currentPages, newPage];
+    state = {...state, notebookId: updatedList};
+    await _repository.savePage(newPage);
+    return newPage;
   }
 
   Future<void> deletePage(String notebookId, String pageId) async {
@@ -137,6 +182,118 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
 
     state = {...state, notebookId: renumbered};
     await _repository.deletePage(pageId);
+    for (final p in renumbered) {
+      await _repository.savePage(p);
+    }
+  }
+
+  Future<NotebookPage> insertPageBefore(
+    String notebookId,
+    String referencePageId, {
+    required String templateId,
+    PaperProperties? properties,
+  }) async {
+    final currentPages = List<NotebookPage>.from(state[notebookId] ?? []);
+    final refIndex = currentPages.indexWhere((p) => p.id == referencePageId);
+    final targetIndex = refIndex == -1 ? 0 : refIndex;
+
+    final type = PaperTemplateType.fromId(templateId);
+    final now = DateTime.now();
+    final props = properties ?? PaperProperties.defaultFor(type);
+    final dims = PaperProperties.getDimensions(
+      props.pageSize,
+      props.orientation,
+    );
+
+    final newPage = NotebookPage(
+      id: _uuid.v4(),
+      notebookId: notebookId,
+      pageNumber: targetIndex + 1,
+      templateId: templateId,
+      properties: props,
+      width: dims.width,
+      height: dims.height,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    currentPages.insert(targetIndex, newPage);
+    final renumbered = <NotebookPage>[];
+    for (int i = 0; i < currentPages.length; i++) {
+      renumbered.add(currentPages[i].copyWith(pageNumber: i + 1));
+    }
+
+    state = {...state, notebookId: renumbered};
+    for (final p in renumbered) {
+      await _repository.savePage(p);
+    }
+    return newPage;
+  }
+
+  Future<NotebookPage> insertPageAfter(
+    String notebookId,
+    String referencePageId, {
+    required String templateId,
+    PaperProperties? properties,
+  }) async {
+    final currentPages = List<NotebookPage>.from(state[notebookId] ?? []);
+    final refIndex = currentPages.indexWhere((p) => p.id == referencePageId);
+    final targetIndex = refIndex == -1 ? currentPages.length : refIndex + 1;
+
+    final type = PaperTemplateType.fromId(templateId);
+    final now = DateTime.now();
+    final props = properties ?? PaperProperties.defaultFor(type);
+    final dims = PaperProperties.getDimensions(
+      props.pageSize,
+      props.orientation,
+    );
+
+    final newPage = NotebookPage(
+      id: _uuid.v4(),
+      notebookId: notebookId,
+      pageNumber: targetIndex + 1,
+      templateId: templateId,
+      properties: props,
+      width: dims.width,
+      height: dims.height,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    currentPages.insert(targetIndex, newPage);
+    final renumbered = <NotebookPage>[];
+    for (int i = 0; i < currentPages.length; i++) {
+      renumbered.add(currentPages[i].copyWith(pageNumber: i + 1));
+    }
+
+    state = {...state, notebookId: renumbered};
+    for (final p in renumbered) {
+      await _repository.savePage(p);
+    }
+    return newPage;
+  }
+
+  Future<void> reorderPages(
+    String notebookId,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final currentPages = List<NotebookPage>.from(state[notebookId] ?? []);
+    if (oldIndex < 0 || oldIndex >= currentPages.length) return;
+    if (newIndex < 0 || newIndex > currentPages.length) return;
+
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = currentPages.removeAt(oldIndex);
+    currentPages.insert(newIndex, item);
+
+    final renumbered = <NotebookPage>[];
+    for (int i = 0; i < currentPages.length; i++) {
+      renumbered.add(currentPages[i].copyWith(pageNumber: i + 1));
+    }
+
+    state = {...state, notebookId: renumbered};
     for (final p in renumbered) {
       await _repository.savePage(p);
     }

@@ -595,6 +595,17 @@ class $NotebooksTableTable extends NotebooksTable
     requiredDuringInsert: false,
     defaultValue: const Constant('#8B4513'),
   );
+  static const VerificationMeta _coverImageUrlMeta = const VerificationMeta(
+    'coverImageUrl',
+  );
+  @override
+  late final GeneratedColumn<String> coverImageUrl = GeneratedColumn<String>(
+    'cover_image_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _paperTemplateIdMeta = const VerificationMeta(
     'paperTemplateId',
   );
@@ -763,6 +774,7 @@ class $NotebooksTableTable extends NotebooksTable
     description,
     coverId,
     coverColorHex,
+    coverImageUrl,
     paperTemplateId,
     orientation,
     pageSize,
@@ -835,6 +847,15 @@ class $NotebooksTableTable extends NotebooksTable
         coverColorHex.isAcceptableOrUnknown(
           data['cover_color_hex']!,
           _coverColorHexMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_image_url')) {
+      context.handle(
+        _coverImageUrlMeta,
+        coverImageUrl.isAcceptableOrUnknown(
+          data['cover_image_url']!,
+          _coverImageUrlMeta,
         ),
       );
     }
@@ -963,6 +984,10 @@ class $NotebooksTableTable extends NotebooksTable
         DriftSqlType.string,
         data['${effectivePrefix}cover_color_hex'],
       )!,
+      coverImageUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_image_url'],
+      ),
       paperTemplateId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}paper_template_id'],
@@ -1033,6 +1058,7 @@ class NotebooksTableData extends DataClass
   final String description;
   final String coverId;
   final String coverColorHex;
+  final String? coverImageUrl;
   final String paperTemplateId;
   final String orientation;
   final String pageSize;
@@ -1054,6 +1080,7 @@ class NotebooksTableData extends DataClass
     required this.description,
     required this.coverId,
     required this.coverColorHex,
+    this.coverImageUrl,
     required this.paperTemplateId,
     required this.orientation,
     required this.pageSize,
@@ -1080,6 +1107,9 @@ class NotebooksTableData extends DataClass
     map['description'] = Variable<String>(description);
     map['cover_id'] = Variable<String>(coverId);
     map['cover_color_hex'] = Variable<String>(coverColorHex);
+    if (!nullToAbsent || coverImageUrl != null) {
+      map['cover_image_url'] = Variable<String>(coverImageUrl);
+    }
     map['paper_template_id'] = Variable<String>(paperTemplateId);
     map['orientation'] = Variable<String>(orientation);
     map['page_size'] = Variable<String>(pageSize);
@@ -1111,6 +1141,9 @@ class NotebooksTableData extends DataClass
       description: Value(description),
       coverId: Value(coverId),
       coverColorHex: Value(coverColorHex),
+      coverImageUrl: coverImageUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverImageUrl),
       paperTemplateId: Value(paperTemplateId),
       orientation: Value(orientation),
       pageSize: Value(pageSize),
@@ -1144,6 +1177,7 @@ class NotebooksTableData extends DataClass
       description: serializer.fromJson<String>(json['description']),
       coverId: serializer.fromJson<String>(json['coverId']),
       coverColorHex: serializer.fromJson<String>(json['coverColorHex']),
+      coverImageUrl: serializer.fromJson<String?>(json['coverImageUrl']),
       paperTemplateId: serializer.fromJson<String>(json['paperTemplateId']),
       orientation: serializer.fromJson<String>(json['orientation']),
       pageSize: serializer.fromJson<String>(json['pageSize']),
@@ -1170,6 +1204,7 @@ class NotebooksTableData extends DataClass
       'description': serializer.toJson<String>(description),
       'coverId': serializer.toJson<String>(coverId),
       'coverColorHex': serializer.toJson<String>(coverColorHex),
+      'coverImageUrl': serializer.toJson<String?>(coverImageUrl),
       'paperTemplateId': serializer.toJson<String>(paperTemplateId),
       'orientation': serializer.toJson<String>(orientation),
       'pageSize': serializer.toJson<String>(pageSize),
@@ -1194,6 +1229,7 @@ class NotebooksTableData extends DataClass
     String? description,
     String? coverId,
     String? coverColorHex,
+    Value<String?> coverImageUrl = const Value.absent(),
     String? paperTemplateId,
     String? orientation,
     String? pageSize,
@@ -1215,6 +1251,9 @@ class NotebooksTableData extends DataClass
     description: description ?? this.description,
     coverId: coverId ?? this.coverId,
     coverColorHex: coverColorHex ?? this.coverColorHex,
+    coverImageUrl: coverImageUrl.present
+        ? coverImageUrl.value
+        : this.coverImageUrl,
     paperTemplateId: paperTemplateId ?? this.paperTemplateId,
     orientation: orientation ?? this.orientation,
     pageSize: pageSize ?? this.pageSize,
@@ -1242,6 +1281,9 @@ class NotebooksTableData extends DataClass
       coverColorHex: data.coverColorHex.present
           ? data.coverColorHex.value
           : this.coverColorHex,
+      coverImageUrl: data.coverImageUrl.present
+          ? data.coverImageUrl.value
+          : this.coverImageUrl,
       paperTemplateId: data.paperTemplateId.present
           ? data.paperTemplateId.value
           : this.paperTemplateId,
@@ -1278,6 +1320,7 @@ class NotebooksTableData extends DataClass
           ..write('description: $description, ')
           ..write('coverId: $coverId, ')
           ..write('coverColorHex: $coverColorHex, ')
+          ..write('coverImageUrl: $coverImageUrl, ')
           ..write('paperTemplateId: $paperTemplateId, ')
           ..write('orientation: $orientation, ')
           ..write('pageSize: $pageSize, ')
@@ -1296,7 +1339,7 @@ class NotebooksTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     ownerId,
     folderId,
@@ -1304,6 +1347,7 @@ class NotebooksTableData extends DataClass
     description,
     coverId,
     coverColorHex,
+    coverImageUrl,
     paperTemplateId,
     orientation,
     pageSize,
@@ -1317,7 +1361,7 @@ class NotebooksTableData extends DataClass
     updatedAt,
     deletedAt,
     syncStatus,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1329,6 +1373,7 @@ class NotebooksTableData extends DataClass
           other.description == this.description &&
           other.coverId == this.coverId &&
           other.coverColorHex == this.coverColorHex &&
+          other.coverImageUrl == this.coverImageUrl &&
           other.paperTemplateId == this.paperTemplateId &&
           other.orientation == this.orientation &&
           other.pageSize == this.pageSize &&
@@ -1352,6 +1397,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
   final Value<String> description;
   final Value<String> coverId;
   final Value<String> coverColorHex;
+  final Value<String?> coverImageUrl;
   final Value<String> paperTemplateId;
   final Value<String> orientation;
   final Value<String> pageSize;
@@ -1374,6 +1420,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     this.description = const Value.absent(),
     this.coverId = const Value.absent(),
     this.coverColorHex = const Value.absent(),
+    this.coverImageUrl = const Value.absent(),
     this.paperTemplateId = const Value.absent(),
     this.orientation = const Value.absent(),
     this.pageSize = const Value.absent(),
@@ -1397,6 +1444,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     this.description = const Value.absent(),
     this.coverId = const Value.absent(),
     this.coverColorHex = const Value.absent(),
+    this.coverImageUrl = const Value.absent(),
     this.paperTemplateId = const Value.absent(),
     this.orientation = const Value.absent(),
     this.pageSize = const Value.absent(),
@@ -1423,6 +1471,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Expression<String>? description,
     Expression<String>? coverId,
     Expression<String>? coverColorHex,
+    Expression<String>? coverImageUrl,
     Expression<String>? paperTemplateId,
     Expression<String>? orientation,
     Expression<String>? pageSize,
@@ -1446,6 +1495,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       if (description != null) 'description': description,
       if (coverId != null) 'cover_id': coverId,
       if (coverColorHex != null) 'cover_color_hex': coverColorHex,
+      if (coverImageUrl != null) 'cover_image_url': coverImageUrl,
       if (paperTemplateId != null) 'paper_template_id': paperTemplateId,
       if (orientation != null) 'orientation': orientation,
       if (pageSize != null) 'page_size': pageSize,
@@ -1471,6 +1521,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Value<String>? description,
     Value<String>? coverId,
     Value<String>? coverColorHex,
+    Value<String?>? coverImageUrl,
     Value<String>? paperTemplateId,
     Value<String>? orientation,
     Value<String>? pageSize,
@@ -1494,6 +1545,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       description: description ?? this.description,
       coverId: coverId ?? this.coverId,
       coverColorHex: coverColorHex ?? this.coverColorHex,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       paperTemplateId: paperTemplateId ?? this.paperTemplateId,
       orientation: orientation ?? this.orientation,
       pageSize: pageSize ?? this.pageSize,
@@ -1534,6 +1586,9 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     }
     if (coverColorHex.present) {
       map['cover_color_hex'] = Variable<String>(coverColorHex.value);
+    }
+    if (coverImageUrl.present) {
+      map['cover_image_url'] = Variable<String>(coverImageUrl.value);
     }
     if (paperTemplateId.present) {
       map['paper_template_id'] = Variable<String>(paperTemplateId.value);
@@ -1590,6 +1645,7 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
           ..write('description: $description, ')
           ..write('coverId: $coverId, ')
           ..write('coverColorHex: $coverColorHex, ')
+          ..write('coverImageUrl: $coverImageUrl, ')
           ..write('paperTemplateId: $paperTemplateId, ')
           ..write('orientation: $orientation, ')
           ..write('pageSize: $pageSize, ')
@@ -8136,6 +8192,7 @@ typedef $$NotebooksTableTableCreateCompanionBuilder =
       Value<String> description,
       Value<String> coverId,
       Value<String> coverColorHex,
+      Value<String?> coverImageUrl,
       Value<String> paperTemplateId,
       Value<String> orientation,
       Value<String> pageSize,
@@ -8160,6 +8217,7 @@ typedef $$NotebooksTableTableUpdateCompanionBuilder =
       Value<String> description,
       Value<String> coverId,
       Value<String> coverColorHex,
+      Value<String?> coverImageUrl,
       Value<String> paperTemplateId,
       Value<String> orientation,
       Value<String> pageSize,
@@ -8341,6 +8399,11 @@ class $$NotebooksTableTableFilterComposer
 
   ColumnFilters<String> get coverColorHex => $composableBuilder(
     column: $table.coverColorHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverImageUrl => $composableBuilder(
+    column: $table.coverImageUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8579,6 +8642,11 @@ class $$NotebooksTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverImageUrl => $composableBuilder(
+    column: $table.coverImageUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get paperTemplateId => $composableBuilder(
     column: $table.paperTemplateId,
     builder: (column) => ColumnOrderings(column),
@@ -8676,6 +8744,11 @@ class $$NotebooksTableTableAnnotationComposer
 
   GeneratedColumn<String> get coverColorHex => $composableBuilder(
     column: $table.coverColorHex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverImageUrl => $composableBuilder(
+    column: $table.coverImageUrl,
     builder: (column) => column,
   );
 
@@ -8900,6 +8973,7 @@ class $$NotebooksTableTableTableManager
                 Value<String> description = const Value.absent(),
                 Value<String> coverId = const Value.absent(),
                 Value<String> coverColorHex = const Value.absent(),
+                Value<String?> coverImageUrl = const Value.absent(),
                 Value<String> paperTemplateId = const Value.absent(),
                 Value<String> orientation = const Value.absent(),
                 Value<String> pageSize = const Value.absent(),
@@ -8922,6 +8996,7 @@ class $$NotebooksTableTableTableManager
                 description: description,
                 coverId: coverId,
                 coverColorHex: coverColorHex,
+                coverImageUrl: coverImageUrl,
                 paperTemplateId: paperTemplateId,
                 orientation: orientation,
                 pageSize: pageSize,
@@ -8946,6 +9021,7 @@ class $$NotebooksTableTableTableManager
                 Value<String> description = const Value.absent(),
                 Value<String> coverId = const Value.absent(),
                 Value<String> coverColorHex = const Value.absent(),
+                Value<String?> coverImageUrl = const Value.absent(),
                 Value<String> paperTemplateId = const Value.absent(),
                 Value<String> orientation = const Value.absent(),
                 Value<String> pageSize = const Value.absent(),
@@ -8968,6 +9044,7 @@ class $$NotebooksTableTableTableManager
                 description: description,
                 coverId: coverId,
                 coverColorHex: coverColorHex,
+                coverImageUrl: coverImageUrl,
                 paperTemplateId: paperTemplateId,
                 orientation: orientation,
                 pageSize: pageSize,

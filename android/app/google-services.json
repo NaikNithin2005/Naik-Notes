@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "437907946486",
+    "project_id": "naik-notes",
+    "storage_bucket": "naik-notes.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:437907946486:android:7f28c4cfa6e453b1cb65d7",
+        "android_client_info": {
+          "package_name": "com.naiknotes.app.naik_notes"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7Cc8mFfU4RjjSDMa2SLWVxgrkVnSkk8s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "437907946486-kl3gl5js6cku2otu7mlk8pug6dbln55q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.naiknotes.app.naikNotes"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:437907946486:android:46841f5b6287291fcb65d7",
+        "android_client_info": {
+          "package_name": "com.nithin.naiknotes"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7Cc8mFfU4RjjSDMa2SLWVxgrkVnSkk8s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "437907946486-kl3gl5js6cku2otu7mlk8pug6dbln55q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.naiknotes.app.naikNotes"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

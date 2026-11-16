@@ -1,6 +1,8 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
+import 'package:flutter/material.dart';
+
+import '../../../data/models/shape_model.dart';
 import '../../../data/models/stroke_model.dart';
 
 /// Builder responsible for converting discrete vector [StrokePoint]s into
@@ -11,7 +13,7 @@ class StrokePathBuilder {
   /// Builds a rendered representation for a completed or in-progress [Stroke].
   /// Returns a [RenderedStrokePath] containing the path and appropriate [Paint].
   RenderedStrokePath build(Stroke stroke) {
-    if (stroke.points.isEmpty) {
+    if (stroke.points.isEmpty && stroke.shapeType == null) {
       return RenderedStrokePath(path: Path(), paint: Paint());
     }
 
@@ -26,6 +28,14 @@ class StrokePathBuilder {
         return _buildPencil(stroke);
       case ToolType.highlighter:
         return _buildHighlighter(stroke);
+      case ToolType.marker:
+        return _buildMarker(stroke);
+      case ToolType.calligraphyPen:
+        return _buildCalligraphyPen(stroke);
+      case ToolType.technicalPen:
+        return _buildTechnicalPen(stroke);
+      case ToolType.customBrush:
+        return _buildCustomBrush(stroke);
       case ToolType.eraser:
         return _buildEraser(stroke);
       case ToolType.laserPointer:
@@ -34,6 +44,8 @@ class StrokePathBuilder {
         return _buildShape(stroke);
       case ToolType.lasso:
         return _buildLasso(stroke);
+      case ToolType.fillBucket:
+      case ToolType.text:
       case ToolType.pan:
         return RenderedStrokePath(path: Path(), paint: Paint());
     }
@@ -41,7 +53,10 @@ class StrokePathBuilder {
 
   /// Ballpoint Pen: Smooth continuous Catmull-Rom/Bezier curve with stable, constant stroke width.
   RenderedStrokePath _buildBallpointPen(Stroke stroke) {
-    final path = _buildSmoothCenterline(stroke.points);
+    var path = _buildSmoothCenterline(stroke.points);
+    if (stroke.strokeStyle != StrokeStyle.solid) {
+      path = _applyStrokeStyle(path, stroke.strokeStyle, stroke.width);
+    }
     final paint = Paint()
       ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
       ..strokeWidth = stroke.width
@@ -51,6 +66,110 @@ class StrokePathBuilder {
       ..isAntiAlias = true;
 
     return RenderedStrokePath(path: path, paint: paint);
+  }
+
+  /// Marker: Bold saturated strokes with square/chisel caps.
+  RenderedStrokePath _buildMarker(Stroke stroke) {
+    var path = _buildSmoothCenterline(stroke.points);
+    if (stroke.strokeStyle != StrokeStyle.solid) {
+      path = _applyStrokeStyle(path, stroke.strokeStyle, stroke.width);
+    }
+    final paint = Paint()
+      ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
+      ..strokeWidth = stroke.width
+      ..strokeCap = StrokeCap.square
+      ..strokeJoin = StrokeJoin.miter
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+
+    return RenderedStrokePath(path: path, paint: paint);
+  }
+
+  /// Calligraphy Pen: Fixed 45-degree angle flat chisel ribbon.
+  RenderedStrokePath _buildCalligraphyPen(Stroke stroke) {
+    final points = stroke.points;
+    if (points.length < 2) {
+      final path = Path()
+        ..addOval(
+          Rect.fromCircle(
+            center: points.first.offset,
+            radius: stroke.width * 0.5,
+          ),
+        );
+      final paint = Paint()
+        ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true;
+      return RenderedStrokePath(path: path, paint: paint);
+    }
+
+    final outlinePath = _buildExtrudedOutline(
+      points,
+      baseWidth: stroke.width,
+      pressureFactor: 1.0,
+      minWidthRatio: 0.25,
+      maxWidthRatio: 2.2,
+      calligraphicAngle: math.pi / 4.0, // Strict 45-degree chisel slant
+    );
+
+    final paint = Paint()
+      ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    return RenderedStrokePath(path: outlinePath, paint: paint);
+  }
+
+  /// Technical Pen: Architectural precision with exact uniform monoline width and miter joins.
+  RenderedStrokePath _buildTechnicalPen(Stroke stroke) {
+    var path = _buildSmoothCenterline(stroke.points);
+    if (stroke.strokeStyle != StrokeStyle.solid) {
+      path = _applyStrokeStyle(path, stroke.strokeStyle, stroke.width);
+    }
+    final paint = Paint()
+      ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
+      ..strokeWidth = stroke.width
+      ..strokeCap = StrokeCap.square
+      ..strokeJoin = StrokeJoin.miter
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+
+    return RenderedStrokePath(path: path, paint: paint);
+  }
+
+  /// Custom Brush: Expressive variable width brush with soft gradient edges.
+  RenderedStrokePath _buildCustomBrush(Stroke stroke) {
+    final points = stroke.points;
+    if (points.length < 2) {
+      final path = Path()
+        ..addOval(
+          Rect.fromCircle(
+            center: points.first.offset,
+            radius: stroke.width * 0.8,
+          ),
+        );
+      final paint = Paint()
+        ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true;
+      return RenderedStrokePath(path: path, paint: paint);
+    }
+
+    final outlinePath = _buildExtrudedOutline(
+      points,
+      baseWidth: stroke.width,
+      pressureFactor: 1.5,
+      minWidthRatio: 0.3,
+      maxWidthRatio: 2.0,
+      calligraphicAngle: null,
+    );
+
+    final paint = Paint()
+      ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    return RenderedStrokePath(path: outlinePath, paint: paint);
   }
 
   /// Fountain Pen: Calligraphic dynamic width extrusion based on pressure and stroke angle.
@@ -125,7 +244,10 @@ class StrokePathBuilder {
 
   /// Pencil: Slightly textured line with pressure-sensitive opacity and width.
   RenderedStrokePath _buildPencil(Stroke stroke) {
-    final path = _buildSmoothCenterline(stroke.points);
+    var path = _buildSmoothCenterline(stroke.points);
+    if (stroke.strokeStyle != StrokeStyle.solid) {
+      path = _applyStrokeStyle(path, stroke.strokeStyle, stroke.width);
+    }
     final avgPressure = stroke.points.isEmpty
         ? 0.5
         : stroke.points.map((p) => p.pressure).reduce((a, b) => a + b) /
@@ -191,49 +313,86 @@ class StrokePathBuilder {
     return RenderedStrokePath(path: path, paint: paint);
   }
 
-  /// Shape Tool: Auto-fits strokes into geometric primitives (line, rect, oval).
+  /// Shape Tool: Generates vector paths for all 27 geometric shapes or auto-fitted strokes.
   RenderedStrokePath _buildShape(Stroke stroke) {
-    final points = stroke.points;
-    final path = Path();
-
-    if (points.length < 3) {
-      if (points.isNotEmpty) {
-        path.moveTo(points.first.x, points.first.y);
-        for (final p in points) {
-          path.lineTo(p.x, p.y);
-        }
-      }
+    Path rawPath;
+    if (stroke.shapeType != null) {
+      rawPath = ShapeGeometry.buildPath(
+        stroke.shapeType!,
+        stroke.boundingBox,
+        constrainProportions: stroke.shapeType!.isSquareAspect,
+      );
     } else {
-      final first = points.first.offset;
-      final last = points.last.offset;
-      final isClosed = (first - last).distance < 30.0;
-      final bbox = stroke.boundingBox;
-
-      if (isClosed) {
-        // Decide between circle/oval and rectangle based on aspect ratio and area
-        final rectArea = bbox.width * bbox.height;
-        final approxRadius = (bbox.width + bbox.height) / 4.0;
-        final circleArea = math.pi * approxRadius * approxRadius;
-
-        if ((rectArea - circleArea).abs() < rectArea * 0.35 &&
-            (bbox.width / (bbox.height > 0 ? bbox.height : 1.0) - 1.0).abs() <
-                0.3) {
-          // Circle or Oval
-          path.addOval(bbox);
-        } else {
-          // Rounded Rectangle
-          path.addRRect(
-            RRect.fromRectAndRadius(bbox, const Radius.circular(8.0)),
-          );
+      // Legacy auto-fit from point collection
+      final points = stroke.points;
+      rawPath = Path();
+      if (points.length < 3) {
+        if (points.isNotEmpty) {
+          rawPath.moveTo(points.first.x, points.first.y);
+          for (final p in points) {
+            rawPath.lineTo(p.x, p.y);
+          }
         }
       } else {
-        // Straight line between start and end
-        path.moveTo(first.dx, first.dy);
-        path.lineTo(last.dx, last.dy);
+        final first = points.first.offset;
+        final last = points.last.offset;
+        final isClosed = (first - last).distance < 30.0;
+        final bbox = stroke.boundingBox;
+
+        if (isClosed) {
+          final rectArea = bbox.width * bbox.height;
+          final approxRadius = (bbox.width + bbox.height) / 4.0;
+          final circleArea = math.pi * approxRadius * approxRadius;
+
+          if ((rectArea - circleArea).abs() < rectArea * 0.35 &&
+              (bbox.width / (bbox.height > 0 ? bbox.height : 1.0) - 1.0).abs() <
+                  0.3) {
+            rawPath.addOval(bbox);
+          } else {
+            rawPath.addRRect(
+              RRect.fromRectAndRadius(bbox, const Radius.circular(8.0)),
+            );
+          }
+        } else {
+          rawPath.moveTo(first.dx, first.dy);
+          rawPath.lineTo(last.dx, last.dy);
+        }
       }
     }
 
-    final paint = Paint()
+    // Apply rotation if non-zero
+    if (stroke.rotation != 0.0) {
+      final center = stroke.boundingBox.center;
+      final matrix = Matrix4.identity()
+        ..translate(center.dx, center.dy)
+        ..rotateZ(stroke.rotation)
+        ..translate(-center.dx, -center.dy);
+      rawPath = rawPath.transform(matrix.storage);
+    }
+
+    Path? fillPath;
+    Paint? fillPaint;
+    if (stroke.isFilled &&
+        stroke.fillColorValue != null &&
+        stroke.shapeType?.isLineLike != true) {
+      fillPath = rawPath;
+      fillPaint = Paint()
+        ..color = Color(stroke.fillColorValue!)
+            .withValues(alpha: stroke.fillOpacity)
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true;
+    }
+
+    var outlinePath = rawPath;
+    if (stroke.strokeStyle != StrokeStyle.solid) {
+      outlinePath = _applyStrokeStyle(
+        rawPath,
+        stroke.strokeStyle,
+        stroke.width,
+      );
+    }
+
+    final outlinePaint = Paint()
       ..color = Color(stroke.colorValue).withValues(alpha: stroke.opacity)
       ..strokeWidth = stroke.width
       ..strokeCap = StrokeCap.round
@@ -241,7 +400,12 @@ class StrokePathBuilder {
       ..style = PaintingStyle.stroke
       ..isAntiAlias = true;
 
-    return RenderedStrokePath(path: path, paint: paint);
+    return RenderedStrokePath(
+      path: outlinePath,
+      paint: outlinePaint,
+      fillPath: fillPath,
+      fillPaint: fillPaint,
+    );
   }
 
   /// Lasso Tool: Dashed selection loop.
@@ -256,6 +420,32 @@ class StrokePathBuilder {
       ..isAntiAlias = true;
 
     return RenderedStrokePath(path: path, paint: paint);
+  }
+
+  /// Applies dashed or dotted styling to a Flutter [Path].
+  static Path _applyStrokeStyle(
+    Path source,
+    StrokeStyle style,
+    double strokeWidth,
+  ) {
+    if (style == StrokeStyle.solid) return source;
+    final dest = Path();
+    final dashLength = style == StrokeStyle.dashed
+        ? math.max(6.0, strokeWidth * 3.5)
+        : math.max(1.5, strokeWidth * 0.8);
+    final dashGap = style == StrokeStyle.dashed
+        ? math.max(4.0, strokeWidth * 2.5)
+        : math.max(3.0, strokeWidth * 2.2);
+
+    for (final metric in source.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final len = math.min(dashLength, metric.length - distance);
+        dest.addPath(metric.extractPath(distance, distance + len), Offset.zero);
+        distance += dashLength + dashGap;
+      }
+    }
+    return dest;
   }
 
   /// Generates a smooth centerline Path using midpoint quadratic Bezier splines.
@@ -388,10 +578,18 @@ class StrokePathBuilder {
   }
 }
 
-/// A container combining a compiled geometric [Path] with its rendering [Paint].
+/// A container combining a compiled geometric [Path] with its rendering [Paint],
+/// along with optional fill path and fill paint for closed geometric shapes.
 class RenderedStrokePath {
   final Path path;
   final Paint paint;
+  final Path? fillPath;
+  final Paint? fillPaint;
 
-  const RenderedStrokePath({required this.path, required this.paint});
+  const RenderedStrokePath({
+    required this.path,
+    required this.paint,
+    this.fillPath,
+    this.fillPaint,
+  });
 }

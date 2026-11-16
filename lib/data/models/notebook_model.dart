@@ -7,6 +7,7 @@ class Notebook {
   final String description;
   final String coverId;
   final String coverColorHex;
+  final String? coverImageUrl;
   final String paperTemplateId;
   final String orientation; // 'portrait' | 'landscape'
   final String pageSize; // 'A4' | 'Letter' | 'Custom'
@@ -28,6 +29,7 @@ class Notebook {
     this.description = '',
     required this.coverId,
     this.coverColorHex = '#8B4513',
+    this.coverImageUrl,
     this.paperTemplateId = 'college_ruled',
     this.orientation = 'portrait',
     this.pageSize = 'A4',
@@ -50,6 +52,7 @@ class Notebook {
     String? description,
     String? coverId,
     String? coverColorHex,
+    String? coverImageUrl,
     String? paperTemplateId,
     String? orientation,
     String? pageSize,
@@ -63,6 +66,7 @@ class Notebook {
     DateTime? updatedAt,
     DateTime? deletedAt,
     bool clearFolderId = false,
+    bool clearCoverImageUrl = false,
   }) {
     return Notebook(
       id: id ?? this.id,
@@ -72,6 +76,9 @@ class Notebook {
       description: description ?? this.description,
       coverId: coverId ?? this.coverId,
       coverColorHex: coverColorHex ?? this.coverColorHex,
+      coverImageUrl: clearCoverImageUrl
+          ? null
+          : (coverImageUrl ?? this.coverImageUrl),
       paperTemplateId: paperTemplateId ?? this.paperTemplateId,
       orientation: orientation ?? this.orientation,
       pageSize: pageSize ?? this.pageSize,
@@ -96,6 +103,7 @@ class Notebook {
       'description': description,
       'coverId': coverId,
       'coverColorHex': coverColorHex,
+      'coverImageUrl': coverImageUrl,
       'paperTemplateId': paperTemplateId,
       'orientation': orientation,
       'pageSize': pageSize,
@@ -120,6 +128,7 @@ class Notebook {
       description: json['description'] as String? ?? '',
       coverId: json['coverId'] as String? ?? 'classic_leather',
       coverColorHex: json['coverColorHex'] as String? ?? '#8B4513',
+      coverImageUrl: json['coverImageUrl'] as String?,
       paperTemplateId: json['paperTemplateId'] as String? ?? 'college_ruled',
       orientation: json['orientation'] as String? ?? 'portrait',
       pageSize: json['pageSize'] as String? ?? 'A4',

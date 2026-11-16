@@ -92,13 +92,16 @@ void main() {
       },
     );
 
-    test('populates default sample notebooks when database is empty', () async {
-      final initial = await repository.getAllNotebooks();
-      expect(initial.isEmpty, true);
+    test(
+      'does not populate demo notebooks in production when database is empty',
+      () async {
+        final initial = await repository.getAllNotebooks();
+        expect(initial.isEmpty, true);
 
-      await repository.populateDefaultSamplesIfEmpty();
-      final populated = await repository.getAllNotebooks();
-      expect(populated.length, 4);
-    });
+        await repository.populateDefaultSamplesIfEmpty();
+        final populated = await repository.getAllNotebooks();
+        expect(populated.isEmpty, true);
+      },
+    );
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:naik_notes/data/local/app_database.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
+import 'package:naik_notes/data/models/notebook_model.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/data/repositories/folder_repository.dart';
 import 'package:naik_notes/data/repositories/notebook_repository.dart';
@@ -135,7 +136,21 @@ void main() {
         final folderRepo = DriftFolderRepository(db);
         final pageRepo = DriftPageRepository(db);
 
-        await notebookRepo.populateDefaultSamplesIfEmpty();
+        final now = DateTime.now();
+        await notebookRepo.saveNotebook(
+          Notebook(
+            id: 'nb-1-math',
+            ownerId: 'user-default',
+            title: 'Advanced Mathematics & Calculus',
+            description: 'Calculus and Linear Algebra',
+            coverId: 'classic_leather',
+            coverColorHex: '#8B4513',
+            paperTemplateId: 'square_grid',
+            pageCount: 2,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
         await pageRepo.ensurePagesExist(
           'nb-1-math',
           templateId: 'square_grid',

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -12,6 +14,7 @@ class NotebookCard extends StatelessWidget {
   final VoidCallback? onDuplicate;
   final VoidCallback? onMoveToFolder;
   final VoidCallback? onArchive;
+  final VoidCallback? onChangeCover;
   final VoidCallback? onDelete;
 
   const NotebookCard({
@@ -23,6 +26,7 @@ class NotebookCard extends StatelessWidget {
     this.onDuplicate,
     this.onMoveToFolder,
     this.onArchive,
+    this.onChangeCover,
     this.onDelete,
   });
 
@@ -83,6 +87,33 @@ class NotebookCard extends StatelessWidget {
                   ),
                   child: Stack(
                     children: [
+                      // Custom Uploaded Cover Image Background
+                      if (notebook.coverImageUrl != null &&
+                          notebook.coverImageUrl!.isNotEmpty)
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(8),
+                              bottomLeft: Radius.circular(8),
+                              topRight: Radius.circular(16),
+                              bottomRight: Radius.circular(16),
+                            ),
+                            child: notebook.coverImageUrl!.startsWith('http')
+                                ? Image.network(
+                                    notebook.coverImageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        const SizedBox.shrink(),
+                                  )
+                                : Image.file(
+                                    File(notebook.coverImageUrl!),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        const SizedBox.shrink(),
+                                  ),
+                          ),
+                        ),
+
                       // Book Spine Shadow on Left
                       Positioned(
                         left: 0,
@@ -318,6 +349,9 @@ class NotebookCard extends StatelessWidget {
                           case 'archive':
                             onArchive?.call();
                             break;
+                          case 'change_cover':
+                            onChangeCover?.call();
+                            break;
                           case 'delete':
                             onDelete?.call();
                             break;
@@ -368,6 +402,16 @@ class NotebookCard extends StatelessWidget {
                               Text(
                                 notebook.isArchived ? 'Unarchive' : 'Archive',
                               ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'change_cover',
+                          child: Row(
+                            children: [
+                              Icon(Icons.image_outlined, size: 18),
+                              SizedBox(width: 10),
+                              Text('Change Cover Image'),
                             ],
                           ),
                         ),

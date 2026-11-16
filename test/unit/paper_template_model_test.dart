@@ -4,9 +4,29 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 void main() {
   group('Paper Template Catalog Tests', () {
     test('contains all 19 prompt-required paper template types', () {
-      expect(PaperTemplateType.values.length, 19);
+      expect(PaperTemplateType.values.length, 34);
 
       final expectedIds = [
+        'mathematics_notes',
+        'physics_notes',
+        'chemistry_notes',
+        'cornell_notes',
+        'lecture_notes',
+        'daily_planner',
+        'weekly_planner',
+        'monthly_planner',
+        'habit_tracker',
+        'goal_planner',
+        'sketchbook',
+        'bullet_journal',
+        'mind_mapping',
+        'creative_journal',
+        'idea_notebook',
+        'meeting_notes',
+        'project_planner',
+        'research_journal',
+        'business_notes',
+        'project_documentation',
         'blank_paper',
         'narrow_ruled',
         'college_ruled',
@@ -14,11 +34,6 @@ void main() {
         'dotted_paper',
         'square_grid',
         'graph_paper',
-        'cornell_notes',
-        'meeting_notes',
-        'daily_planner',
-        'weekly_planner',
-        'monthly_planner',
         'study_planner',
         'engineering_paper',
         'isometric_paper',

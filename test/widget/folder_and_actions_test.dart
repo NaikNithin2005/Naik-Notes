@@ -5,12 +5,63 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:naik_notes/app.dart';
 import 'package:naik_notes/data/local/app_database.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
+import 'package:naik_notes/data/models/folder_model.dart';
+import 'package:naik_notes/data/models/notebook_model.dart';
+import 'package:naik_notes/data/models/user_model.dart';
+import 'package:naik_notes/data/repositories/auth_repository.dart';
 import 'package:naik_notes/data/repositories/folder_repository.dart';
 import 'package:naik_notes/data/repositories/notebook_repository.dart';
+import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 import 'package:naik_notes/features/dashboard/presentation/widgets/notebook_card.dart';
 import 'package:naik_notes/features/folders/presentation/widgets/create_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/move_to_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/rename_notebook_dialog.dart';
+
+class _MockFolderAuthRepo implements AuthRepository {
+  final AppUser _user = AppUser(
+    id: 'user-default',
+    email: 'test@naiknotes.com',
+    displayName: 'Test User',
+    token: 'token',
+    isGuest: false,
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
+  );
+
+  @override
+  AppUser? get currentUser => _user;
+  @override
+  Stream<AppUser?> get authStateChanges => Stream.value(_user);
+  @override
+  Future<AppUser> login(String email, String password) async => _user;
+  @override
+  Future<AppUser> register(String email, String password, String displayName) async => _user;
+  @override
+  Future<AppUser> signInWithGoogle() async => _user;
+  @override
+  Future<AppUser> signInWithApple() async => _user;
+  @override
+  Future<void> sendPhoneOtp({
+    required String phoneNumber,
+    required void Function(String verificationId, int? resendToken) onCodeSent,
+    required void Function(String errorMessage) onError,
+    void Function(AppUser user)? onVerificationCompleted,
+  }) async => onCodeSent('id', null);
+  @override
+  Future<AppUser> verifyPhoneOtp(String verificationId, String smsCode) async => _user;
+  @override
+  Future<void> logout() async {}
+  @override
+  Future<void> deleteAccount() async {}
+  @override
+  Future<List<Map<String, dynamic>>> getRegisteredDevices(String uid) async => [];
+  @override
+  Future<void> removeRegisteredDevice(String uid, String deviceId) async {}
+  @override
+  Future<AppUser?> restoreSession() async => _user;
+  @override
+  Future<void> sendPasswordReset(String email) async {}
+}
 
 void main() {
   group('Dashboard Folders & Notebook Actions Widget Tests', () {
@@ -18,10 +69,47 @@ void main() {
     late DriftNotebookRepository notebookRepo;
     late DriftFolderRepository folderRepo;
 
-    setUp(() {
+    setUp(() async {
       db = AppDatabase(NativeDatabase.memory());
       notebookRepo = DriftNotebookRepository(db);
       folderRepo = DriftFolderRepository(db);
+
+      final now = DateTime.now();
+      await folderRepo.saveFolder(
+        Folder(
+          id: 'folder-math-sci',
+          ownerId: 'user-default',
+          name: 'Mathematics & Science',
+          colorHex: '#1E2A38',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await folderRepo.saveFolder(
+        Folder(
+          id: 'folder-personal',
+          ownerId: 'user-default',
+          name: 'Personal & Journal',
+          colorHex: '#8B4513',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await notebookRepo.saveNotebook(
+        Notebook(
+          id: 'nb-test-1',
+          ownerId: 'user-default',
+          title: 'Mathematics I',
+          description: 'Calculus and Linear Algebra',
+          coverId: 'classic_leather',
+          coverColorHex: '#8B4513',
+          paperTemplateId: 'college_ruled',
+          pageCount: 3,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
     });
 
     tearDown(() async {
@@ -34,6 +122,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(db),
           notebookRepositoryProvider.overrideWithValue(notebookRepo),
           folderRepositoryProvider.overrideWithValue(folderRepo),
+          authRepositoryProvider.overrideWithValue(_MockFolderAuthRepo()),
         ],
         child: const NaikNotesApp(),
       );
