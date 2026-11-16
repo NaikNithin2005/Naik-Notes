@@ -125,3 +125,4 @@ class AppPerformanceMonitor {
     _history.clear();
   }
 }
+
