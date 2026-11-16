@@ -610,22 +610,26 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Layer 1: Vector Paper Template Background
+          // Layer 1: Vector Paper Template Background (Cached via RepaintBoundary)
           Positioned.fill(
-            child: PaperTemplateView(
-              type: widget.type,
-              properties: widget.properties,
-              width: widget.width,
-              height: widget.height,
+            child: RepaintBoundary(
+              child: PaperTemplateView(
+                type: widget.type,
+                properties: widget.properties,
+                width: widget.width,
+                height: widget.height,
+              ),
             ),
           ),
 
-          // Layer 2: Completed Vector Strokes
+          // Layer 2: Completed Vector Strokes (Cached in GPU texture via RepaintBoundary)
           Positioned.fill(
-            child: CustomPaint(
-              painter: StrokePainter(
-                strokes: pageStrokes,
-                visibleBounds: Rect.fromLTWH(0, 0, widget.width, widget.height),
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: StrokePainter(
+                  strokes: pageStrokes,
+                  visibleBounds: Rect.fromLTWH(0, 0, widget.width, widget.height),
+                ),
               ),
             ),
           ),
@@ -633,39 +637,45 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
           // Layer 2.5: Search Highlights Layer
           if (widget.searchMatches.isNotEmpty)
             Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: SearchHighlightPainter(
-                    matchingBoxes: widget.searchMatches,
-                    activeIndex: widget.activeSearchIndex,
+              child: RepaintBoundary(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: SearchHighlightPainter(
+                      matchingBoxes: widget.searchMatches,
+                      activeIndex: widget.activeSearchIndex,
+                    ),
                   ),
                 ),
               ),
             ),
 
-          // Layer 3: Active In-Progress Stroke
+          // Layer 3: Active In-Progress Stroke (Isolate high-frequency inking updates)
           if (_activeStroke != null)
             Positioned.fill(
-              child: CustomPaint(
-                painter: ActiveStrokePainter(activeStroke: _activeStroke),
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: ActiveStrokePainter(activeStroke: _activeStroke),
+                ),
               ),
             ),
 
           // Layer 3.5: Real-time Stylus & Brush Reticle Cursor (Fresco Inspired)
           if (!isPanMode && (hoverState.isHovering || _cursorPosition != null))
             Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: StylusHoverPainter(
-                    position: hoverState.isHovering
-                        ? hoverState.position
-                        : _cursorPosition!,
-                    radius: activeTool == ToolType.eraser
-                        ? ref.watch(eraserRadiusProvider)
-                        : (ref.watch(strokeWidthProvider) / 2).clamp(1.5, 50.0),
-                    color: activeTool == ToolType.eraser
-                        ? const Color(0xFFEF4444)
-                        : ref.watch(strokeColorProvider),
+              child: RepaintBoundary(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: StylusHoverPainter(
+                      position: hoverState.isHovering
+                          ? hoverState.position
+                          : _cursorPosition!,
+                      radius: activeTool == ToolType.eraser
+                          ? ref.watch(eraserRadiusProvider)
+                          : (ref.watch(strokeWidthProvider) / 2).clamp(1.5, 50.0),
+                      color: activeTool == ToolType.eraser
+                          ? const Color(0xFFEF4444)
+                          : ref.watch(strokeColorProvider),
+                    ),
                   ),
                 ),
               ),

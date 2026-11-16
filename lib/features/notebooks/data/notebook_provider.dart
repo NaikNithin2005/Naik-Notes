@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/diagnostics/performance_monitor.dart';
 import '../../../data/local/database_provider.dart';
 import '../../../data/models/notebook_model.dart';
 import '../../../data/models/sync_operation_model.dart';
@@ -26,27 +27,29 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
   }
 
   Future<void> loadForUser(String? userId) async {
-    var dbNotebooks = await _repository.getAllNotebooks(
-      ownerId: userId,
-      includeArchived: true,
-    );
-    if (!ref.mounted) return;
-    if (dbNotebooks.isEmpty) {
-      try {
-        final fallbackId = userId ?? 'local_user';
-        await ref
-            .read(welcomeNotebookServiceProvider)
-            .ensureWelcomeNotebookCreated(fallbackId);
-        if (!ref.mounted) return;
-        dbNotebooks = await _repository.getAllNotebooks(
-          ownerId: userId,
-          includeArchived: true,
-        );
-      } catch (_) {}
-    }
-    if (ref.mounted) {
-      state = dbNotebooks;
-    }
+    await AppPerformanceMonitor.trace('notebook_load_metadata', () async {
+      var dbNotebooks = await _repository.getAllNotebooks(
+        ownerId: userId,
+        includeArchived: true,
+      );
+      if (!ref.mounted) return;
+      if (dbNotebooks.isEmpty) {
+        try {
+          final fallbackId = userId ?? 'local_user';
+          await ref
+              .read(welcomeNotebookServiceProvider)
+              .ensureWelcomeNotebookCreated(fallbackId);
+          if (!ref.mounted) return;
+          dbNotebooks = await _repository.getAllNotebooks(
+            ownerId: userId,
+            includeArchived: true,
+          );
+        } catch (_) {}
+      }
+      if (ref.mounted) {
+        state = dbNotebooks;
+      }
+    });
   }
 
   Future<void> loadFromDatabase() async {

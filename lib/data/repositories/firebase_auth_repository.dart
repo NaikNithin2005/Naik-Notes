@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/diagnostics/performance_monitor.dart';
 import '../../features/authentication/data/auth_error_handler.dart';
 import '../models/user_model.dart';
 import 'auth_repository.dart';
@@ -170,57 +171,59 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser> login(String email, String password) async {
-    final sanitizedEmail = email.trim();
-    if (sanitizedEmail.isEmpty || password.isEmpty) {
-      throw Exception('Email and password are required.');
-    }
-
-    final auth = _firebaseAuth;
-    if (auth == null) {
-      final appUser = AppUser(
-        id: 'usr_${sanitizedEmail.hashCode}',
-        email: sanitizedEmail,
-        displayName: sanitizedEmail.split('@').first,
-        token: 'local_token',
-        isGuest: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      _currentUser = appUser;
-      return appUser;
-    }
-
-    try {
-      final credential = await auth
-          .signInWithEmailAndPassword(email: sanitizedEmail, password: password)
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw TimeoutException(
-              'Authentication request timed out. Please try again.',
-            ),
-          );
-
-      final fbUser = credential.user;
-      if (fbUser == null) {
-        throw Exception('Login failed. Please verify credentials.');
+    return AppPerformanceMonitor.trace('auth_email_login', () async {
+      final sanitizedEmail = email.trim();
+      if (sanitizedEmail.isEmpty || password.isEmpty) {
+        throw Exception('Email and password are required.');
       }
 
-      final appUser = _mapFirebaseUser(fbUser);
-      _currentUser = appUser;
+      final auth = _firebaseAuth;
+      if (auth == null) {
+        final appUser = AppUser(
+          id: 'usr_${sanitizedEmail.hashCode}',
+          email: sanitizedEmail,
+          displayName: sanitizedEmail.split('@').first,
+          token: 'local_token',
+          isGuest: false,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        _currentUser = appUser;
+        return appUser;
+      }
 
-      unawaited(_registerDevice(appUser.id));
-      unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
+      try {
+        final credential = await auth
+            .signInWithEmailAndPassword(email: sanitizedEmail, password: password)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () => throw TimeoutException(
+                'Authentication request timed out. Please try again.',
+              ),
+            );
 
-      return appUser;
-    } on fb.FirebaseAuthException catch (e) {
-      throw Exception(AuthErrorHandler.handle(e));
-    } on TimeoutException catch (e) {
-      throw Exception(
-        e.message ?? 'Authentication timed out. Check your connection.',
-      );
-    } catch (e) {
-      throw Exception(AuthErrorHandler.handle(e));
-    }
+        final fbUser = credential.user;
+        if (fbUser == null) {
+          throw Exception('Login failed. Please verify credentials.');
+        }
+
+        final appUser = _mapFirebaseUser(fbUser);
+        _currentUser = appUser;
+
+        unawaited(_registerDevice(appUser.id));
+        unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
+
+        return appUser;
+      } on fb.FirebaseAuthException catch (e) {
+        throw Exception(AuthErrorHandler.handle(e));
+      } on TimeoutException catch (e) {
+        throw Exception(
+          e.message ?? 'Authentication timed out. Check your connection.',
+        );
+      } catch (e) {
+        throw Exception(AuthErrorHandler.handle(e));
+      }
+    });
   }
 
   @override
@@ -230,201 +233,199 @@ class FirebaseAuthRepository implements AuthRepository {
     String displayName, {
     String? confirmPassword,
   }) async {
-    final sanitizedEmail = email.trim();
-    final sanitizedName = displayName.trim();
+    return AppPerformanceMonitor.trace('auth_email_register', () async {
+      final sanitizedEmail = email.trim();
+      final sanitizedName = displayName.trim();
 
-    if (sanitizedEmail.isEmpty || password.isEmpty) {
-      throw Exception('Email and password are required.');
-    }
-    if (password.length < 6) {
-      throw Exception('Password must be at least 6 characters long.');
-    }
-    if (confirmPassword != null && confirmPassword != password) {
-      throw Exception('Passwords do not match.');
-    }
+      if (sanitizedEmail.isEmpty || password.isEmpty) {
+        throw Exception('Email and password are required.');
+      }
+      if (password.length < 6) {
+        throw Exception('Password must be at least 6 characters long.');
+      }
+      if (confirmPassword != null && confirmPassword != password) {
+        throw Exception('Passwords do not match.');
+      }
 
-    final effectiveName = sanitizedName.isEmpty
-        ? sanitizedEmail.split('@').first
-        : sanitizedName;
+      final effectiveName = sanitizedName.isEmpty
+          ? sanitizedEmail.split('@').first
+          : sanitizedName;
 
-    final auth = _firebaseAuth;
-    if (auth == null) {
-      final appUser = AppUser(
-        id: 'usr_${sanitizedEmail.hashCode}',
-        email: sanitizedEmail,
-        displayName: effectiveName,
-        token: 'local_token',
-        isGuest: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      _currentUser = appUser;
-      return appUser;
-    }
-
-    try {
-      final credential = await auth
-          .createUserWithEmailAndPassword(
-            email: sanitizedEmail,
-            password: password,
-          )
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw TimeoutException(
-              'Registration timed out. Please try again.',
-            ),
-          );
-
-      final fbUser = credential.user;
-      if (fbUser == null) {
-        throw Exception('User registration failed.');
+      final auth = _firebaseAuth;
+      if (auth == null) {
+        final appUser = AppUser(
+          id: 'usr_${sanitizedEmail.hashCode}',
+          email: sanitizedEmail,
+          displayName: effectiveName,
+          token: 'local_token',
+          isGuest: false,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        _currentUser = appUser;
+        return appUser;
       }
 
       try {
-        await fbUser.updateDisplayName(effectiveName);
-      } catch (_) {}
+        final credential = await auth
+            .createUserWithEmailAndPassword(
+              email: sanitizedEmail,
+              password: password,
+            )
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () => throw TimeoutException(
+                'Registration timed out. Please try again.',
+              ),
+            );
 
-      final appUser = AppUser(
-        id: fbUser.uid,
-        email: sanitizedEmail,
-        displayName: effectiveName,
-        token: fbUser.uid,
-        isGuest: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        final fbUser = credential.user;
+        if (fbUser == null) {
+          throw Exception('User registration failed.');
+        }
 
-      _currentUser = appUser;
+        try {
+          await fbUser.updateDisplayName(effectiveName);
+        } catch (_) {}
 
-      // Await profile sync to Firestore and device registration
-      try {
-        await _syncUserProfile(appUser.id, appUser.email, appUser.displayName)
-            .timeout(const Duration(seconds: 8));
-        await _registerDevice(appUser.id).timeout(const Duration(seconds: 8));
+        final appUser = AppUser(
+          id: fbUser.uid,
+          email: sanitizedEmail,
+          displayName: effectiveName,
+          token: fbUser.uid,
+          isGuest: false,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        _currentUser = appUser;
+
+        // Staged background persistence: navigate immediately without blocking UI
+        unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
+        unawaited(_registerDevice(appUser.id));
+
+        return appUser;
+      } on fb.FirebaseAuthException catch (e) {
+        throw Exception(AuthErrorHandler.handle(e));
+      } on TimeoutException catch (e) {
+        throw Exception(e.message ?? 'Registration timed out.');
       } catch (e) {
-        debugPrint('Firestore profile creation notice: $e');
+        throw Exception(AuthErrorHandler.handle(e));
       }
-
-      return appUser;
-    } on fb.FirebaseAuthException catch (e) {
-      throw Exception(AuthErrorHandler.handle(e));
-    } on TimeoutException catch (e) {
-      throw Exception(e.message ?? 'Registration timed out.');
-    } catch (e) {
-      throw Exception(AuthErrorHandler.handle(e));
-    }
+    });
   }
 
   @override
   Future<AppUser> signInWithGoogle({bool promptAccountSelection = true}) async {
-    final auth = _firebaseAuth;
-    if (auth == null) {
-      final appUser = AppUser(
-        id: 'google_${_uuid.v4().substring(0, 8)}',
-        email: 'user.google@gmail.com',
-        displayName: 'Google User',
-        token: 'google_token',
-        isGuest: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      _currentUser = appUser;
-      return appUser;
-    }
-
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      throw Exception(
-        'Google Sign-In is supported on Android and iPadOS. On Windows, please sign in with your Email and Password.',
-      );
-    }
-
-    try {
-      fb.UserCredential credential;
-
-      if (!kIsWeb &&
-          (defaultTargetPlatform == TargetPlatform.android ||
-              defaultTargetPlatform == TargetPlatform.iOS)) {
-        // Native Google Play Services on Android / iOS
-        final GoogleSignIn googleSignIn = GoogleSignIn(
-          scopes: ['email', 'profile'],
-          serverClientId:
-              '437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com',
+    return AppPerformanceMonitor.trace('auth_google_login', () async {
+      final auth = _firebaseAuth;
+      if (auth == null) {
+        final appUser = AppUser(
+          id: 'google_${_uuid.v4().substring(0, 8)}',
+          email: 'user.google@gmail.com',
+          displayName: 'Google User',
+          token: 'google_token',
+          isGuest: false,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
+        _currentUser = appUser;
+        return appUser;
+      }
 
-        // Force interactive account chooser by clearing cached account
-        if (promptAccountSelection) {
-          try {
-            await googleSignIn.signOut();
-          } catch (_) {}
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+        throw Exception(
+          'Google Sign-In is supported on Android and iPadOS. On Windows, please sign in with your Email and Password.',
+        );
+      }
+
+      try {
+        fb.UserCredential credential;
+
+        if (!kIsWeb &&
+            (defaultTargetPlatform == TargetPlatform.android ||
+                defaultTargetPlatform == TargetPlatform.iOS)) {
+          // Native Google Play Services on Android / iOS
+          final GoogleSignIn googleSignIn = GoogleSignIn(
+            scopes: ['email', 'profile'],
+            serverClientId:
+                '437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com',
+          );
+
+          // Force interactive account chooser by clearing cached account
+          if (promptAccountSelection) {
+            try {
+              await googleSignIn.signOut();
+            } catch (_) {}
+          }
+
+          final GoogleSignInAccount? googleAccount = await googleSignIn.signIn();
+          if (googleAccount == null) {
+            throw Exception('Google Sign-In was cancelled.');
+          }
+
+          final GoogleSignInAuthentication googleAuth =
+              await googleAccount.authentication;
+
+          final fb.AuthCredential authCredential =
+              fb.GoogleAuthProvider.credential(
+                accessToken: googleAuth.accessToken,
+                idToken: googleAuth.idToken,
+              );
+
+          credential = await auth
+              .signInWithCredential(authCredential)
+              .timeout(
+                const Duration(seconds: 45),
+                onTimeout: () =>
+                    throw TimeoutException('Google Sign-In timed out.'),
+              );
+        } else if (kIsWeb) {
+          final fb.GoogleAuthProvider googleProvider = fb.GoogleAuthProvider();
+          googleProvider.addScope('email');
+          googleProvider.addScope('profile');
+          if (promptAccountSelection) {
+            googleProvider.setCustomParameters({'prompt': 'select_account'});
+          }
+          credential = await auth
+              .signInWithPopup(googleProvider)
+              .timeout(
+                const Duration(seconds: 45),
+                onTimeout: () =>
+                    throw TimeoutException('Google Sign-In timed out.'),
+              );
+        } else {
+          throw Exception(
+            'Google Sign-In is supported on Android, iPadOS, and Web. On desktop, please sign in with Email & Password.',
+          );
         }
 
-        final GoogleSignInAccount? googleAccount = await googleSignIn.signIn();
-        if (googleAccount == null) {
+        final fbUser = credential.user;
+        if (fbUser == null) {
           throw Exception('Google Sign-In was cancelled.');
         }
 
-        final GoogleSignInAuthentication googleAuth =
-            await googleAccount.authentication;
+        final appUser = _mapFirebaseUser(fbUser);
+        _currentUser = appUser;
 
-        final fb.AuthCredential authCredential =
-            fb.GoogleAuthProvider.credential(
-              accessToken: googleAuth.accessToken,
-              idToken: googleAuth.idToken,
-            );
-
-        credential = await auth
-            .signInWithCredential(authCredential)
-            .timeout(
-              const Duration(seconds: 45),
-              onTimeout: () =>
-                  throw TimeoutException('Google Sign-In timed out.'),
-            );
-      } else if (kIsWeb) {
-        final fb.GoogleAuthProvider googleProvider = fb.GoogleAuthProvider();
-        googleProvider.addScope('email');
-        googleProvider.addScope('profile');
-        if (promptAccountSelection) {
-          googleProvider.setCustomParameters({'prompt': 'select_account'});
-        }
-        credential = await auth
-            .signInWithPopup(googleProvider)
-            .timeout(
-              const Duration(seconds: 45),
-              onTimeout: () =>
-                  throw TimeoutException('Google Sign-In timed out.'),
-            );
-      } else {
-        throw Exception(
-          'Google Sign-In is supported on Android, iPadOS, and Web. On desktop, please sign in with Email & Password.',
-        );
-      }
-
-      final fbUser = credential.user;
-      if (fbUser == null) {
-        throw Exception('Google Sign-In was cancelled.');
-      }
-
-      final appUser = _mapFirebaseUser(fbUser);
-      _currentUser = appUser;
-
-      try {
-        await _registerDevice(appUser.id).timeout(const Duration(seconds: 6));
-        await _syncUserProfile(
+        // Non-blocking staged profile & device registration
+        unawaited(_registerDevice(appUser.id));
+        unawaited(_syncUserProfile(
           appUser.id,
           appUser.email,
           appUser.displayName,
           photoUrl: appUser.photoUrl,
-        ).timeout(const Duration(seconds: 6));
-      } catch (_) {}
+        ));
 
-      return appUser;
-    } on fb.FirebaseAuthException catch (e) {
-      throw Exception(AuthErrorHandler.handle(e));
-    } on TimeoutException catch (e) {
-      throw Exception(e.message ?? 'Google Sign-In timed out.');
-    } catch (e) {
-      throw Exception(AuthErrorHandler.handle(e));
-    }
+        return appUser;
+      } on fb.FirebaseAuthException catch (e) {
+        throw Exception(AuthErrorHandler.handle(e));
+      } on TimeoutException catch (e) {
+        throw Exception(e.message ?? 'Google Sign-In timed out.');
+      } catch (e) {
+        throw Exception(AuthErrorHandler.handle(e));
+      }
+    });
   }
 
   @override
