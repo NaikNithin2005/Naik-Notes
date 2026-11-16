@@ -196,7 +196,7 @@ void main() {
 
       expect(success, false);
       final state = container.read(authProvider);
-      expect(state.errorMessage, contains('Invalid credentials'));
+      expect(state.errorMessage, contains('Incorrect email or password'));
     });
 
     test('registration updates user state with provided name', () async {

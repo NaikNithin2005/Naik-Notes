@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,9 +7,12 @@ import 'package:naik_notes/features/authentication/presentation/screens/register
 
 void main() {
   group('Authentication UI Screen Tests', () {
-    testWidgets('renders LoginScreen with branding, fields and guest button', (
+    testWidgets('renders LoginScreen with branding, fields and Google option on Android', (
       tester,
     ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
       await tester.binding.setSurfaceSize(const Size(1000, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -28,6 +32,30 @@ void main() {
       expect(find.text('Sign In'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Create Account'), findsOneWidget);
+    });
+
+    testWidgets('renders LoginScreen on Windows with email authentication badge', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      await tester.binding.setSurfaceSize(const Size(1000, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: LoginScreen())),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Naik Notes'), findsOneWidget);
+      expect(find.text('Email Address'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Sign In'), findsOneWidget);
+      expect(find.text('Windows Edition • Email authentication'), findsOneWidget);
+      // On Windows, unsupported mobile OAuth is not displayed
+      expect(find.text('Continue with Google'), findsNothing);
     });
 
     testWidgets('validates empty inputs on LoginScreen submit', (tester) async {

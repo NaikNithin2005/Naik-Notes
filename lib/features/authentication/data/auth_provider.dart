@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/firebase_auth_repository.dart';
+import 'auth_error_handler.dart';
 
 /// Authentication state model for Naik Notes.
 class AuthState {
@@ -96,7 +97,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: AuthErrorHandler.handle(e),
       );
       return false;
     } finally {
@@ -130,7 +131,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: AuthErrorHandler.handle(e),
       );
       return false;
     } finally {
@@ -160,7 +161,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: AuthErrorHandler.handle(e),
       );
       return false;
     } finally {
@@ -190,7 +191,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: AuthErrorHandler.handle(e),
       );
       return false;
     } finally {
@@ -223,7 +224,10 @@ class AuthNotifier extends Notifier<AuthState> {
           );
         },
         onError: (errorMessage) {
-          state = state.copyWith(isLoading: false, errorMessage: errorMessage);
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: AuthErrorHandler.handle(errorMessage),
+          );
         },
         onVerificationCompleted: (user) {
           state = state.copyWith(
@@ -238,7 +242,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: AuthErrorHandler.handle(e),
       );
       return false;
     } finally {
@@ -277,7 +281,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: AuthErrorHandler.handle(e),
       );
       return false;
     } finally {
@@ -306,7 +310,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: AuthErrorHandler.handle(e),
       );
       return false;
     } finally {

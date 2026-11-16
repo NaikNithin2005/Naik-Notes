@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../features/authentication/data/auth_error_handler.dart';
 import '../models/user_model.dart';
 import 'auth_repository.dart';
 
@@ -207,19 +208,18 @@ class FirebaseAuthRepository implements AuthRepository {
       final appUser = _mapFirebaseUser(fbUser);
       _currentUser = appUser;
 
-      await _registerDevice(appUser.id);
-      await _syncUserProfile(appUser.id, appUser.email, appUser.displayName);
+      unawaited(_registerDevice(appUser.id));
+      unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
 
       return appUser;
     } on fb.FirebaseAuthException catch (e) {
-      throw Exception(_mapAuthError(e.code, e.message));
+      throw Exception(AuthErrorHandler.handle(e));
     } on TimeoutException catch (e) {
       throw Exception(
         e.message ?? 'Authentication timed out. Check your connection.',
       );
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Authentication error: $e');
+      throw Exception(AuthErrorHandler.handle(e));
     }
   }
 
@@ -292,17 +292,16 @@ class FirebaseAuthRepository implements AuthRepository {
 
       _currentUser = appUser;
 
-      await _syncUserProfile(appUser.id, appUser.email, appUser.displayName);
-      await _registerDevice(appUser.id);
+      unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
+      unawaited(_registerDevice(appUser.id));
 
       return appUser;
     } on fb.FirebaseAuthException catch (e) {
-      throw Exception(_mapAuthError(e.code, e.message));
+      throw Exception(AuthErrorHandler.handle(e));
     } on TimeoutException catch (e) {
       throw Exception(e.message ?? 'Registration timed out.');
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Registration error: $e');
+      throw Exception(AuthErrorHandler.handle(e));
     }
   }
 
@@ -321,6 +320,12 @@ class FirebaseAuthRepository implements AuthRepository {
       );
       _currentUser = appUser;
       return appUser;
+    }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      throw Exception(
+        'Google Sign-In is supported on Android and iPadOS. On Windows, please sign in with your Email and Password.',
+      );
     }
 
     try {
@@ -369,17 +374,9 @@ class FirebaseAuthRepository implements AuthRepository {
                   throw TimeoutException('Google Sign-In timed out.'),
             );
       } else {
-        // Desktop platforms (Windows, macOS, Linux)
-        final fb.GoogleAuthProvider googleProvider = fb.GoogleAuthProvider();
-        googleProvider.addScope('email');
-        googleProvider.addScope('profile');
-        credential = await auth
-            .signInWithProvider(googleProvider)
-            .timeout(
-              const Duration(seconds: 45),
-              onTimeout: () =>
-                  throw TimeoutException('Google Sign-In timed out.'),
-            );
+        throw Exception(
+          'Google Sign-In is supported on Android, iPadOS, and Web. On desktop, please sign in with Email & Password.',
+        );
       }
 
       final fbUser = credential.user;
@@ -390,34 +387,23 @@ class FirebaseAuthRepository implements AuthRepository {
       final appUser = _mapFirebaseUser(fbUser);
       _currentUser = appUser;
 
-      await _registerDevice(appUser.id);
-      await _syncUserProfile(
-        appUser.id,
-        appUser.email,
-        appUser.displayName,
-        photoUrl: appUser.photoUrl,
+      unawaited(_registerDevice(appUser.id));
+      unawaited(
+        _syncUserProfile(
+          appUser.id,
+          appUser.email,
+          appUser.displayName,
+          photoUrl: appUser.photoUrl,
+        ),
       );
 
       return appUser;
     } on fb.FirebaseAuthException catch (e) {
-      throw Exception(_mapAuthError(e.code, e.message));
+      throw Exception(AuthErrorHandler.handle(e));
     } on TimeoutException catch (e) {
       throw Exception(e.message ?? 'Google Sign-In timed out.');
     } catch (e) {
-      if (e is Exception) {
-        final msg = e.toString();
-        if (msg.contains('ApiException: 10') ||
-            msg.contains('12500') ||
-            msg.contains('certificate hash')) {
-          throw Exception(
-            'Google Sign-In configuration required: Please add the SHA-1 and SHA-256 fingerprints to your Firebase Console under Project Settings > Your apps (com.naiknotes.app.naik_notes).\n'
-            'SHA-1: BB:42:0F:07:F9:08:43:69:3D:54:93:1A:02:A8:09:9B:46:F8:66:E7\n'
-            'SHA-256: 12:4B:88:AD:FC:BC:FD:40:46:6F:AE:12:97:27:4B:C7:14:05:E0:0A:93:1A:2D:A9:3F:44:56:A6:C7:72:ED:C7',
-          );
-        }
-        rethrow;
-      }
-      throw Exception('Google Sign-In failed: $e');
+      throw Exception(AuthErrorHandler.handle(e));
     }
   }
 
@@ -438,45 +424,12 @@ class FirebaseAuthRepository implements AuthRepository {
       return appUser;
     }
 
-    // On Android and Windows, Apple Sign In requires Apple Services ID in Firebase Console.
     if (!kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-            defaultTargetPlatform == TargetPlatform.windows)) {
-      try {
-        final appleProvider = fb.OAuthProvider('apple.com');
-        appleProvider.addScope('email');
-        appleProvider.addScope('name');
-
-        final credential = await auth
-            .signInWithProvider(appleProvider)
-            .timeout(
-              const Duration(seconds: 45),
-              onTimeout: () =>
-                  throw TimeoutException('Apple Sign-In timed out.'),
-            );
-
-        final fbUser = credential.user;
-        if (fbUser == null) {
-          throw Exception('Apple Sign-In was cancelled.');
-        }
-
-        final appUser = _mapFirebaseUser(fbUser);
-        _currentUser = appUser;
-
-        await _registerDevice(appUser.id);
-        await _syncUserProfile(
-          appUser.id,
-          appUser.email,
-          appUser.displayName,
-          photoUrl: appUser.photoUrl,
-        );
-
-        return appUser;
-      } catch (e) {
-        throw Exception(
-          'Apple Sign-In is configured natively for iPadOS and Apple devices. On Android and Windows, please use Email or Google Sign-In.',
-        );
-      }
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.android)) {
+      throw Exception(
+        'Apple Sign-In is supported natively on iPadOS and Apple devices. On Android and Windows, please use Email or Google Sign-In.',
+      );
     }
 
     try {
@@ -511,22 +464,23 @@ class FirebaseAuthRepository implements AuthRepository {
       final appUser = _mapFirebaseUser(fbUser);
       _currentUser = appUser;
 
-      await _registerDevice(appUser.id);
-      await _syncUserProfile(
-        appUser.id,
-        appUser.email,
-        appUser.displayName,
-        photoUrl: appUser.photoUrl,
+      unawaited(_registerDevice(appUser.id));
+      unawaited(
+        _syncUserProfile(
+          appUser.id,
+          appUser.email,
+          appUser.displayName,
+          photoUrl: appUser.photoUrl,
+        ),
       );
 
       return appUser;
     } on fb.FirebaseAuthException catch (e) {
-      throw Exception(_mapAuthError(e.code, e.message));
+      throw Exception(AuthErrorHandler.handle(e));
     } on TimeoutException catch (e) {
       throw Exception(e.message ?? 'Apple Sign-In timed out.');
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Apple Sign-In failed: $e');
+      throw Exception(AuthErrorHandler.handle(e));
     }
   }
 
@@ -812,35 +766,6 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   String _mapAuthError(String code, String? message) {
-    switch (code) {
-      case 'user-not-found':
-        return 'No account exists for this email.';
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Invalid email or password.';
-      case 'email-already-in-use':
-        return 'An account already exists for this email address.';
-      case 'invalid-email':
-        return 'The email address format is invalid.';
-      case 'weak-password':
-        return 'The password is too weak. Please use at least 6 characters.';
-      case 'network-request-failed':
-        return 'Network connection failed. Please check your internet connection.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
-      case 'invalid-verification-code':
-        return 'The SMS verification code entered is incorrect or expired.';
-      case 'invalid-verification-id':
-        return 'Invalid verification session. Please request a new code.';
-      case 'app-not-authorized':
-      case 'missing-client-identifier':
-        return 'App certificate verification required. Ensure SHA-1 and SHA-256 fingerprints are added in Firebase Console.';
-      case 'quota-exceeded':
-        return 'SMS quota exceeded for this Firebase project. Please try again later or use Email/Google sign-in.';
-      case 'session-expired':
-        return 'The authentication session has expired. Please try again.';
-      default:
-        return message ?? 'Authentication operation failed.';
-    }
+    return AuthErrorHandler.fromCode(code, rawMessage: message);
   }
 }
