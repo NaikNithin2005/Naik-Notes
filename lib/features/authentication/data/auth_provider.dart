@@ -418,6 +418,54 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Validates password reset code.
+  Future<String?> verifyPasswordResetCode(String code) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final email = await _repository.verifyPasswordResetCode(code);
+      state = state.copyWith(isLoading: false);
+      return email;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AuthErrorHandler.handle(e),
+      );
+      return null;
+    }
+  }
+
+  /// Confirms password reset with new password.
+  Future<bool> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {
+    if (state.isLoading) return false;
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _repository.confirmPasswordReset(
+        code: code,
+        newPassword: newPassword,
+      );
+      state = state.copyWith(
+        isLoading: false,
+        successMessage:
+            'Your password has been successfully reset. Please sign in.',
+        clearError: true,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AuthErrorHandler.handle(e),
+      );
+      return false;
+    } finally {
+      if (state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
+    }
+  }
+
   /// Account deletion with confirmation.
   Future<bool> deleteAccount() async {
     if (state.isLoading) return false;

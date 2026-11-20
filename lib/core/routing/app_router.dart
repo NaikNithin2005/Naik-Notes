@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 import 'package:naik_notes/features/authentication/presentation/screens/login_screen.dart';
 import 'package:naik_notes/features/authentication/presentation/screens/register_screen.dart';
+import 'package:naik_notes/features/authentication/presentation/screens/reset_password_screen.dart';
 import 'package:naik_notes/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:naik_notes/features/dashboard/presentation/widgets/app_shell.dart';
 import 'package:naik_notes/features/landing/presentation/screens/landing_screen.dart';
@@ -28,7 +29,7 @@ class _RouterAuthNotifier extends ChangeNotifier {
   _RouterAuthNotifier(this._ref) {
     _ref.listen<bool>(
       authProvider.select((s) => s.isAuthenticated),
-      (_, __) => notifyListeners(),
+      (_, _) => notifyListeners(),
     );
   }
 
@@ -56,6 +57,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == RouteNames.landing ||
           location == RouteNames.login ||
           location == RouteNames.register ||
+          location == RouteNames.resetPassword ||
           location == RouteNames.phoneAuth;
 
       // Unauthenticated users are redirected to landing
@@ -86,6 +88,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteNames.register,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.resetPassword,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => ResetPasswordScreen(
+          code: state.uri.queryParameters['oobCode'] ??
+              state.uri.queryParameters['code'],
+        ),
       ),
       GoRoute(
         path: RouteNames.phoneAuth,

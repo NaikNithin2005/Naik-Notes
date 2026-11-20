@@ -28,12 +28,35 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/export_notebook_dialog.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
+import 'package:naik_notes/features/storage/presentation/widgets/google_drive_connect_dialog.dart';
+
 import '../widgets/notebook_card.dart';
 import '../widgets/sync_status_badge.dart';
 
 /// Main Dashboard screen displaying notebooks, folders, quick actions, and search.
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkDriveOnStartup();
+    });
+  }
+
+  void _checkDriveOnStartup() {
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.isAuthenticated) {
+      GoogleDriveConnectDialog.checkAndShow(context, ref);
+    }
+  }
 
   void _showCreateNotebookDialog(BuildContext context, {String? folderId}) {
     showDialog<void>(
@@ -321,7 +344,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final notebooks = ref.watch(notebooksProvider);
     final folders = ref.watch(foldersProvider);

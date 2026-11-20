@@ -150,14 +150,38 @@ class GoogleDriveAuthService {
       schemaVersion: 1,
     );
 
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('integrations')
-        .doc('googleDrive')
-        .set(updatedMeta.toFirestore(), SetOptions(merge: true));
+    // Update Firestore connection metadata with a safe timeout
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('integrations')
+          .doc('googleDrive')
+          .set(updatedMeta.toFirestore(), SetOptions(merge: true))
+          .timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('[GoogleDriveAuthService] Non-critical warning: Firestore metadata sync deferred/timed out: $e');
+    }
 
     return credentials;
+  }
+
+  /// Actively validates that Google Drive API is reachable and authorized with the required scope.
+  Future<bool> validateDriveAccess(String uid) async {
+    try {
+      final token = await getValidAccessToken(uid);
+      if (token == null || token.isEmpty) return false;
+
+      final res = await _httpClient.get(
+        Uri.parse('https://www.googleapis.com/drive/v3/about?fields=user,storageQuota'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 10));
+
+      return res.statusCode == 200;
+    } catch (e) {
+      debugPrint('[GoogleDriveAuthService] validateDriveAccess failed: $e');
+      return false;
+    }
   }
 
   /// Returns a valid, non-expired access token for calling Google Drive API v3.
@@ -447,12 +471,31 @@ class GoogleDriveAuthService {
       } catch (_) {}
     }
 
-    final GoogleSignInAccount? account = await googleSignIn.signIn();
+    final GoogleSignInAccount? account = await googleSignIn.signIn().timeout(
+      const Duration(seconds: 90),
+      onTimeout: () => throw TimeoutException('Google Sign-In timed out. Please try again.'),
+    );
     if (account == null) {
-      throw Exception('Google Drive authorization cancelled by user.');
+      throw Exception('Google Drive authorization was cancelled.');
     }
 
-    final GoogleSignInAuthentication auth = await account.authentication;
+    // Verify scope access on mobile platforms
+    try {
+      final hasScope = await googleSignIn.canAccessScopes(['email', appDataScope]);
+      if (!hasScope) {
+        final granted = await googleSignIn.requestScopes([appDataScope]);
+        if (!granted) {
+          throw Exception('Google Drive permission was not granted.');
+        }
+      }
+    } catch (e) {
+      debugPrint('[GoogleDriveAuthService] Scope check note: $e');
+    }
+
+    final GoogleSignInAuthentication auth = await account.authentication.timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => throw TimeoutException('Failed to retrieve authentication tokens from Google.'),
+    );
     final accessToken = auth.accessToken;
 
     if (accessToken == null || accessToken.isEmpty) {

@@ -758,7 +758,17 @@ class FirebaseAuthRepository implements AuthRepository {
     if (auth == null) return;
     try {
       await auth
-          .sendPasswordResetEmail(email: sanitized)
+          .sendPasswordResetEmail(
+            email: sanitized,
+            actionCodeSettings: fb.ActionCodeSettings(
+              url: 'https://naik-notes.firebaseapp.com/reset-password',
+              handleCodeInApp: true,
+              iOSBundleId: 'com.naiknotes.app.naikNotes',
+              androidPackageName: 'com.naiknotes.app',
+              androidInstallApp: false,
+              androidMinimumVersion: '1',
+            ),
+          )
           .timeout(
             const Duration(seconds: 15),
             onTimeout: () =>
@@ -768,6 +778,65 @@ class FirebaseAuthRepository implements AuthRepository {
       throw Exception(_mapAuthError(e.code, e.message));
     } catch (e) {
       throw Exception('Password reset failed: $e');
+    }
+  }
+
+  @override
+  Future<String> verifyPasswordResetCode(String code) async {
+    final auth = _firebaseAuth;
+    if (auth == null) {
+      throw Exception('Firebase Authentication is not available.');
+    }
+    try {
+      return await auth
+          .verifyPasswordResetCode(code)
+          .timeout(const Duration(seconds: 15));
+    } on fb.FirebaseAuthException catch (e) {
+      throw Exception(_mapAuthError(e.code, e.message));
+    } catch (e) {
+      throw Exception('Failed to verify reset code: $e');
+    }
+  }
+
+  @override
+  Future<void> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {
+    final auth = _firebaseAuth;
+    if (auth == null) {
+      throw Exception('Firebase Authentication is not available.');
+    }
+    try {
+      await auth
+          .confirmPasswordReset(code: code, newPassword: newPassword)
+          .timeout(const Duration(seconds: 15));
+    } on fb.FirebaseAuthException catch (e) {
+      throw Exception(_mapAuthError(e.code, e.message));
+    } catch (e) {
+      throw Exception('Password reset failed: $e');
+    }
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    final user = _firebaseAuth?.currentUser;
+    if (user == null) throw Exception('No authenticated user found.');
+    try {
+      await user.sendEmailVerification(
+        fb.ActionCodeSettings(
+          url: 'https://naik-notes.firebaseapp.com/verify-email',
+          handleCodeInApp: true,
+          iOSBundleId: 'com.naiknotes.app.naikNotes',
+          androidPackageName: 'com.naiknotes.app',
+          androidInstallApp: false,
+          androidMinimumVersion: '1',
+        ),
+      ).timeout(const Duration(seconds: 15));
+    } on fb.FirebaseAuthException catch (e) {
+      throw Exception(_mapAuthError(e.code, e.message));
+    } catch (e) {
+      throw Exception('Email verification failed: $e');
     }
   }
 

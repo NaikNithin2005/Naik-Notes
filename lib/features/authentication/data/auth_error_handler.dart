@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:flutter/foundation.dart';
 
 /// Centralized, production-grade Authentication Error Handler for Naik Notes.
 ///
