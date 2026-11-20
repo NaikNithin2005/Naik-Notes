@@ -1,16 +1,15 @@
-import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
-/// Production Firebase Storage Service.
-/// Handles user-isolated image and document uploads with UID enforcement.
+/// Service for storing custom notebook covers and assets locally in the
+/// application documents directory.
 class FirebaseStorageService {
-  final FirebaseStorage _storage;
+  FirebaseStorageService();
 
-  FirebaseStorageService({FirebaseStorage? storage})
-    : _storage = storage ?? FirebaseStorage.instance;
-
-  /// Uploads a custom notebook cover image to `users/{uid}/notebooks/{notebookId}/covers/{fileName}`
-  /// and returns the public download URL.
+  /// Saves a custom notebook cover image to `covers/{uid}/{notebookId}/{fileName}`
+  /// and returns the local file path.
   Future<String> uploadNotebookCover({
     required String uid,
     required String notebookId,
@@ -18,32 +17,24 @@ class FirebaseStorageService {
     String? extension,
   }) async {
     try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final dir = Directory(p.join(appDir.path, 'covers', uid, notebookId));
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
       final ext = extension ?? 'jpg';
       final fileName = 'cover_${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final path = 'users/$uid/notebooks/$notebookId/covers/$fileName';
-
-      final ref = _storage.ref().child(path);
-      final metadata = SettableMetadata(
-        contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
-        customMetadata: {
-          'ownerId': uid,
-          'notebookId': notebookId,
-          'uploadedAt': DateTime.now().toIso8601String(),
-        },
-      );
-
-      final uploadTask = ref.putData(imageBytes, metadata);
-      final snapshot = await uploadTask;
-      final downloadUrl = await snapshot.ref.getDownloadURL();
-      return downloadUrl;
+      final file = File(p.join(dir.path, fileName));
+      await file.writeAsBytes(imageBytes);
+      return file.path;
     } catch (e) {
-      debugPrint('Firebase Storage Cover Upload Error: $e');
-      throw Exception('Failed to upload notebook cover: $e');
+      debugPrint('Cover Storage Error: $e');
+      throw Exception('Failed to save notebook cover: $e');
     }
   }
 
-  /// Uploads an asset (image, attachment) for a notebook page to
-  /// `users/{uid}/notebooks/{notebookId}/pages/{pageId}/{fileName}`
+  /// Saves an asset (image, attachment) for a notebook page to
+  /// `assets/{uid}/{notebookId}/{pageId}/{fileName}` and returns the local file path.
   Future<String> uploadPageAsset({
     required String uid,
     required String notebookId,
@@ -53,33 +44,29 @@ class FirebaseStorageService {
     String contentType = 'image/jpeg',
   }) async {
     try {
-      final path = 'users/$uid/notebooks/$notebookId/pages/$pageId/$fileName';
-      final ref = _storage.ref().child(path);
-      final metadata = SettableMetadata(
-        contentType: contentType,
-        customMetadata: {
-          'ownerId': uid,
-          'notebookId': notebookId,
-          'pageId': pageId,
-        },
-      );
-
-      final uploadTask = ref.putData(bytes, metadata);
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
+      final appDir = await getApplicationDocumentsDirectory();
+      final dir = Directory(p.join(appDir.path, 'assets', uid, notebookId, pageId));
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final file = File(p.join(dir.path, fileName));
+      await file.writeAsBytes(bytes);
+      return file.path;
     } catch (e) {
-      debugPrint('Firebase Storage Page Asset Upload Error: $e');
-      throw Exception('Failed to upload page asset: $e');
+      debugPrint('Asset Storage Error: $e');
+      throw Exception('Failed to save page asset: $e');
     }
   }
 
-  /// Deletes a file from Firebase Storage given its URL.
+  /// Deletes a local file or cover given its path or URL.
   Future<void> deleteFileByUrl(String url) async {
     try {
-      final ref = _storage.refFromURL(url);
-      await ref.delete();
+      final file = File(url);
+      if (await file.exists()) {
+        await file.delete();
+      }
     } catch (e) {
-      debugPrint('Firebase Storage Delete Note: $e');
+      debugPrint('Storage Delete Error: $e');
     }
   }
 }

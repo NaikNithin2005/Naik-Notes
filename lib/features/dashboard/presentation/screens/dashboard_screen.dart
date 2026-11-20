@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1179,7 +1181,9 @@ class DashboardScreen extends ConsumerWidget {
                               nb.coverImageUrl != null &&
                                   nb.coverImageUrl!.isNotEmpty
                               ? DecorationImage(
-                                  image: NetworkImage(nb.coverImageUrl!),
+                                  image: (nb.coverImageUrl!.startsWith('http')
+                                      ? NetworkImage(nb.coverImageUrl!)
+                                      : FileImage(File(nb.coverImageUrl!))) as ImageProvider,
                                   fit: BoxFit.cover,
                                 )
                               : null,
