@@ -294,6 +294,7 @@ class SyncService {
   ) async {
     final op = SyncOperation(
       id: _uuid.v4(),
+      ownerId: notebook.ownerId,
       entityType: SyncEntityType.notebook,
       entityId: notebook.id,
       operationType: type,
@@ -310,6 +311,7 @@ class SyncService {
   ) async {
     final op = SyncOperation(
       id: _uuid.v4(),
+      ownerId: folder.ownerId,
       entityType: SyncEntityType.folder,
       entityId: folder.id,
       operationType: type,
@@ -322,14 +324,20 @@ class SyncService {
 
   Future<void> enqueueStrokeMutation(
     Stroke stroke,
-    SyncOperationType type,
-  ) async {
+    SyncOperationType type, {
+    String? ownerId,
+    String? notebookId,
+  }) async {
+    final payload = stroke.toJson();
+    if (notebookId != null) payload['notebookId'] = notebookId;
     final op = SyncOperation(
       id: _uuid.v4(),
+      ownerId: ownerId ?? 'local_user',
       entityType: SyncEntityType.stroke,
       entityId: stroke.id,
+      parentId: stroke.pageId,
       operationType: type,
-      payload: stroke.toJson(),
+      payload: payload,
       revision: stroke.revision,
       createdAt: DateTime.now(),
     );
@@ -338,14 +346,20 @@ class SyncService {
 
   Future<void> enqueueStickyNoteMutation(
     StickyNote note,
-    SyncOperationType type,
-  ) async {
+    SyncOperationType type, {
+    String? ownerId,
+    String? notebookId,
+  }) async {
+    final payload = note.toJson();
+    if (notebookId != null) payload['notebookId'] = notebookId;
     final op = SyncOperation(
       id: _uuid.v4(),
+      ownerId: ownerId ?? 'local_user',
       entityType: SyncEntityType.stickyNote,
       entityId: note.id,
+      parentId: note.pageId,
       operationType: type,
-      payload: note.toJson(),
+      payload: payload,
       revision: 1,
       createdAt: DateTime.now(),
     );
@@ -354,12 +368,15 @@ class SyncService {
 
   Future<void> enqueuePageMutation(
     NotebookPage page,
-    SyncOperationType type,
-  ) async {
+    SyncOperationType type, {
+    String? ownerId,
+  }) async {
     final op = SyncOperation(
       id: _uuid.v4(),
+      ownerId: ownerId ?? 'local_user',
       entityType: SyncEntityType.page,
       entityId: page.id,
+      parentId: page.notebookId,
       operationType: type,
       payload: page.toJson(),
       revision: page.revision,

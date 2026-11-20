@@ -35,7 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_formKey.currentState?.validate() ?? false) {
       final success = await ref
           .read(authProvider.notifier)
-          .login(_emailController.text, _passwordController.text);
+          .login(_emailController.text.trim().toLowerCase(), _passwordController.text);
       if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
         context.go(RouteNames.dashboard);
       }
@@ -89,7 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           FilledButton(
             onPressed: () async {
-              final email = resetEmailController.text.trim();
+              final email = resetEmailController.text.trim().toLowerCase();
               Navigator.of(ctx).pop();
               if (email.isNotEmpty) {
                 await ref.read(authProvider.notifier).sendPasswordReset(email);
@@ -452,7 +452,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       const SizedBox(width: 8),
                                       Flexible(
                                         child: Text(
-                                          'Windows Edition • Email authentication',
+                                          'Windows Edition • Google & Email Synchronization',
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 11,

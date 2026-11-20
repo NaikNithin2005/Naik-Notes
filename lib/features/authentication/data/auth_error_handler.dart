@@ -34,7 +34,7 @@ class AuthErrorHandler {
       case 'wrong-password':
       case 'invalid-credential':
       case 'invalid-login-credentials':
-        return 'Incorrect email or password. Please verify your credentials and try again.';
+        return 'Incorrect email or password. If you originally signed up with Google, please tap "Continue with Google", or use "Forgot Password?" to reset your password.';
 
       case 'email-already-in-use':
         return 'An account already exists with this email address. Please sign in instead.';
@@ -58,7 +58,7 @@ class AuthErrorHandler {
 
       case 'internal-error':
       case 'channel-error':
-        return 'Authentication service encountered a temporary error. Please verify your credentials and try again.';
+        return 'Incorrect email or password, or temporary error occurred. If you originally signed up with Google, tap "Continue with Google", or use "Forgot Password?" to reset your password.';
 
       case 'invalid-verification-code':
         return 'The SMS verification code is incorrect or has expired. Please request a new code.';
@@ -122,7 +122,14 @@ class AuthErrorHandler {
     if (lower.contains('invalid_login_credentials') ||
         lower.contains('invalid credentials') ||
         lower.contains('wrong password')) {
-      return 'Incorrect email or password. Please verify your credentials and try again.';
+      return 'Incorrect email or password. If you originally signed up with Google, tap "Continue with Google", or use "Forgot Password?" to reset your password.';
+    }
+
+    // Google OAuth Loopback redirect URI mismatch / Google Cloud Console setup
+    if (lower.contains('redirect_uri_mismatch') ||
+        lower.contains('redirect uri') ||
+        lower.contains('google cloud console')) {
+      return raw;
     }
 
     // Timeout
@@ -141,18 +148,15 @@ class AuthErrorHandler {
     if (lower.contains('an internal error has occurred') ||
         lower.contains('internal-error') ||
         lower == 'internal error') {
-      return 'Authentication service error: Please check your connection, or ensure '
-          'the sign-in provider is enabled in your Firebase Console.';
+      return 'Incorrect email or password, or temporary error occurred. If you originally signed up with Google, tap "Continue with Google", or use "Forgot Password?" to reset your password.';
     }
 
     return raw;
   }
 
-  /// Determines whether Google Sign-In is supported natively on the current operating system.
+  /// Determines whether Google Sign-In is supported on the current operating system.
   static bool isGoogleSupported() {
-    if (kIsWeb) return true;
-    return defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
+    return true; // Fully supported on Android, iPadOS/iOS, Windows Desktop, and Web
   }
 
   /// Determines whether Apple Sign-In is supported natively on the current operating system.

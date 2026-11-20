@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/firebase_auth_repository.dart';
+import '../../folders/data/folder_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
 import '../../sync/data/sync_provider.dart';
 import 'auth_error_handler.dart';
@@ -78,11 +79,11 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 /// State notifier managing user authentication and active sessions.
 class AuthNotifier extends Notifier<AuthState> {
-  late final AuthRepository _repository;
+  AuthRepository get _repository => ref.read(authRepositoryProvider);
 
   @override
   AuthState build() {
-    _repository = ref.watch(authRepositoryProvider);
+    ref.watch(authRepositoryProvider);
     final initial = _repository.currentUser;
     return AuthState(user: initial);
   }
@@ -433,6 +434,8 @@ class AuthNotifier extends Notifier<AuthState> {
       state = const AuthState();
       try {
         ref.invalidate(notebooksProvider);
+        ref.invalidate(foldersProvider);
+        ref.read(selectedFolderProvider.notifier).clearSelection();
         ref.invalidate(syncProvider);
         ref.read(firebaseSyncServiceProvider).dispose();
       } catch (_) {}

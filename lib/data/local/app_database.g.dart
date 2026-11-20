@@ -4182,6 +4182,18 @@ class $SyncQueueTableTable extends SyncQueueTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('local_user'),
+  );
   static const VerificationMeta _entityTypeMeta = const VerificationMeta(
     'entityType',
   );
@@ -4203,6 +4215,17 @@ class $SyncQueueTableTable extends SyncQueueTable
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentIdMeta = const VerificationMeta(
+    'parentId',
+  );
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+    'parent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _operationTypeMeta = const VerificationMeta(
     'operationType',
@@ -4285,8 +4308,10 @@ class $SyncQueueTableTable extends SyncQueueTable
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    ownerId,
     entityType,
     entityId,
+    parentId,
     operationType,
     payloadJson,
     revision,
@@ -4312,6 +4337,12 @@ class $SyncQueueTableTable extends SyncQueueTable
     } else if (isInserting) {
       context.missing(_idMeta);
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
     if (data.containsKey('entity_type')) {
       context.handle(
         _entityTypeMeta,
@@ -4327,6 +4358,12 @@ class $SyncQueueTableTable extends SyncQueueTable
       );
     } else if (isInserting) {
       context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(
+        _parentIdMeta,
+        parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
+      );
     }
     if (data.containsKey('operation_type')) {
       context.handle(
@@ -4395,6 +4432,10 @@ class $SyncQueueTableTable extends SyncQueueTable
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
       entityType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}entity_type'],
@@ -4403,6 +4444,10 @@ class $SyncQueueTableTable extends SyncQueueTable
         DriftSqlType.string,
         data['${effectivePrefix}entity_id'],
       )!,
+      parentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_id'],
+      ),
       operationType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}operation_type'],
@@ -4443,8 +4488,10 @@ class $SyncQueueTableTable extends SyncQueueTable
 class SyncQueueTableData extends DataClass
     implements Insertable<SyncQueueTableData> {
   final String id;
+  final String ownerId;
   final String entityType;
   final String entityId;
+  final String? parentId;
   final String operationType;
   final String payloadJson;
   final int revision;
@@ -4454,8 +4501,10 @@ class SyncQueueTableData extends DataClass
   final String? lastError;
   const SyncQueueTableData({
     required this.id,
+    required this.ownerId,
     required this.entityType,
     required this.entityId,
+    this.parentId,
     required this.operationType,
     required this.payloadJson,
     required this.revision,
@@ -4468,8 +4517,12 @@ class SyncQueueTableData extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    map['owner_id'] = Variable<String>(ownerId);
     map['entity_type'] = Variable<String>(entityType);
     map['entity_id'] = Variable<String>(entityId);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
     map['operation_type'] = Variable<String>(operationType);
     map['payload_json'] = Variable<String>(payloadJson);
     map['revision'] = Variable<int>(revision);
@@ -4485,8 +4538,12 @@ class SyncQueueTableData extends DataClass
   SyncQueueTableCompanion toCompanion(bool nullToAbsent) {
     return SyncQueueTableCompanion(
       id: Value(id),
+      ownerId: Value(ownerId),
       entityType: Value(entityType),
       entityId: Value(entityId),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
       operationType: Value(operationType),
       payloadJson: Value(payloadJson),
       revision: Value(revision),
@@ -4506,8 +4563,10 @@ class SyncQueueTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SyncQueueTableData(
       id: serializer.fromJson<String>(json['id']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       entityType: serializer.fromJson<String>(json['entityType']),
       entityId: serializer.fromJson<String>(json['entityId']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
       operationType: serializer.fromJson<String>(json['operationType']),
       payloadJson: serializer.fromJson<String>(json['payloadJson']),
       revision: serializer.fromJson<int>(json['revision']),
@@ -4522,8 +4581,10 @@ class SyncQueueTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'ownerId': serializer.toJson<String>(ownerId),
       'entityType': serializer.toJson<String>(entityType),
       'entityId': serializer.toJson<String>(entityId),
+      'parentId': serializer.toJson<String?>(parentId),
       'operationType': serializer.toJson<String>(operationType),
       'payloadJson': serializer.toJson<String>(payloadJson),
       'revision': serializer.toJson<int>(revision),
@@ -4536,8 +4597,10 @@ class SyncQueueTableData extends DataClass
 
   SyncQueueTableData copyWith({
     String? id,
+    String? ownerId,
     String? entityType,
     String? entityId,
+    Value<String?> parentId = const Value.absent(),
     String? operationType,
     String? payloadJson,
     int? revision,
@@ -4547,8 +4610,10 @@ class SyncQueueTableData extends DataClass
     Value<String?> lastError = const Value.absent(),
   }) => SyncQueueTableData(
     id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
     entityType: entityType ?? this.entityType,
     entityId: entityId ?? this.entityId,
+    parentId: parentId.present ? parentId.value : this.parentId,
     operationType: operationType ?? this.operationType,
     payloadJson: payloadJson ?? this.payloadJson,
     revision: revision ?? this.revision,
@@ -4560,10 +4625,12 @@ class SyncQueueTableData extends DataClass
   SyncQueueTableData copyWithCompanion(SyncQueueTableCompanion data) {
     return SyncQueueTableData(
       id: data.id.present ? data.id.value : this.id,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       entityType: data.entityType.present
           ? data.entityType.value
           : this.entityType,
       entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
       operationType: data.operationType.present
           ? data.operationType.value
           : this.operationType,
@@ -4584,8 +4651,10 @@ class SyncQueueTableData extends DataClass
   String toString() {
     return (StringBuffer('SyncQueueTableData(')
           ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
           ..write('entityType: $entityType, ')
           ..write('entityId: $entityId, ')
+          ..write('parentId: $parentId, ')
           ..write('operationType: $operationType, ')
           ..write('payloadJson: $payloadJson, ')
           ..write('revision: $revision, ')
@@ -4600,8 +4669,10 @@ class SyncQueueTableData extends DataClass
   @override
   int get hashCode => Object.hash(
     id,
+    ownerId,
     entityType,
     entityId,
+    parentId,
     operationType,
     payloadJson,
     revision,
@@ -4615,8 +4686,10 @@ class SyncQueueTableData extends DataClass
       identical(this, other) ||
       (other is SyncQueueTableData &&
           other.id == this.id &&
+          other.ownerId == this.ownerId &&
           other.entityType == this.entityType &&
           other.entityId == this.entityId &&
+          other.parentId == this.parentId &&
           other.operationType == this.operationType &&
           other.payloadJson == this.payloadJson &&
           other.revision == this.revision &&
@@ -4628,8 +4701,10 @@ class SyncQueueTableData extends DataClass
 
 class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
   final Value<String> id;
+  final Value<String> ownerId;
   final Value<String> entityType;
   final Value<String> entityId;
+  final Value<String?> parentId;
   final Value<String> operationType;
   final Value<String> payloadJson;
   final Value<int> revision;
@@ -4640,8 +4715,10 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
   final Value<int> rowid;
   const SyncQueueTableCompanion({
     this.id = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.entityType = const Value.absent(),
     this.entityId = const Value.absent(),
+    this.parentId = const Value.absent(),
     this.operationType = const Value.absent(),
     this.payloadJson = const Value.absent(),
     this.revision = const Value.absent(),
@@ -4653,8 +4730,10 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
   });
   SyncQueueTableCompanion.insert({
     required String id,
+    this.ownerId = const Value.absent(),
     required String entityType,
     required String entityId,
+    this.parentId = const Value.absent(),
     required String operationType,
     required String payloadJson,
     this.revision = const Value.absent(),
@@ -4671,8 +4750,10 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
        createdAt = Value(createdAt);
   static Insertable<SyncQueueTableData> custom({
     Expression<String>? id,
+    Expression<String>? ownerId,
     Expression<String>? entityType,
     Expression<String>? entityId,
+    Expression<String>? parentId,
     Expression<String>? operationType,
     Expression<String>? payloadJson,
     Expression<int>? revision,
@@ -4684,8 +4765,10 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (ownerId != null) 'owner_id': ownerId,
       if (entityType != null) 'entity_type': entityType,
       if (entityId != null) 'entity_id': entityId,
+      if (parentId != null) 'parent_id': parentId,
       if (operationType != null) 'operation_type': operationType,
       if (payloadJson != null) 'payload_json': payloadJson,
       if (revision != null) 'revision': revision,
@@ -4699,8 +4782,10 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
 
   SyncQueueTableCompanion copyWith({
     Value<String>? id,
+    Value<String>? ownerId,
     Value<String>? entityType,
     Value<String>? entityId,
+    Value<String?>? parentId,
     Value<String>? operationType,
     Value<String>? payloadJson,
     Value<int>? revision,
@@ -4712,8 +4797,10 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
   }) {
     return SyncQueueTableCompanion(
       id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
       entityType: entityType ?? this.entityType,
       entityId: entityId ?? this.entityId,
+      parentId: parentId ?? this.parentId,
       operationType: operationType ?? this.operationType,
       payloadJson: payloadJson ?? this.payloadJson,
       revision: revision ?? this.revision,
@@ -4731,11 +4818,17 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
     if (entityType.present) {
       map['entity_type'] = Variable<String>(entityType.value);
     }
     if (entityId.present) {
       map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
     }
     if (operationType.present) {
       map['operation_type'] = Variable<String>(operationType.value);
@@ -4768,8 +4861,10 @@ class SyncQueueTableCompanion extends UpdateCompanion<SyncQueueTableData> {
   String toString() {
     return (StringBuffer('SyncQueueTableCompanion(')
           ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
           ..write('entityType: $entityType, ')
           ..write('entityId: $entityId, ')
+          ..write('parentId: $parentId, ')
           ..write('operationType: $operationType, ')
           ..write('payloadJson: $payloadJson, ')
           ..write('revision: $revision, ')
@@ -9522,17 +9617,15 @@ class $$SectionsTableTableTableManager
                     >
                   >(state) {
                     if (notebookId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.notebookId,
-                                referencedTable: $$SectionsTableTableReferences
-                                    ._notebookIdTable(db),
-                                referencedColumn: $$SectionsTableTableReferences
-                                    ._notebookIdTable(db)
-                                    .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.notebookId,
+                        referencedTable: $$SectionsTableTableReferences
+                            ._notebookIdTable(db),
+                        referencedColumn: $$SectionsTableTableReferences
+                            ._notebookIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -9560,42 +9653,40 @@ typedef $$SectionsTableTableProcessedTableManager =
       SectionsTableData,
       PrefetchHooks Function({bool notebookId})
     >;
-typedef $$PagesTableTableCreateCompanionBuilder =
-    PagesTableCompanion Function({
-      required String id,
-      required String notebookId,
-      Value<String?> sectionId,
-      required int pageNumber,
-      Value<String> templateId,
-      Value<String?> backgroundColor,
-      Value<String?> templatePropertiesJson,
-      Value<bool> isBookmarked,
-      Value<int?> pdfPageIndex,
-      Value<double> width,
-      Value<double> height,
-      Value<int> revision,
-      required DateTime createdAt,
-      required DateTime updatedAt,
-      Value<int> rowid,
-    });
-typedef $$PagesTableTableUpdateCompanionBuilder =
-    PagesTableCompanion Function({
-      Value<String> id,
-      Value<String> notebookId,
-      Value<String?> sectionId,
-      Value<int> pageNumber,
-      Value<String> templateId,
-      Value<String?> backgroundColor,
-      Value<String?> templatePropertiesJson,
-      Value<bool> isBookmarked,
-      Value<int?> pdfPageIndex,
-      Value<double> width,
-      Value<double> height,
-      Value<int> revision,
-      Value<DateTime> createdAt,
-      Value<DateTime> updatedAt,
-      Value<int> rowid,
-    });
+typedef $$PagesTableTableCreateCompanionBuilder = PagesTableCompanion Function({
+  required String id,
+  required String notebookId,
+  Value<String?> sectionId,
+  required int pageNumber,
+  Value<String> templateId,
+  Value<String?> backgroundColor,
+  Value<String?> templatePropertiesJson,
+  Value<bool> isBookmarked,
+  Value<int?> pdfPageIndex,
+  Value<double> width,
+  Value<double> height,
+  Value<int> revision,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$PagesTableTableUpdateCompanionBuilder = PagesTableCompanion Function({
+  Value<String> id,
+  Value<String> notebookId,
+  Value<String?> sectionId,
+  Value<int> pageNumber,
+  Value<String> templateId,
+  Value<String?> backgroundColor,
+  Value<String?> templatePropertiesJson,
+  Value<bool> isBookmarked,
+  Value<int?> pdfPageIndex,
+  Value<double> width,
+  Value<double> height,
+  Value<int> revision,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
 
 final class $$PagesTableTableReferences
     extends BaseReferences<_$AppDatabase, $PagesTableTable, PagesTableData> {
@@ -10409,18 +10500,15 @@ class $$PagesTableTableTableManager
                         >
                       >(state) {
                         if (notebookId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.notebookId,
-                                    referencedTable: $$PagesTableTableReferences
-                                        ._notebookIdTable(db),
-                                    referencedColumn:
-                                        $$PagesTableTableReferences
-                                            ._notebookIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.notebookId,
+                            referencedTable: $$PagesTableTableReferences
+                                ._notebookIdTable(db),
+                            referencedColumn: $$PagesTableTableReferences
+                                ._notebookIdTable(db)
+                                .id,
+                          ) as T;
                         }
 
                         return state;
@@ -10956,17 +11044,15 @@ class $$StrokesTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.pageId,
-                                referencedTable: $$StrokesTableTableReferences
-                                    ._pageIdTable(db),
-                                referencedColumn: $$StrokesTableTableReferences
-                                    ._pageIdTable(db)
-                                    .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.pageId,
+                        referencedTable: $$StrokesTableTableReferences
+                            ._pageIdTable(db),
+                        referencedColumn: $$StrokesTableTableReferences
+                            ._pageIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -11381,19 +11467,15 @@ class $$StickyNotesTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.pageId,
-                                referencedTable:
-                                    $$StickyNotesTableTableReferences
-                                        ._pageIdTable(db),
-                                referencedColumn:
-                                    $$StickyNotesTableTableReferences
-                                        ._pageIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.pageId,
+                        referencedTable: $$StickyNotesTableTableReferences
+                            ._pageIdTable(db),
+                        referencedColumn: $$StickyNotesTableTableReferences
+                            ._pageIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -11424,8 +11506,10 @@ typedef $$StickyNotesTableTableProcessedTableManager =
 typedef $$SyncQueueTableTableCreateCompanionBuilder =
     SyncQueueTableCompanion Function({
       required String id,
+      Value<String> ownerId,
       required String entityType,
       required String entityId,
+      Value<String?> parentId,
       required String operationType,
       required String payloadJson,
       Value<int> revision,
@@ -11438,8 +11522,10 @@ typedef $$SyncQueueTableTableCreateCompanionBuilder =
 typedef $$SyncQueueTableTableUpdateCompanionBuilder =
     SyncQueueTableCompanion Function({
       Value<String> id,
+      Value<String> ownerId,
       Value<String> entityType,
       Value<String> entityId,
+      Value<String?> parentId,
       Value<String> operationType,
       Value<String> payloadJson,
       Value<int> revision,
@@ -11464,6 +11550,11 @@ class $$SyncQueueTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get entityType => $composableBuilder(
     column: $table.entityType,
     builder: (column) => ColumnFilters(column),
@@ -11471,6 +11562,11 @@ class $$SyncQueueTableTableFilterComposer
 
   ColumnFilters<String> get entityId => $composableBuilder(
     column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentId => $composableBuilder(
+    column: $table.parentId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11524,6 +11620,11 @@ class $$SyncQueueTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get entityType => $composableBuilder(
     column: $table.entityType,
     builder: (column) => ColumnOrderings(column),
@@ -11531,6 +11632,11 @@ class $$SyncQueueTableTableOrderingComposer
 
   ColumnOrderings<String> get entityId => $composableBuilder(
     column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parentId => $composableBuilder(
+    column: $table.parentId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -11582,6 +11688,9 @@ class $$SyncQueueTableTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
   GeneratedColumn<String> get entityType => $composableBuilder(
     column: $table.entityType,
     builder: (column) => column,
@@ -11589,6 +11698,9 @@ class $$SyncQueueTableTableAnnotationComposer
 
   GeneratedColumn<String> get entityId =>
       $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get parentId =>
+      $composableBuilder(column: $table.parentId, builder: (column) => column);
 
   GeneratedColumn<String> get operationType => $composableBuilder(
     column: $table.operationType,
@@ -11656,8 +11768,10 @@ class $$SyncQueueTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
                 Value<String> entityType = const Value.absent(),
                 Value<String> entityId = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
                 Value<String> operationType = const Value.absent(),
                 Value<String> payloadJson = const Value.absent(),
                 Value<int> revision = const Value.absent(),
@@ -11668,8 +11782,10 @@ class $$SyncQueueTableTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => SyncQueueTableCompanion(
                 id: id,
+                ownerId: ownerId,
                 entityType: entityType,
                 entityId: entityId,
+                parentId: parentId,
                 operationType: operationType,
                 payloadJson: payloadJson,
                 revision: revision,
@@ -11682,8 +11798,10 @@ class $$SyncQueueTableTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String> ownerId = const Value.absent(),
                 required String entityType,
                 required String entityId,
+                Value<String?> parentId = const Value.absent(),
                 required String operationType,
                 required String payloadJson,
                 Value<int> revision = const Value.absent(),
@@ -11694,8 +11812,10 @@ class $$SyncQueueTableTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => SyncQueueTableCompanion.insert(
                 id: id,
+                ownerId: ownerId,
                 entityType: entityType,
                 entityId: entityId,
+                parentId: parentId,
                 operationType: operationType,
                 payloadJson: payloadJson,
                 revision: revision,
@@ -12175,34 +12295,26 @@ class $$PageSearchIndexTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.pageId,
-                                referencedTable:
-                                    $$PageSearchIndexTableTableReferences
-                                        ._pageIdTable(db),
-                                referencedColumn:
-                                    $$PageSearchIndexTableTableReferences
-                                        ._pageIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.pageId,
+                        referencedTable: $$PageSearchIndexTableTableReferences
+                            ._pageIdTable(db),
+                        referencedColumn: $$PageSearchIndexTableTableReferences
+                            ._pageIdTable(db)
+                            .id,
+                      ) as T;
                     }
                     if (notebookId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.notebookId,
-                                referencedTable:
-                                    $$PageSearchIndexTableTableReferences
-                                        ._notebookIdTable(db),
-                                referencedColumn:
-                                    $$PageSearchIndexTableTableReferences
-                                        ._notebookIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.notebookId,
+                        referencedTable: $$PageSearchIndexTableTableReferences
+                            ._notebookIdTable(db),
+                        referencedColumn: $$PageSearchIndexTableTableReferences
+                            ._notebookIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -12749,34 +12861,30 @@ class $$AudioRecordingsTableTableTableManager
                         >
                       >(state) {
                         if (notebookId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.notebookId,
-                                    referencedTable:
-                                        $$AudioRecordingsTableTableReferences
-                                            ._notebookIdTable(db),
-                                    referencedColumn:
-                                        $$AudioRecordingsTableTableReferences
-                                            ._notebookIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.notebookId,
+                            referencedTable:
+                                $$AudioRecordingsTableTableReferences
+                                    ._notebookIdTable(db),
+                            referencedColumn:
+                                $$AudioRecordingsTableTableReferences
+                                    ._notebookIdTable(db)
+                                    .id,
+                          ) as T;
                         }
                         if (pageId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.pageId,
-                                    referencedTable:
-                                        $$AudioRecordingsTableTableReferences
-                                            ._pageIdTable(db),
-                                    referencedColumn:
-                                        $$AudioRecordingsTableTableReferences
-                                            ._pageIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.pageId,
+                            referencedTable:
+                                $$AudioRecordingsTableTableReferences
+                                    ._pageIdTable(db),
+                            referencedColumn:
+                                $$AudioRecordingsTableTableReferences
+                                    ._pageIdTable(db)
+                                    .id,
+                          ) as T;
                         }
 
                         return state;
@@ -13172,19 +13280,15 @@ class $$AudioBookmarksTableTableTableManager
                     >
                   >(state) {
                     if (recordingId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.recordingId,
-                                referencedTable:
-                                    $$AudioBookmarksTableTableReferences
-                                        ._recordingIdTable(db),
-                                referencedColumn:
-                                    $$AudioBookmarksTableTableReferences
-                                        ._recordingIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.recordingId,
+                        referencedTable: $$AudioBookmarksTableTableReferences
+                            ._recordingIdTable(db),
+                        referencedColumn: $$AudioBookmarksTableTableReferences
+                            ._recordingIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -13707,34 +13811,26 @@ class $$PageSnapshotsTableTableTableManager
                     >
                   >(state) {
                     if (pageId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.pageId,
-                                referencedTable:
-                                    $$PageSnapshotsTableTableReferences
-                                        ._pageIdTable(db),
-                                referencedColumn:
-                                    $$PageSnapshotsTableTableReferences
-                                        ._pageIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.pageId,
+                        referencedTable: $$PageSnapshotsTableTableReferences
+                            ._pageIdTable(db),
+                        referencedColumn: $$PageSnapshotsTableTableReferences
+                            ._pageIdTable(db)
+                            .id,
+                      ) as T;
                     }
                     if (notebookId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.notebookId,
-                                referencedTable:
-                                    $$PageSnapshotsTableTableReferences
-                                        ._notebookIdTable(db),
-                                referencedColumn:
-                                    $$PageSnapshotsTableTableReferences
-                                        ._notebookIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.notebookId,
+                        referencedTable: $$PageSnapshotsTableTableReferences
+                            ._notebookIdTable(db),
+                        referencedColumn: $$PageSnapshotsTableTableReferences
+                            ._notebookIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;

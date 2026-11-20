@@ -14,19 +14,27 @@ import 'welcome_notebook_service.dart';
 /// State notifier managing the reactive list of notebooks, backed by Drift SQLite.
 class NotebooksNotifier extends Notifier<List<Notebook>> {
   final _uuid = const Uuid();
-  late final NotebookRepository _repository;
+  NotebookRepository get _repository => ref.read(notebookRepositoryProvider);
 
   @override
   List<Notebook> build() {
-    _repository = ref.watch(notebookRepositoryProvider);
+    ref.watch(notebookRepositoryProvider);
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
-    Future.microtask(() => loadForUser(user?.id));
+    if (user != null) {
+      Future.microtask(() => loadForUser(user.id));
+    } else {
+      state = const [];
+    }
     return const [];
   }
 
   Future<void> loadForUser(String? userId) async {
+    if (userId == null) {
+      if (ref.mounted) state = const [];
+      return;
+    }
     await AppPerformanceMonitor.trace('notebook_load_metadata', () async {
       var dbNotebooks = await _repository.getAllNotebooks(
         ownerId: userId,
@@ -35,10 +43,9 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
       if (!ref.mounted) return;
       if (dbNotebooks.isEmpty) {
         try {
-          final fallbackId = userId ?? 'local_user';
           await ref
               .read(welcomeNotebookServiceProvider)
-              .ensureWelcomeNotebookCreated(fallbackId);
+              .ensureWelcomeNotebookCreated(userId);
           if (!ref.mounted) return;
           dbNotebooks = await _repository.getAllNotebooks(
             ownerId: userId,

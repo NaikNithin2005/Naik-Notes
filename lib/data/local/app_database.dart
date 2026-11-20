@@ -129,9 +129,11 @@ class StickyNotesTable extends Table {
 /// Table representing local offline sync queue operations awaiting push to backend.
 class SyncQueueTable extends Table {
   TextColumn get id => text()();
+  TextColumn get ownerId => text().withDefault(const Constant('local_user'))();
   TextColumn get entityType =>
       text()(); // notebook, folder, page, stroke, sticky_note
   TextColumn get entityId => text()();
+  TextColumn get parentId => text().nullable()(); // notebookId or pageId
   TextColumn get operationType => text()(); // insert, update, delete
   TextColumn get payloadJson => text()();
   IntColumn get revision => integer().withDefault(const Constant(1))();
@@ -260,10 +262,13 @@ class CustomTemplatesTable extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
+  AppDatabase([QueryExecutor? e]) : super(e ?? _openConnectionForUser('local_user'));
+
+  AppDatabase.forUser(String userId, [QueryExecutor? e])
+      : super(e ?? _openConnectionForUser(userId));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -274,10 +279,21 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) {
         await m.addColumn(notebooksTable, notebooksTable.coverImageUrl);
       }
+      if (from < 11) {
+        await m.addColumn(syncQueueTable, syncQueueTable.ownerId);
+        await m.addColumn(syncQueueTable, syncQueueTable.parentId);
+      }
     },
   );
 
-  static QueryExecutor _openConnection() {
-    return driftDatabase(name: 'naik_notes_local');
+  static String sanitizeUid(String userId) {
+    final sanitized = userId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final cleaned = sanitized.replaceAll(RegExp(r'^_+|_+$'), '');
+    return cleaned.isEmpty ? 'anonymous' : cleaned;
+  }
+
+  static QueryExecutor _openConnectionForUser(String userId) {
+    final sanitized = sanitizeUid(userId);
+    return driftDatabase(name: 'naik_notes_user_$sanitized');
   }
 }

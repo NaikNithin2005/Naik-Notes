@@ -57,8 +57,10 @@ enum SyncQueueStatus {
 /// A queued local mutation to be synchronized with the remote backend.
 class SyncOperation {
   final String id;
+  final String ownerId;
   final SyncEntityType entityType;
   final String entityId;
+  final String? parentId;
   final SyncOperationType operationType;
   final Map<String, dynamic> payload;
   final int revision;
@@ -69,8 +71,10 @@ class SyncOperation {
 
   const SyncOperation({
     required this.id,
+    this.ownerId = 'local_user',
     required this.entityType,
     required this.entityId,
+    this.parentId,
     required this.operationType,
     required this.payload,
     required this.revision,
@@ -82,8 +86,10 @@ class SyncOperation {
 
   SyncOperation copyWith({
     String? id,
+    String? ownerId,
     SyncEntityType? entityType,
     String? entityId,
+    String? parentId,
     SyncOperationType? operationType,
     Map<String, dynamic>? payload,
     int? revision,
@@ -91,11 +97,14 @@ class SyncOperation {
     SyncQueueStatus? status,
     int? retryCount,
     String? lastError,
+    bool clearParentId = false,
   }) {
     return SyncOperation(
       id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
       entityType: entityType ?? this.entityType,
       entityId: entityId ?? this.entityId,
+      parentId: clearParentId ? null : (parentId ?? this.parentId),
       operationType: operationType ?? this.operationType,
       payload: payload ?? this.payload,
       revision: revision ?? this.revision,
@@ -109,8 +118,10 @@ class SyncOperation {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'owner_id': ownerId,
       'entity_type': entityType.value,
       'entity_id': entityId,
+      'parent_id': parentId,
       'operation_type': operationType.value,
       'payload': payload,
       'revision': revision,
@@ -124,8 +135,10 @@ class SyncOperation {
   factory SyncOperation.fromJson(Map<String, dynamic> json) {
     return SyncOperation(
       id: json['id'] as String,
+      ownerId: json['owner_id'] as String? ?? 'local_user',
       entityType: SyncEntityType.fromValue(json['entity_type'] as String),
       entityId: json['entity_id'] as String,
+      parentId: json['parent_id'] as String?,
       operationType: SyncOperationType.fromValue(
         json['operation_type'] as String,
       ),

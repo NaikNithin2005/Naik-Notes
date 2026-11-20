@@ -5,37 +5,46 @@ import '../../../data/local/database_provider.dart';
 import '../../../data/models/folder_model.dart';
 import '../../../data/models/sync_operation_model.dart';
 import '../../../data/repositories/folder_repository.dart';
+import '../../authentication/data/auth_provider.dart';
 import '../../sync/data/sync_provider.dart';
 
-/// State notifier managing user folders.
+/// State notifier managing user folders with strict identity isolation.
 class FoldersNotifier extends Notifier<List<Folder>> {
   final _uuid = const Uuid();
-  late final FolderRepository _repository;
+  FolderRepository get _repository => ref.read(folderRepositoryProvider);
 
   @override
   List<Folder> build() {
-    _repository = ref.watch(folderRepositoryProvider);
-    _loadInitial();
+    ref.watch(folderRepositoryProvider);
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
+    if (user != null) {
+      _loadInitial(user.id);
+    } else {
+      state = const [];
+    }
     return [];
   }
 
-  void _loadInitial() {
-    _repository.getAllFolders().then((dbFolders) {
-      if (dbFolders.isNotEmpty) {
+  void _loadInitial(String userId) {
+    _repository.getAllFolders(ownerId: userId).then((dbFolders) {
+      if (ref.mounted) {
         state = dbFolders;
       }
     });
   }
 
   Future<void> loadFolders() async {
-    final dbFolders = await _repository.getAllFolders();
+    final user = ref.read(authProvider).user;
+    if (user == null) {
+      state = const [];
+      return;
+    }
+    final dbFolders = await _repository.getAllFolders(ownerId: user.id);
     state = dbFolders;
   }
 
-  Future<void> loadFromDatabase() async {
-    final dbFolders = await _repository.getAllFolders();
-    state = dbFolders;
-  }
+  Future<void> loadFromDatabase() async => loadFolders();
 
   Future<Folder> createFolder({
     required String name,
@@ -43,9 +52,10 @@ class FoldersNotifier extends Notifier<List<Folder>> {
     String? parentId,
   }) async {
     final now = DateTime.now();
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
     final newFolder = Folder(
       id: _uuid.v4(),
-      ownerId: 'user-default',
+      ownerId: currentUserId,
       parentId: parentId,
       name: name,
       colorHex: colorHex,

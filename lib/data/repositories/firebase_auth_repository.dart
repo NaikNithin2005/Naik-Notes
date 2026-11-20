@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/diagnostics/performance_monitor.dart';
 import '../../features/authentication/data/auth_error_handler.dart';
+import '../../services/authentication/desktop_auth_service.dart';
 import '../models/user_model.dart';
 import 'auth_repository.dart';
 
@@ -23,7 +24,7 @@ class FirebaseAuthRepository implements AuthRepository {
   final _uuid = const Uuid();
 
   AppUser? _currentUser;
-  late final String _deviceId;
+  final String _deviceId;
 
   FirebaseAuthRepository({
     fb.FirebaseAuth? firebaseAuth,
@@ -135,7 +136,7 @@ class FirebaseAuthRepository implements AuthRepository {
             'registrationStatus': 'active',
             'appVersion': '1.0.0',
           }, SetOptions(merge: true))
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 3));
     } catch (e) {
       debugPrint('Device registration note: $e');
     }
@@ -148,31 +149,63 @@ class FirebaseAuthRepository implements AuthRepository {
     String displayName, {
     String? photoUrl,
     String? phoneNumber,
+    String provider = 'password',
+    bool isNewUser = false,
   }) async {
+    final db = _firestore;
+    if (db == null) return;
+    try {
+      final data = <String, dynamic>{
+        'uid': uid,
+        'email': email,
+        'displayName': displayName,
+        'photoUrl': photoUrl,
+        'phoneNumber': phoneNumber,
+        'provider': provider,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastLoginAt': FieldValue.serverTimestamp(),
+        'accountStatus': 'active',
+        'schemaVersion': 2,
+      };
+      if (isNewUser) {
+        data['createdAt'] = FieldValue.serverTimestamp();
+      }
+      await db
+          .collection('users')
+          .doc(uid)
+          .set(data, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('User profile sync note: $e');
+    }
+  }
+
+  /// Initializes synchronization metadata under `users/{uid}/syncMetadata/config`
+  Future<void> _initSyncMetadata(String uid) async {
     final db = _firestore;
     if (db == null) return;
     try {
       await db
           .collection('users')
           .doc(uid)
+          .collection('syncMetadata')
+          .doc('config')
           .set({
-            'uid': uid,
-            'email': email,
-            'displayName': displayName,
-            'photoUrl': photoUrl,
-            'phoneNumber': phoneNumber,
+            'schemaVersion': 2,
+            'lastSyncedAt': FieldValue.serverTimestamp(),
+            'deviceId': _deviceId,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true))
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 3));
     } catch (e) {
-      debugPrint('User profile sync note: $e');
+      debugPrint('Sync metadata init note: $e');
     }
   }
 
   @override
   Future<AppUser> login(String email, String password) async {
     return AppPerformanceMonitor.trace('auth_email_login', () async {
-      final sanitizedEmail = email.trim();
+      final sanitizedEmail = email.trim().toLowerCase();
       if (sanitizedEmail.isEmpty || password.isEmpty) {
         throw Exception('Email and password are required.');
       }
@@ -193,14 +226,38 @@ class FirebaseAuthRepository implements AuthRepository {
       }
 
       try {
-        final credential = await auth
-            .signInWithEmailAndPassword(email: sanitizedEmail, password: password)
-            .timeout(
-              const Duration(seconds: 15),
-              onTimeout: () => throw TimeoutException(
-                'Authentication request timed out. Please try again.',
-              ),
-            );
+        fb.UserCredential credential;
+        try {
+          credential = await auth
+              .signInWithEmailAndPassword(email: sanitizedEmail, password: password)
+              .timeout(
+                const Duration(seconds: 15),
+                onTimeout: () => throw TimeoutException(
+                  'Authentication request timed out. Please try again.',
+                ),
+              );
+        } on fb.FirebaseAuthException catch (e) {
+          // If password contains leading/trailing whitespace (common on mobile auto-correct), auto-retry trimmed
+          if (password != password.trim() &&
+              (e.code == 'wrong-password' ||
+                  e.code == 'invalid-credential' ||
+                  e.code == 'invalid-login-credentials' ||
+                  e.code == 'internal-error')) {
+            credential = await auth
+                .signInWithEmailAndPassword(
+                  email: sanitizedEmail,
+                  password: password.trim(),
+                )
+                .timeout(
+                  const Duration(seconds: 15),
+                  onTimeout: () => throw TimeoutException(
+                    'Authentication request timed out. Please try again.',
+                  ),
+                );
+          } else {
+            rethrow;
+          }
+        }
 
         final fbUser = credential.user;
         if (fbUser == null) {
@@ -210,8 +267,16 @@ class FirebaseAuthRepository implements AuthRepository {
         final appUser = _mapFirebaseUser(fbUser);
         _currentUser = appUser;
 
-        unawaited(_registerDevice(appUser.id));
-        unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
+        await Future.wait([
+          _syncUserProfile(
+            appUser.id,
+            appUser.email,
+            appUser.displayName,
+            provider: 'password',
+            isNewUser: false,
+          ),
+          _registerDevice(appUser.id),
+        ]).timeout(const Duration(seconds: 2), onTimeout: () => []);
 
         return appUser;
       } on fb.FirebaseAuthException catch (e) {
@@ -234,7 +299,7 @@ class FirebaseAuthRepository implements AuthRepository {
     String? confirmPassword,
   }) async {
     return AppPerformanceMonitor.trace('auth_email_register', () async {
-      final sanitizedEmail = email.trim();
+      final sanitizedEmail = email.trim().toLowerCase();
       final sanitizedName = displayName.trim();
 
       if (sanitizedEmail.isEmpty || password.isEmpty) {
@@ -300,9 +365,18 @@ class FirebaseAuthRepository implements AuthRepository {
 
         _currentUser = appUser;
 
-        // Staged background persistence: navigate immediately without blocking UI
-        unawaited(_syncUserProfile(appUser.id, appUser.email, appUser.displayName));
-        unawaited(_registerDevice(appUser.id));
+        // Concurrent profile, sync metadata, and device provisioning
+        await Future.wait([
+          _syncUserProfile(
+            appUser.id,
+            appUser.email,
+            appUser.displayName,
+            provider: 'password',
+            isNewUser: true,
+          ),
+          _initSyncMetadata(appUser.id),
+          _registerDevice(appUser.id),
+        ]).timeout(const Duration(seconds: 3), onTimeout: () => []);
 
         return appUser;
       } on fb.FirebaseAuthException catch (e) {
@@ -333,29 +407,55 @@ class FirebaseAuthRepository implements AuthRepository {
         return appUser;
       }
 
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-        throw Exception(
-          'Google Sign-In is supported on Android and iPadOS. On Windows, please sign in with your Email and Password.',
-        );
-      }
-
       try {
         fb.UserCredential credential;
 
-        if (!kIsWeb &&
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+          // RFC 8252 Desktop OAuth 2.0 Loopback Flow with PKCE for Windows
+          final desktopAuth = DesktopAuthService();
+          final tokens = await desktopAuth.signInWithGoogle();
+          final authCredential = fb.GoogleAuthProvider.credential(
+            idToken: tokens.idToken,
+            accessToken: tokens.accessToken,
+          );
+          try {
+            credential = await auth
+                .signInWithCredential(authCredential)
+                .timeout(
+                  const Duration(seconds: 45),
+                  onTimeout: () => throw TimeoutException('Google Sign-In timed out.'),
+                );
+          } on fb.FirebaseAuthException catch (e) {
+            debugPrint('[FirebaseAuthRepository] Google signInWithCredential error: ${e.code} - ${e.message}');
+            if (e.code == 'invalid-credential' || e.code == 'invalid_login_credentials') {
+              final configuredPrefix = DesktopAuthService.effectiveDesktopClientId.split('-').first;
+              throw Exception(
+                'Google OAuth token was rejected by Firebase (invalid-credential).\n'
+                'The Desktop OAuth client must be created under Firebase project "naik-notes" (Project #437907946486).\n'
+                'The current Client ID belongs to project #$configuredPrefix.',
+              );
+            }
+            rethrow;
+          }
+        } else if (!kIsWeb &&
             (defaultTargetPlatform == TargetPlatform.android ||
                 defaultTargetPlatform == TargetPlatform.iOS)) {
           // Native Google Play Services on Android / iOS
           final GoogleSignIn googleSignIn = GoogleSignIn(
             scopes: ['email', 'profile'],
-            serverClientId:
-                '437907946486-u57rove455sh9afj25hvf7nb4f3ngt5l.apps.googleusercontent.com',
+            serverClientId: DesktopAuthService.defaultClientId,
+            clientId: defaultTargetPlatform == TargetPlatform.iOS
+                ? DesktopAuthService.iosClientId
+                : null,
           );
 
-          // Force interactive account chooser by clearing cached account
+          // Force interactive account chooser by disconnecting previous session
           if (promptAccountSelection) {
             try {
               await googleSignIn.signOut();
+            } catch (_) {}
+            try {
+              await googleSignIn.disconnect();
             } catch (_) {}
           }
 
@@ -396,7 +496,7 @@ class FirebaseAuthRepository implements AuthRepository {
               );
         } else {
           throw Exception(
-            'Google Sign-In is supported on Android, iPadOS, and Web. On desktop, please sign in with Email & Password.',
+            'Google Sign-In is supported on Android, iPadOS, Windows Desktop, and Web.',
           );
         }
 
@@ -408,14 +508,19 @@ class FirebaseAuthRepository implements AuthRepository {
         final appUser = _mapFirebaseUser(fbUser);
         _currentUser = appUser;
 
-        // Non-blocking staged profile & device registration
-        unawaited(_registerDevice(appUser.id));
-        unawaited(_syncUserProfile(
-          appUser.id,
-          appUser.email,
-          appUser.displayName,
-          photoUrl: appUser.photoUrl,
-        ));
+        // Ensure user profile, sync metadata, and device record exist concurrently
+        await Future.wait([
+          _syncUserProfile(
+            appUser.id,
+            appUser.email,
+            appUser.displayName,
+            photoUrl: appUser.photoUrl,
+            provider: 'google.com',
+            isNewUser: false,
+          ),
+          _initSyncMetadata(appUser.id),
+          _registerDevice(appUser.id),
+        ]).timeout(const Duration(seconds: 3), onTimeout: () => []);
 
         return appUser;
       } on fb.FirebaseAuthException catch (e) {
@@ -645,7 +750,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> sendPasswordReset(String email) async {
-    final sanitized = email.trim();
+    final sanitized = email.trim().toLowerCase();
     if (sanitized.isEmpty) {
       throw Exception('Please provide an email address.');
     }
@@ -693,7 +798,12 @@ class FirebaseAuthRepository implements AuthRepository {
           (defaultTargetPlatform == TargetPlatform.android ||
               defaultTargetPlatform == TargetPlatform.iOS)) {
         final GoogleSignIn googleSignIn = GoogleSignIn();
-        await googleSignIn.signOut();
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+        try {
+          await googleSignIn.disconnect();
+        } catch (_) {}
       }
     } catch (_) {}
     try {
@@ -708,7 +818,7 @@ class FirebaseAuthRepository implements AuthRepository {
       final fbUser = _firebaseAuth?.currentUser;
       if (fbUser != null) {
         _currentUser = _mapFirebaseUser(fbUser);
-        await _registerDevice(_currentUser!.id);
+        _registerDevice(_currentUser!.id); // Background fire-and-forget
         return _currentUser;
       }
     } catch (_) {}

@@ -24,15 +24,14 @@ final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(
 
 /// Riverpod provider for application router configuration.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final isAuth = ref.watch(authProvider.select((s) => s.isAuthenticated));
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: authState.isAuthenticated
+    initialLocation: isAuth
         ? RouteNames.dashboard
         : RouteNames.landing,
     redirect: (context, state) {
-      final isAuth = authState.isAuthenticated;
       final location = state.matchedLocation;
       final isAuthRoute =
           location == RouteNames.landing ||

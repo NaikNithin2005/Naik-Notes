@@ -28,8 +28,10 @@ class DriftSyncQueueRepository implements SyncQueueRepository {
         .insertOnConflictUpdate(
           SyncQueueTableCompanion(
             id: Value(operation.id),
+            ownerId: Value(operation.ownerId),
             entityType: Value(operation.entityType.value),
             entityId: Value(operation.entityId),
+            parentId: Value(operation.parentId),
             operationType: Value(operation.operationType.value),
             payloadJson: Value(jsonEncode(operation.payload)),
             revision: Value(operation.revision),
@@ -136,8 +138,10 @@ class DriftSyncQueueRepository implements SyncQueueRepository {
 
     return SyncOperation(
       id: row.id,
+      ownerId: row.ownerId,
       entityType: SyncEntityType.fromValue(row.entityType),
       entityId: row.entityId,
+      parentId: row.parentId,
       operationType: SyncOperationType.fromValue(row.operationType),
       payload: payloadMap,
       revision: row.revision,

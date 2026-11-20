@@ -1,9 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../data/local/database_provider.dart';
+import '../../../data/models/folder_model.dart';
+import '../../../data/models/notebook_model.dart';
+import '../../../data/models/page_model.dart';
+import '../../../data/models/sticky_note_model.dart';
+import '../../../data/models/stroke_model.dart';
+import '../../../data/models/sync_operation_model.dart';
 import '../../../services/storage/firebase_storage_service.dart';
 import '../../../services/sync/firebase_sync_service.dart';
 import '../../../services/sync/sync_service.dart';
@@ -88,25 +95,74 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   );
 });
 
-/// Riverpod notifier managing synchronization state, triggers, and auto-sync timer.
+/// Riverpod notifier managing synchronization state, triggers, auto-sync,
+/// and live Firestore stream subscription.
 class SyncNotifier extends Notifier<SyncState> {
   Timer? _autoSyncTimer;
+  String? _listeningUid;
 
   @override
   SyncState build() {
+    final fbSync = ref.read(firebaseSyncServiceProvider);
     ref.onDispose(() {
       _autoSyncTimer?.cancel();
+      fbSync.dispose();
     });
+
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
+
+    if (user != null && user.id != _listeningUid) {
+      _listeningUid = user.id;
+      _setupRealTimeSync(user.id);
+    } else if (user == null) {
+      _listeningUid = null;
+      fbSync.dispose();
+    }
 
     _startPeriodicSync();
 
     return const SyncState();
   }
 
+  void _setupRealTimeSync(String uid) {
+    final fbSync = ref.read(firebaseSyncServiceProvider);
+    fbSync.listenToNotebooks(uid, (remoteNotebooks) async {
+      if (!ref.mounted) return;
+      try {
+        final notebookRepo = ref.read(notebookRepositoryProvider);
+        bool hasChanges = false;
+
+        for (final rNb in remoteNotebooks) {
+          if (rNb.deletedAt != null) {
+            await notebookRepo.deleteNotebook(rNb.id);
+            hasChanges = true;
+          } else {
+            final local = await notebookRepo.getNotebookById(rNb.id, ownerId: uid);
+            if (local == null || rNb.revision >= local.revision) {
+              await notebookRepo.saveNotebook(rNb);
+              hasChanges = true;
+            }
+          }
+        }
+
+        if (hasChanges && ref.mounted) {
+          await ref.read(notebooksProvider.notifier).loadFromDatabase();
+          state = state.copyWith(
+            lastSyncedAt: DateTime.now(),
+            status: SyncUiStatus.synced,
+            clearError: true,
+          );
+        }
+      } catch (e) {
+        debugPrint('[SyncNotifier] Real-time merge error: $e');
+      }
+    });
+  }
+
   void _startPeriodicSync() {
     _autoSyncTimer?.cancel();
     if (!AppConfig.enablePeriodicSync) return;
-    // Periodic poll every 45 seconds
     _autoSyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
       if (state.autoSyncEnabled && state.status != SyncUiStatus.syncing) {
         syncNow();
@@ -152,8 +208,79 @@ class SyncNotifier extends Notifier<SyncState> {
       if (isAuth) {
         final fbSync = ref.read(firebaseSyncServiceProvider);
         final notebookRepo = ref.read(notebookRepositoryProvider);
+        final folderRepo = ref.read(folderRepositoryProvider);
+        final queueRepo = ref.read(syncQueueRepositoryProvider);
 
-        // Push user's local notebooks to Firestore
+        int pushedCount = 0;
+
+        // 1. Process local offline queue
+        final pendingOps = await queueRepo.getPendingOperations(limit: 50);
+        for (final op in pendingOps) {
+          if (op.ownerId != uid && op.ownerId != 'local_user') continue;
+
+          bool success = false;
+          try {
+            switch (op.entityType) {
+              case SyncEntityType.notebook:
+                if (op.operationType == SyncOperationType.delete) {
+                  success = await fbSync.deleteNotebook(uid, op.entityId);
+                } else {
+                  final nb = Notebook.fromJson(op.payload);
+                  success = await fbSync.pushNotebook(uid, nb);
+                }
+                break;
+              case SyncEntityType.folder:
+                if (op.operationType == SyncOperationType.delete) {
+                  success = await fbSync.deleteFolder(uid, op.entityId);
+                } else {
+                  final folder = Folder.fromJson(op.payload);
+                  success = await fbSync.pushFolder(uid, folder);
+                }
+                break;
+              case SyncEntityType.page:
+                final notebookId = op.parentId ?? op.payload['notebookId'] as String?;
+                if (notebookId != null) {
+                  if (op.operationType == SyncOperationType.delete) {
+                    success = await fbSync.deletePage(uid, notebookId, op.entityId);
+                  } else {
+                    final page = NotebookPage.fromJson(op.payload);
+                    success = await fbSync.pushPage(uid, notebookId, page);
+                  }
+                }
+                break;
+              case SyncEntityType.stroke:
+                final notebookId = op.payload['notebookId'] as String?;
+                final pageId = op.parentId ?? op.payload['pageId'] as String?;
+                if (notebookId != null && pageId != null) {
+                  final stroke = Stroke.fromJson(op.payload);
+                  await fbSync.pushStrokes(uid, notebookId, pageId, [stroke]);
+                  success = true;
+                }
+                break;
+              case SyncEntityType.stickyNote:
+                final notebookId = op.payload['notebookId'] as String?;
+                final pageId = op.parentId ?? op.payload['pageId'] as String?;
+                if (notebookId != null && pageId != null) {
+                  if (op.operationType == SyncOperationType.delete) {
+                    success = await fbSync.deleteStickyNote(uid, notebookId, pageId, op.entityId);
+                  } else {
+                    final note = StickyNote.fromJson(op.payload);
+                    success = await fbSync.pushStickyNote(uid, notebookId, pageId, note);
+                  }
+                }
+                break;
+            }
+          } catch (e) {
+            await queueRepo.markAsFailed(op.id, e.toString());
+          }
+
+          if (success) {
+            await queueRepo.markAsSynced([op.id]);
+            pushedCount++;
+          }
+        }
+
+        // 2. Push user's local notebooks to Firestore
         final localNotebooks = await notebookRepo.getAllNotebooks(
           ownerId: uid,
           includeArchived: true,
@@ -162,45 +289,50 @@ class SyncNotifier extends Notifier<SyncState> {
           await fbSync.pushNotebook(uid, nb);
         }
 
-        // Claim and sync any unassigned local_user notebooks to active account
-        final unassignedNotebooks = await notebookRepo.getAllNotebooks(
-          ownerId: 'local_user',
-          includeArchived: true,
-        );
-        for (final unassigned in unassignedNotebooks) {
-          final claimed = unassigned.copyWith(
-            ownerId: uid,
-            updatedAt: DateTime.now(),
-          );
-          await notebookRepo.saveNotebook(claimed);
-          await fbSync.pushNotebook(uid, claimed);
-        }
-
-        // Pull remote notebooks from Firestore
+        // 3. Pull remote notebooks from Firestore
         final remoteNotebooks = await fbSync.fetchNotebooks(uid);
         for (final rNb in remoteNotebooks) {
-          await notebookRepo.saveNotebook(rNb);
+          if (rNb.deletedAt != null) {
+            await notebookRepo.deleteNotebook(rNb.id);
+          } else {
+            final local = await notebookRepo.getNotebookById(rNb.id, ownerId: uid);
+            if (local == null || rNb.revision >= local.revision) {
+              await notebookRepo.saveNotebook(rNb);
+            }
+          }
         }
 
-        // Refresh state
+        // 4. Pull remote folders from Firestore
+        final remoteFolders = await fbSync.fetchFolders(uid);
+        for (final rFolder in remoteFolders) {
+          if (rFolder.deletedAt != null) {
+            await folderRepo.deleteFolder(rFolder.id);
+          } else {
+            await folderRepo.saveFolder(rFolder);
+          }
+        }
+
+        // 5. Refresh UI state
         await ref.read(notebooksProvider.notifier).loadFromDatabase();
+        final pendingRemaining = await queueRepo.getPendingCount();
 
         final now = DateTime.now();
         state = state.copyWith(
           status: SyncUiStatus.synced,
           lastSyncedAt: now,
-          pendingCount: 0,
+          pendingCount: pendingRemaining,
+          lastPushed: pushedCount + localNotebooks.length,
+          lastPulled: remoteNotebooks.length,
           clearError: true,
         );
 
         return SyncResult(
           isSuccess: true,
-          pushedCount: localNotebooks.length,
+          pushedCount: pushedCount + localNotebooks.length,
           pulledCount: remoteNotebooks.length,
           timestamp: now,
         );
       } else {
-        // Offline / Guest mode: use local queue check
         final now = DateTime.now();
         state = state.copyWith(
           status: SyncUiStatus.synced,

@@ -9,10 +9,18 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/data/repositories/folder_repository.dart';
 import 'package:naik_notes/data/repositories/notebook_repository.dart';
 import 'package:naik_notes/data/repositories/page_repository.dart';
+import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/notebooks/presentation/screens/notebook_view_screen.dart';
 import 'package:naik_notes/features/templates/presentation/painters/paper_template_painter.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/paper_template_view.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
+
+class _TestNotebooksNotifier extends NotebooksNotifier {
+  final List<Notebook> _notebooks;
+  _TestNotebooksNotifier(this._notebooks);
+  @override
+  List<Notebook> build() => _notebooks;
+}
 
 void main() {
   group('Paper Template & Customizer Widget Tests', () {
@@ -137,20 +145,19 @@ void main() {
         final pageRepo = DriftPageRepository(db);
 
         final now = DateTime.now();
-        await notebookRepo.saveNotebook(
-          Notebook(
-            id: 'nb-1-math',
-            ownerId: 'user-default',
-            title: 'Advanced Mathematics & Calculus',
-            description: 'Calculus and Linear Algebra',
-            coverId: 'classic_leather',
-            coverColorHex: '#8B4513',
-            paperTemplateId: 'square_grid',
-            pageCount: 2,
-            createdAt: now,
-            updatedAt: now,
-          ),
+        final notebook = Notebook(
+          id: 'nb-1-math',
+          ownerId: 'user-default',
+          title: 'Advanced Mathematics & Calculus',
+          description: 'Calculus and Linear Algebra',
+          coverId: 'classic_leather',
+          coverColorHex: '#8B4513',
+          paperTemplateId: 'square_grid',
+          pageCount: 2,
+          createdAt: now,
+          updatedAt: now,
         );
+        await notebookRepo.saveNotebook(notebook);
         await pageRepo.ensurePagesExist(
           'nb-1-math',
           templateId: 'square_grid',
@@ -170,6 +177,7 @@ void main() {
               notebookRepositoryProvider.overrideWithValue(notebookRepo),
               folderRepositoryProvider.overrideWithValue(folderRepo),
               pageRepositoryProvider.overrideWithValue(pageRepo),
+              notebooksProvider.overrideWith(() => _TestNotebooksNotifier([notebook])),
             ],
             child: const MaterialApp(
               home: NotebookViewScreen(notebookId: 'nb-1-math'),

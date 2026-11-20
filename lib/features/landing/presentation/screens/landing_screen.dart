@@ -328,12 +328,10 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
 
             // Primary: Sign In with Email
             FilledButton.icon(
-              onPressed: authState.isLoading
-                  ? null
-                  : () {
-                      ref.read(authProvider.notifier).clearMessages();
-                      context.push(RouteNames.login);
-                    },
+              onPressed: () {
+                ref.read(authProvider.notifier).clearMessages();
+                context.go(RouteNames.login);
+              },
               icon: const Icon(Icons.login_rounded, size: 18),
               label: const Text('Sign In with Email'),
               style: FilledButton.styleFrom(
@@ -347,12 +345,10 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
 
             // Secondary: Create Account
             FilledButton.tonalIcon(
-              onPressed: authState.isLoading
-                  ? null
-                  : () {
-                      ref.read(authProvider.notifier).clearMessages();
-                      context.push(RouteNames.register);
-                    },
+              onPressed: () {
+                ref.read(authProvider.notifier).clearMessages();
+                context.go(RouteNames.register);
+              },
               icon: const Icon(Icons.person_add_outlined, size: 18),
               label: const Text('Create New Account'),
               style: FilledButton.styleFrom(
@@ -386,12 +382,22 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
               ),
               const SizedBox(height: 14),
 
-              // Google Sign-In (Android & iOS)
+              // Google Sign-In (Android, iPadOS, Windows)
               if (isGoogleAvailable) ...[
                 OutlinedButton.icon(
                   onPressed: authState.isLoading ? null : _signInWithGoogle,
-                  icon: const GoogleLogo(size: 20),
-                  label: const Text('Continue with Google'),
+                  icon: authState.isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const GoogleLogo(size: 20),
+                  label: Text(
+                    authState.isLoading
+                        ? 'Connecting to Google...'
+                        : 'Continue with Google',
+                  ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46),
                     shape: RoundedRectangleBorder(

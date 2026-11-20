@@ -1,28 +1,48 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if the user is authenticated
+    // Helper function to verify user authentication
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Helper function to verify document ownership
+    // Helper function to verify strict document ownership by authenticated UID
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // User profile documents
+    // User namespace: complete isolation under /users/{userId}
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      // User profile document
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(userId);
       
       // User registered devices
       match /devices/{deviceId} {
         allow read, write: if isOwner(userId);
       }
 
+      // User sync metadata & configs
+      match /syncMetadata/{recordId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Folders
+      match /folders/{folderId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
+        allow update: if isOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
+        allow delete: if isOwner(userId);
+      }
+
       // Notebooks
       match /notebooks/{notebookId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
+        allow update: if isOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
+        allow delete: if isOwner(userId);
 
         // Sections
         match /sections/{sectionId} {
@@ -33,38 +53,32 @@ service cloud.firestore {
         match /pages/{pageId} {
           allow read, write: if isOwner(userId);
 
-          // Strokes
+          // Strokes (vector handwriting)
           match /strokes/{strokeId} {
             allow read, write: if isOwner(userId);
           }
 
-          // Annotations
+          // Sticky notes & text annotations
+          match /sticky_notes/{noteId} {
+            allow read, write: if isOwner(userId);
+          }
+
+          // Annotations & PDF marks
           match /annotations/{annotationId} {
+            allow read, write: if isOwner(userId);
+          }
+
+          // Historical page snapshots
+          match /snapshots/{snapshotId} {
             allow read, write: if isOwner(userId);
           }
         }
       }
-
-      // Folders
-      match /folders/{folderId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Sync metadata & recovery manifests
-      match /sync_metadata/{recordId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Drive file references
-      match /drive_files/{fileId} {
-        allow read, write: if isOwner(userId);
-      }
     }
 
-    // Default deny for all other paths
+    // Default deny for all other collections and documents
     match /{document=**} {
       allow read, write: false;
     }
   }
 }
-

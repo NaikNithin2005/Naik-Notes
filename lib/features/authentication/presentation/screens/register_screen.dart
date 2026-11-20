@@ -41,9 +41,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final success = await ref
           .read(authProvider.notifier)
           .register(
-            _emailController.text,
+            _emailController.text.trim().toLowerCase(),
             _passwordController.text,
-            _nameController.text,
+            _nameController.text.trim(),
             confirmPassword: _confirmPasswordController.text,
           );
       if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {

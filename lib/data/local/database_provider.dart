@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/authentication/data/auth_provider.dart';
 import '../repositories/audio_repository.dart';
 import '../repositories/folder_repository.dart';
 import '../repositories/notebook_repository.dart';
@@ -12,9 +13,11 @@ import '../repositories/template_store_repository.dart';
 import '../repositories/version_history_repository.dart';
 import 'app_database.dart';
 
-/// Global provider for the Drift AppDatabase singleton.
+/// Global provider for the Drift AppDatabase instance strictly partitioned by user identity.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase();
+  final authState = ref.watch(authProvider);
+  final uid = authState.user?.id ?? 'local_user';
+  final db = AppDatabase.forUser(uid);
   ref.onDispose(() => db.close());
   return db;
 });

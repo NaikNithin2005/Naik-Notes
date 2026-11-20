@@ -34,7 +34,7 @@ void main() {
       expect(find.text('Create Account'), findsOneWidget);
     });
 
-    testWidgets('renders LoginScreen on Windows with email authentication badge', (
+    testWidgets('renders LoginScreen on Windows with Google and Email authentication', (
       tester,
     ) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.windows;
@@ -53,9 +53,12 @@ void main() {
       expect(find.text('Email Address'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Sign In'), findsOneWidget);
-      expect(find.text('Windows Edition • Email authentication'), findsOneWidget);
-      // On Windows, unsupported mobile OAuth is not displayed
-      expect(find.text('Continue with Google'), findsNothing);
+      expect(
+        find.text('Windows Edition • Google & Email Synchronization'),
+        findsOneWidget,
+      );
+      // On Windows, Desktop OAuth 2.0 loopback flow is supported
+      expect(find.text('Continue with Google'), findsOneWidget);
     });
 
     testWidgets('validates empty inputs on LoginScreen submit', (tester) async {

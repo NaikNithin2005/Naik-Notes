@@ -12,11 +12,11 @@ import 'notebook_provider.dart';
 /// State notifier managing the pages of all loaded notebooks, keyed by notebook ID.
 class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
   final _uuid = const Uuid();
-  late final PageRepository _repository;
+  PageRepository get _repository => ref.read(pageRepositoryProvider);
 
   @override
   Map<String, List<NotebookPage>> build() {
-    _repository = ref.watch(pageRepositoryProvider);
+    ref.watch(pageRepositoryProvider);
     return {};
   }
 
