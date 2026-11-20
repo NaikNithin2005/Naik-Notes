@@ -29,6 +29,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
 
+      // Connected storage & cloud integrations (e.g. Google Drive)
+      match /integrations/{integrationId} {
+        allow read, write: if isOwner(userId);
+      }
+
       // Folders
       match /folders/{folderId} {
         allow read: if isOwner(userId);

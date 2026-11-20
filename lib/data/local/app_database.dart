@@ -245,6 +245,34 @@ class CustomTemplatesTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Table representing note attachments stored in Google Drive appDataFolder and cached locally.
+class AttachmentsTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get ownerId => text().withDefault(const Constant('local_user'))();
+  TextColumn get noteId => text()();
+  TextColumn get driveFileId => text().nullable()();
+  TextColumn get fileName => text()();
+  TextColumn get mimeType => text()();
+  IntColumn get fileSize => integer().withDefault(const Constant(0))();
+  TextColumn get localPath => text().nullable()();
+  TextColumn get checksum => text()();
+  TextColumn get storageProvider => text().withDefault(
+    const Constant('google_drive_appdata'),
+  )();
+  TextColumn get uploadStatus => text().withDefault(
+    const Constant('pending'),
+  )();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get uploadedAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     FoldersTable,
@@ -259,6 +287,7 @@ class CustomTemplatesTable extends Table {
     AudioBookmarksTable,
     PageSnapshotsTable,
     CustomTemplatesTable,
+    AttachmentsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -268,7 +297,7 @@ class AppDatabase extends _$AppDatabase {
       : super(e ?? _openConnectionForUser(userId));
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -282,6 +311,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 11) {
         await m.addColumn(syncQueueTable, syncQueueTable.ownerId);
         await m.addColumn(syncQueueTable, syncQueueTable.parentId);
+      }
+      if (from < 12) {
+        await m.createTable(attachmentsTable);
       }
     },
   );

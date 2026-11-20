@@ -18,6 +18,7 @@ import 'package:naik_notes/features/canvas/presentation/widgets/toolbar_customiz
 import 'package:naik_notes/features/folders/data/folder_provider.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/sync/data/sync_provider.dart';
+import 'package:naik_notes/features/settings/presentation/widgets/google_drive_settings_card.dart';
 import 'package:naik_notes/features/settings/presentation/widgets/update_dialog.dart';
 import 'package:naik_notes/services/backup/backup_service.dart';
 import 'package:naik_notes/services/update/app_update_service.dart';
@@ -976,6 +977,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
+
+          const SizedBox(height: 12),
+          const GoogleDriveSettingsCard(),
 
           const SizedBox(height: 24),
 

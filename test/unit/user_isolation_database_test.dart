@@ -120,7 +120,6 @@ void main() {
 
     test('Sync queue operations enforce ownerId and partition isolation', () async {
       const userA = 'user_alpha_uid_111';
-      const userB = 'user_beta_uid_222';
 
       // 1. User A enqueues an offline update
       final opA = SyncOperation(

@@ -7890,6 +7890,963 @@ class CustomTemplatesTableCompanion
   }
 }
 
+class $AttachmentsTableTable extends AttachmentsTable
+    with TableInfo<$AttachmentsTableTable, AttachmentsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AttachmentsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('local_user'),
+  );
+  static const VerificationMeta _noteIdMeta = const VerificationMeta('noteId');
+  @override
+  late final GeneratedColumn<String> noteId = GeneratedColumn<String>(
+    'note_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driveFileIdMeta = const VerificationMeta(
+    'driveFileId',
+  );
+  @override
+  late final GeneratedColumn<String> driveFileId = GeneratedColumn<String>(
+    'drive_file_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fileNameMeta = const VerificationMeta(
+    'fileName',
+  );
+  @override
+  late final GeneratedColumn<String> fileName = GeneratedColumn<String>(
+    'file_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mimeTypeMeta = const VerificationMeta(
+    'mimeType',
+  );
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+    'mime_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fileSizeMeta = const VerificationMeta(
+    'fileSize',
+  );
+  @override
+  late final GeneratedColumn<int> fileSize = GeneratedColumn<int>(
+    'file_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _localPathMeta = const VerificationMeta(
+    'localPath',
+  );
+  @override
+  late final GeneratedColumn<String> localPath = GeneratedColumn<String>(
+    'local_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _checksumMeta = const VerificationMeta(
+    'checksum',
+  );
+  @override
+  late final GeneratedColumn<String> checksum = GeneratedColumn<String>(
+    'checksum',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _storageProviderMeta = const VerificationMeta(
+    'storageProvider',
+  );
+  @override
+  late final GeneratedColumn<String> storageProvider = GeneratedColumn<String>(
+    'storage_provider',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('google_drive_appdata'),
+  );
+  static const VerificationMeta _uploadStatusMeta = const VerificationMeta(
+    'uploadStatus',
+  );
+  @override
+  late final GeneratedColumn<String> uploadStatus = GeneratedColumn<String>(
+    'upload_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _retryCountMeta = const VerificationMeta(
+    'retryCount',
+  );
+  @override
+  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
+    'retry_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _uploadedAtMeta = const VerificationMeta(
+    'uploadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> uploadedAt = GeneratedColumn<DateTime>(
+    'uploaded_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    ownerId,
+    noteId,
+    driveFileId,
+    fileName,
+    mimeType,
+    fileSize,
+    localPath,
+    checksum,
+    storageProvider,
+    uploadStatus,
+    isDeleted,
+    retryCount,
+    lastError,
+    createdAt,
+    uploadedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'attachments_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AttachmentsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
+    if (data.containsKey('note_id')) {
+      context.handle(
+        _noteIdMeta,
+        noteId.isAcceptableOrUnknown(data['note_id']!, _noteIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_noteIdMeta);
+    }
+    if (data.containsKey('drive_file_id')) {
+      context.handle(
+        _driveFileIdMeta,
+        driveFileId.isAcceptableOrUnknown(
+          data['drive_file_id']!,
+          _driveFileIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('file_name')) {
+      context.handle(
+        _fileNameMeta,
+        fileName.isAcceptableOrUnknown(data['file_name']!, _fileNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fileNameMeta);
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(
+        _mimeTypeMeta,
+        mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mimeTypeMeta);
+    }
+    if (data.containsKey('file_size')) {
+      context.handle(
+        _fileSizeMeta,
+        fileSize.isAcceptableOrUnknown(data['file_size']!, _fileSizeMeta),
+      );
+    }
+    if (data.containsKey('local_path')) {
+      context.handle(
+        _localPathMeta,
+        localPath.isAcceptableOrUnknown(data['local_path']!, _localPathMeta),
+      );
+    }
+    if (data.containsKey('checksum')) {
+      context.handle(
+        _checksumMeta,
+        checksum.isAcceptableOrUnknown(data['checksum']!, _checksumMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_checksumMeta);
+    }
+    if (data.containsKey('storage_provider')) {
+      context.handle(
+        _storageProviderMeta,
+        storageProvider.isAcceptableOrUnknown(
+          data['storage_provider']!,
+          _storageProviderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('upload_status')) {
+      context.handle(
+        _uploadStatusMeta,
+        uploadStatus.isAcceptableOrUnknown(
+          data['upload_status']!,
+          _uploadStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('retry_count')) {
+      context.handle(
+        _retryCountMeta,
+        retryCount.isAcceptableOrUnknown(data['retry_count']!, _retryCountMeta),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('uploaded_at')) {
+      context.handle(
+        _uploadedAtMeta,
+        uploadedAt.isAcceptableOrUnknown(data['uploaded_at']!, _uploadedAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AttachmentsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AttachmentsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
+      noteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note_id'],
+      )!,
+      driveFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}drive_file_id'],
+      ),
+      fileName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_name'],
+      )!,
+      mimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime_type'],
+      )!,
+      fileSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}file_size'],
+      )!,
+      localPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_path'],
+      ),
+      checksum: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}checksum'],
+      )!,
+      storageProvider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}storage_provider'],
+      )!,
+      uploadStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}upload_status'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      retryCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retry_count'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      uploadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}uploaded_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AttachmentsTableTable createAlias(String alias) {
+    return $AttachmentsTableTable(attachedDatabase, alias);
+  }
+}
+
+class AttachmentsTableData extends DataClass
+    implements Insertable<AttachmentsTableData> {
+  final String id;
+  final String ownerId;
+  final String noteId;
+  final String? driveFileId;
+  final String fileName;
+  final String mimeType;
+  final int fileSize;
+  final String? localPath;
+  final String checksum;
+  final String storageProvider;
+  final String uploadStatus;
+  final bool isDeleted;
+  final int retryCount;
+  final String? lastError;
+  final DateTime createdAt;
+  final DateTime? uploadedAt;
+  final DateTime updatedAt;
+  const AttachmentsTableData({
+    required this.id,
+    required this.ownerId,
+    required this.noteId,
+    this.driveFileId,
+    required this.fileName,
+    required this.mimeType,
+    required this.fileSize,
+    this.localPath,
+    required this.checksum,
+    required this.storageProvider,
+    required this.uploadStatus,
+    required this.isDeleted,
+    required this.retryCount,
+    this.lastError,
+    required this.createdAt,
+    this.uploadedAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['owner_id'] = Variable<String>(ownerId);
+    map['note_id'] = Variable<String>(noteId);
+    if (!nullToAbsent || driveFileId != null) {
+      map['drive_file_id'] = Variable<String>(driveFileId);
+    }
+    map['file_name'] = Variable<String>(fileName);
+    map['mime_type'] = Variable<String>(mimeType);
+    map['file_size'] = Variable<int>(fileSize);
+    if (!nullToAbsent || localPath != null) {
+      map['local_path'] = Variable<String>(localPath);
+    }
+    map['checksum'] = Variable<String>(checksum);
+    map['storage_provider'] = Variable<String>(storageProvider);
+    map['upload_status'] = Variable<String>(uploadStatus);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['retry_count'] = Variable<int>(retryCount);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || uploadedAt != null) {
+      map['uploaded_at'] = Variable<DateTime>(uploadedAt);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AttachmentsTableCompanion toCompanion(bool nullToAbsent) {
+    return AttachmentsTableCompanion(
+      id: Value(id),
+      ownerId: Value(ownerId),
+      noteId: Value(noteId),
+      driveFileId: driveFileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(driveFileId),
+      fileName: Value(fileName),
+      mimeType: Value(mimeType),
+      fileSize: Value(fileSize),
+      localPath: localPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localPath),
+      checksum: Value(checksum),
+      storageProvider: Value(storageProvider),
+      uploadStatus: Value(uploadStatus),
+      isDeleted: Value(isDeleted),
+      retryCount: Value(retryCount),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+      uploadedAt: uploadedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(uploadedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AttachmentsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AttachmentsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
+      noteId: serializer.fromJson<String>(json['noteId']),
+      driveFileId: serializer.fromJson<String?>(json['driveFileId']),
+      fileName: serializer.fromJson<String>(json['fileName']),
+      mimeType: serializer.fromJson<String>(json['mimeType']),
+      fileSize: serializer.fromJson<int>(json['fileSize']),
+      localPath: serializer.fromJson<String?>(json['localPath']),
+      checksum: serializer.fromJson<String>(json['checksum']),
+      storageProvider: serializer.fromJson<String>(json['storageProvider']),
+      uploadStatus: serializer.fromJson<String>(json['uploadStatus']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      retryCount: serializer.fromJson<int>(json['retryCount']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      uploadedAt: serializer.fromJson<DateTime?>(json['uploadedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'ownerId': serializer.toJson<String>(ownerId),
+      'noteId': serializer.toJson<String>(noteId),
+      'driveFileId': serializer.toJson<String?>(driveFileId),
+      'fileName': serializer.toJson<String>(fileName),
+      'mimeType': serializer.toJson<String>(mimeType),
+      'fileSize': serializer.toJson<int>(fileSize),
+      'localPath': serializer.toJson<String?>(localPath),
+      'checksum': serializer.toJson<String>(checksum),
+      'storageProvider': serializer.toJson<String>(storageProvider),
+      'uploadStatus': serializer.toJson<String>(uploadStatus),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'retryCount': serializer.toJson<int>(retryCount),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'uploadedAt': serializer.toJson<DateTime?>(uploadedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AttachmentsTableData copyWith({
+    String? id,
+    String? ownerId,
+    String? noteId,
+    Value<String?> driveFileId = const Value.absent(),
+    String? fileName,
+    String? mimeType,
+    int? fileSize,
+    Value<String?> localPath = const Value.absent(),
+    String? checksum,
+    String? storageProvider,
+    String? uploadStatus,
+    bool? isDeleted,
+    int? retryCount,
+    Value<String?> lastError = const Value.absent(),
+    DateTime? createdAt,
+    Value<DateTime?> uploadedAt = const Value.absent(),
+    DateTime? updatedAt,
+  }) => AttachmentsTableData(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    noteId: noteId ?? this.noteId,
+    driveFileId: driveFileId.present ? driveFileId.value : this.driveFileId,
+    fileName: fileName ?? this.fileName,
+    mimeType: mimeType ?? this.mimeType,
+    fileSize: fileSize ?? this.fileSize,
+    localPath: localPath.present ? localPath.value : this.localPath,
+    checksum: checksum ?? this.checksum,
+    storageProvider: storageProvider ?? this.storageProvider,
+    uploadStatus: uploadStatus ?? this.uploadStatus,
+    isDeleted: isDeleted ?? this.isDeleted,
+    retryCount: retryCount ?? this.retryCount,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+    uploadedAt: uploadedAt.present ? uploadedAt.value : this.uploadedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AttachmentsTableData copyWithCompanion(AttachmentsTableCompanion data) {
+    return AttachmentsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      noteId: data.noteId.present ? data.noteId.value : this.noteId,
+      driveFileId: data.driveFileId.present
+          ? data.driveFileId.value
+          : this.driveFileId,
+      fileName: data.fileName.present ? data.fileName.value : this.fileName,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
+      fileSize: data.fileSize.present ? data.fileSize.value : this.fileSize,
+      localPath: data.localPath.present ? data.localPath.value : this.localPath,
+      checksum: data.checksum.present ? data.checksum.value : this.checksum,
+      storageProvider: data.storageProvider.present
+          ? data.storageProvider.value
+          : this.storageProvider,
+      uploadStatus: data.uploadStatus.present
+          ? data.uploadStatus.value
+          : this.uploadStatus,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      retryCount: data.retryCount.present
+          ? data.retryCount.value
+          : this.retryCount,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      uploadedAt: data.uploadedAt.present
+          ? data.uploadedAt.value
+          : this.uploadedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AttachmentsTableData(')
+          ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('noteId: $noteId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('fileName: $fileName, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('localPath: $localPath, ')
+          ..write('checksum: $checksum, ')
+          ..write('storageProvider: $storageProvider, ')
+          ..write('uploadStatus: $uploadStatus, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('uploadedAt: $uploadedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    ownerId,
+    noteId,
+    driveFileId,
+    fileName,
+    mimeType,
+    fileSize,
+    localPath,
+    checksum,
+    storageProvider,
+    uploadStatus,
+    isDeleted,
+    retryCount,
+    lastError,
+    createdAt,
+    uploadedAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AttachmentsTableData &&
+          other.id == this.id &&
+          other.ownerId == this.ownerId &&
+          other.noteId == this.noteId &&
+          other.driveFileId == this.driveFileId &&
+          other.fileName == this.fileName &&
+          other.mimeType == this.mimeType &&
+          other.fileSize == this.fileSize &&
+          other.localPath == this.localPath &&
+          other.checksum == this.checksum &&
+          other.storageProvider == this.storageProvider &&
+          other.uploadStatus == this.uploadStatus &&
+          other.isDeleted == this.isDeleted &&
+          other.retryCount == this.retryCount &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt &&
+          other.uploadedAt == this.uploadedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AttachmentsTableCompanion extends UpdateCompanion<AttachmentsTableData> {
+  final Value<String> id;
+  final Value<String> ownerId;
+  final Value<String> noteId;
+  final Value<String?> driveFileId;
+  final Value<String> fileName;
+  final Value<String> mimeType;
+  final Value<int> fileSize;
+  final Value<String?> localPath;
+  final Value<String> checksum;
+  final Value<String> storageProvider;
+  final Value<String> uploadStatus;
+  final Value<bool> isDeleted;
+  final Value<int> retryCount;
+  final Value<String?> lastError;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> uploadedAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AttachmentsTableCompanion({
+    this.id = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.noteId = const Value.absent(),
+    this.driveFileId = const Value.absent(),
+    this.fileName = const Value.absent(),
+    this.mimeType = const Value.absent(),
+    this.fileSize = const Value.absent(),
+    this.localPath = const Value.absent(),
+    this.checksum = const Value.absent(),
+    this.storageProvider = const Value.absent(),
+    this.uploadStatus = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.uploadedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AttachmentsTableCompanion.insert({
+    required String id,
+    this.ownerId = const Value.absent(),
+    required String noteId,
+    this.driveFileId = const Value.absent(),
+    required String fileName,
+    required String mimeType,
+    this.fileSize = const Value.absent(),
+    this.localPath = const Value.absent(),
+    required String checksum,
+    this.storageProvider = const Value.absent(),
+    this.uploadStatus = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    required DateTime createdAt,
+    this.uploadedAt = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       noteId = Value(noteId),
+       fileName = Value(fileName),
+       mimeType = Value(mimeType),
+       checksum = Value(checksum),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AttachmentsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? ownerId,
+    Expression<String>? noteId,
+    Expression<String>? driveFileId,
+    Expression<String>? fileName,
+    Expression<String>? mimeType,
+    Expression<int>? fileSize,
+    Expression<String>? localPath,
+    Expression<String>? checksum,
+    Expression<String>? storageProvider,
+    Expression<String>? uploadStatus,
+    Expression<bool>? isDeleted,
+    Expression<int>? retryCount,
+    Expression<String>? lastError,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? uploadedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (noteId != null) 'note_id': noteId,
+      if (driveFileId != null) 'drive_file_id': driveFileId,
+      if (fileName != null) 'file_name': fileName,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (fileSize != null) 'file_size': fileSize,
+      if (localPath != null) 'local_path': localPath,
+      if (checksum != null) 'checksum': checksum,
+      if (storageProvider != null) 'storage_provider': storageProvider,
+      if (uploadStatus != null) 'upload_status': uploadStatus,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (retryCount != null) 'retry_count': retryCount,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+      if (uploadedAt != null) 'uploaded_at': uploadedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AttachmentsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? ownerId,
+    Value<String>? noteId,
+    Value<String?>? driveFileId,
+    Value<String>? fileName,
+    Value<String>? mimeType,
+    Value<int>? fileSize,
+    Value<String?>? localPath,
+    Value<String>? checksum,
+    Value<String>? storageProvider,
+    Value<String>? uploadStatus,
+    Value<bool>? isDeleted,
+    Value<int>? retryCount,
+    Value<String?>? lastError,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? uploadedAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AttachmentsTableCompanion(
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      noteId: noteId ?? this.noteId,
+      driveFileId: driveFileId ?? this.driveFileId,
+      fileName: fileName ?? this.fileName,
+      mimeType: mimeType ?? this.mimeType,
+      fileSize: fileSize ?? this.fileSize,
+      localPath: localPath ?? this.localPath,
+      checksum: checksum ?? this.checksum,
+      storageProvider: storageProvider ?? this.storageProvider,
+      uploadStatus: uploadStatus ?? this.uploadStatus,
+      isDeleted: isDeleted ?? this.isDeleted,
+      retryCount: retryCount ?? this.retryCount,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+      uploadedAt: uploadedAt ?? this.uploadedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (noteId.present) {
+      map['note_id'] = Variable<String>(noteId.value);
+    }
+    if (driveFileId.present) {
+      map['drive_file_id'] = Variable<String>(driveFileId.value);
+    }
+    if (fileName.present) {
+      map['file_name'] = Variable<String>(fileName.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
+    if (fileSize.present) {
+      map['file_size'] = Variable<int>(fileSize.value);
+    }
+    if (localPath.present) {
+      map['local_path'] = Variable<String>(localPath.value);
+    }
+    if (checksum.present) {
+      map['checksum'] = Variable<String>(checksum.value);
+    }
+    if (storageProvider.present) {
+      map['storage_provider'] = Variable<String>(storageProvider.value);
+    }
+    if (uploadStatus.present) {
+      map['upload_status'] = Variable<String>(uploadStatus.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (retryCount.present) {
+      map['retry_count'] = Variable<int>(retryCount.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (uploadedAt.present) {
+      map['uploaded_at'] = Variable<DateTime>(uploadedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AttachmentsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('noteId: $noteId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('fileName: $fileName, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('localPath: $localPath, ')
+          ..write('checksum: $checksum, ')
+          ..write('storageProvider: $storageProvider, ')
+          ..write('uploadStatus: $uploadStatus, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('uploadedAt: $uploadedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7912,6 +8869,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PageSnapshotsTableTable(this);
   late final $CustomTemplatesTableTable customTemplatesTable =
       $CustomTemplatesTableTable(this);
+  late final $AttachmentsTableTable attachmentsTable = $AttachmentsTableTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7929,6 +8889,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     audioBookmarksTable,
     pageSnapshotsTable,
     customTemplatesTable,
+    attachmentsTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -14248,6 +15209,465 @@ typedef $$CustomTemplatesTableTableProcessedTableManager =
       CustomTemplatesTableData,
       PrefetchHooks Function()
     >;
+typedef $$AttachmentsTableTableCreateCompanionBuilder =
+    AttachmentsTableCompanion Function({
+      required String id,
+      Value<String> ownerId,
+      required String noteId,
+      Value<String?> driveFileId,
+      required String fileName,
+      required String mimeType,
+      Value<int> fileSize,
+      Value<String?> localPath,
+      required String checksum,
+      Value<String> storageProvider,
+      Value<String> uploadStatus,
+      Value<bool> isDeleted,
+      Value<int> retryCount,
+      Value<String?> lastError,
+      required DateTime createdAt,
+      Value<DateTime?> uploadedAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AttachmentsTableTableUpdateCompanionBuilder =
+    AttachmentsTableCompanion Function({
+      Value<String> id,
+      Value<String> ownerId,
+      Value<String> noteId,
+      Value<String?> driveFileId,
+      Value<String> fileName,
+      Value<String> mimeType,
+      Value<int> fileSize,
+      Value<String?> localPath,
+      Value<String> checksum,
+      Value<String> storageProvider,
+      Value<String> uploadStatus,
+      Value<bool> isDeleted,
+      Value<int> retryCount,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime?> uploadedAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AttachmentsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AttachmentsTableTable> {
+  $$AttachmentsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get noteId => $composableBuilder(
+    column: $table.noteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fileSize => $composableBuilder(
+    column: $table.fileSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get checksum => $composableBuilder(
+    column: $table.checksum,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storageProvider => $composableBuilder(
+    column: $table.storageProvider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uploadStatus => $composableBuilder(
+    column: $table.uploadStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AttachmentsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AttachmentsTableTable> {
+  $$AttachmentsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get noteId => $composableBuilder(
+    column: $table.noteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fileSize => $composableBuilder(
+    column: $table.fileSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get checksum => $composableBuilder(
+    column: $table.checksum,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storageProvider => $composableBuilder(
+    column: $table.storageProvider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uploadStatus => $composableBuilder(
+    column: $table.uploadStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AttachmentsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AttachmentsTableTable> {
+  $$AttachmentsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get noteId =>
+      $composableBuilder(column: $table.noteId, builder: (column) => column);
+
+  GeneratedColumn<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fileName =>
+      $composableBuilder(column: $table.fileName, builder: (column) => column);
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
+
+  GeneratedColumn<int> get fileSize =>
+      $composableBuilder(column: $table.fileSize, builder: (column) => column);
+
+  GeneratedColumn<String> get localPath =>
+      $composableBuilder(column: $table.localPath, builder: (column) => column);
+
+  GeneratedColumn<String> get checksum =>
+      $composableBuilder(column: $table.checksum, builder: (column) => column);
+
+  GeneratedColumn<String> get storageProvider => $composableBuilder(
+    column: $table.storageProvider,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get uploadStatus => $composableBuilder(
+    column: $table.uploadStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AttachmentsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AttachmentsTableTable,
+          AttachmentsTableData,
+          $$AttachmentsTableTableFilterComposer,
+          $$AttachmentsTableTableOrderingComposer,
+          $$AttachmentsTableTableAnnotationComposer,
+          $$AttachmentsTableTableCreateCompanionBuilder,
+          $$AttachmentsTableTableUpdateCompanionBuilder,
+          (
+            AttachmentsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $AttachmentsTableTable,
+              AttachmentsTableData
+            >,
+          ),
+          AttachmentsTableData,
+          PrefetchHooks Function()
+        > {
+  $$AttachmentsTableTableTableManager(
+    _$AppDatabase db,
+    $AttachmentsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AttachmentsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AttachmentsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AttachmentsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
+                Value<String> noteId = const Value.absent(),
+                Value<String?> driveFileId = const Value.absent(),
+                Value<String> fileName = const Value.absent(),
+                Value<String> mimeType = const Value.absent(),
+                Value<int> fileSize = const Value.absent(),
+                Value<String?> localPath = const Value.absent(),
+                Value<String> checksum = const Value.absent(),
+                Value<String> storageProvider = const Value.absent(),
+                Value<String> uploadStatus = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> retryCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> uploadedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AttachmentsTableCompanion(
+                id: id,
+                ownerId: ownerId,
+                noteId: noteId,
+                driveFileId: driveFileId,
+                fileName: fileName,
+                mimeType: mimeType,
+                fileSize: fileSize,
+                localPath: localPath,
+                checksum: checksum,
+                storageProvider: storageProvider,
+                uploadStatus: uploadStatus,
+                isDeleted: isDeleted,
+                retryCount: retryCount,
+                lastError: lastError,
+                createdAt: createdAt,
+                uploadedAt: uploadedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String> ownerId = const Value.absent(),
+                required String noteId,
+                Value<String?> driveFileId = const Value.absent(),
+                required String fileName,
+                required String mimeType,
+                Value<int> fileSize = const Value.absent(),
+                Value<String?> localPath = const Value.absent(),
+                required String checksum,
+                Value<String> storageProvider = const Value.absent(),
+                Value<String> uploadStatus = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> retryCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                required DateTime createdAt,
+                Value<DateTime?> uploadedAt = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AttachmentsTableCompanion.insert(
+                id: id,
+                ownerId: ownerId,
+                noteId: noteId,
+                driveFileId: driveFileId,
+                fileName: fileName,
+                mimeType: mimeType,
+                fileSize: fileSize,
+                localPath: localPath,
+                checksum: checksum,
+                storageProvider: storageProvider,
+                uploadStatus: uploadStatus,
+                isDeleted: isDeleted,
+                retryCount: retryCount,
+                lastError: lastError,
+                createdAt: createdAt,
+                uploadedAt: uploadedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AttachmentsTableTable, AttachmentsTableData>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $AttachmentsTableTable,
+                    AttachmentsTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AttachmentsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AttachmentsTableTable,
+      AttachmentsTableData,
+      $$AttachmentsTableTableFilterComposer,
+      $$AttachmentsTableTableOrderingComposer,
+      $$AttachmentsTableTableAnnotationComposer,
+      $$AttachmentsTableTableCreateCompanionBuilder,
+      $$AttachmentsTableTableUpdateCompanionBuilder,
+      (
+        AttachmentsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $AttachmentsTableTable,
+          AttachmentsTableData
+        >,
+      ),
+      AttachmentsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14276,4 +15696,6 @@ class $AppDatabaseManager {
       $$PageSnapshotsTableTableTableManager(_db, _db.pageSnapshotsTable);
   $$CustomTemplatesTableTableTableManager get customTemplatesTable =>
       $$CustomTemplatesTableTableTableManager(_db, _db.customTemplatesTable);
+  $$AttachmentsTableTableTableManager get attachmentsTable =>
+      $$AttachmentsTableTableTableManager(_db, _db.attachmentsTable);
 }

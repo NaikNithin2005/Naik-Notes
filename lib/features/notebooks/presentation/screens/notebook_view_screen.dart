@@ -27,6 +27,7 @@ import 'package:naik_notes/features/notebooks/presentation/widgets/reading_mode_
 import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/template_customizer_sheet.dart';
 import 'package:naik_notes/features/version_history/presentation/widgets/version_history_sheet.dart';
+import 'package:naik_notes/features/notebooks/presentation/widgets/note_attachments_sheet.dart';
 import '../widgets/export_notebook_dialog.dart';
 
 /// Notebook reader & writing canvas workspace.
@@ -619,6 +620,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                   tooltip: 'More actions',
                   onSelected: (val) async {
                     switch (val) {
+                      case 'attachments':
+                        NoteAttachmentsSheet.show(context, widget.notebookId);
+                        break;
                       case 'search':
                         setState(() => _showSearch = !_showSearch);
                         break;
@@ -696,6 +700,16 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                     }
                   },
                   itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'attachments',
+                      child: Row(
+                        children: [
+                          Icon(Icons.attachment_rounded, size: 20),
+                          SizedBox(width: 12),
+                          Text('Attachments (Drive)'),
+                        ],
+                      ),
+                    ),
                     PopupMenuItem(
                       value: 'audio',
                       child: Row(
@@ -838,6 +852,14 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                 const SizedBox(width: 4),
               ]
             : [
+                // Note Attachments (Google Drive)
+                IconButton(
+                  icon: const Icon(Icons.attachment_rounded),
+                  tooltip: 'Attachments (Google Drive)',
+                  onPressed: () =>
+                      NoteAttachmentsSheet.show(context, widget.notebookId),
+                ),
+
                 // Thumbnail Sidebar Toggle
                 IconButton(
                   icon: Icon(
