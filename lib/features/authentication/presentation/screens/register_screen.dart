@@ -59,19 +59,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  Future<void> _signUpWithApple() async {
-    final success = await ref.read(authProvider.notifier).signInWithApple();
-    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
-      context.go(RouteNames.dashboard);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final authState = ref.watch(authProvider);
     final isGoogleAvailable = AuthErrorHandler.isGoogleSupported();
-    final isAppleAvailable = AuthErrorHandler.isAppleSupported();
     final isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
     return Scaffold(
@@ -353,9 +345,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       ),
                               ),
 
-                              // Social Fast Connect (Android & iOS)
-                              if (isGoogleAvailable || isAppleAvailable) ...[
-                                const SizedBox(height: 16),
+                              // Fast Connect with Google
+                              if (isGoogleAvailable) ...[
+                                const SizedBox(height: 18),
                                 Row(
                                   children: [
                                     const Expanded(child: Divider()),
@@ -364,6 +356,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       child: Text(
                                         'OR FAST CONNECT',
                                         style: theme.textTheme.bodySmall?.copyWith(
+                                          letterSpacing: 0.8,
+                                          fontWeight: FontWeight.w600,
                                           color: theme.colorScheme.onSurfaceVariant,
                                         ),
                                       ),
@@ -373,37 +367,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ),
                                 const SizedBox(height: 14),
 
-                                if (isGoogleAvailable) ...[
-                                  OutlinedButton.icon(
-                                    onPressed: authState.isLoading
-                                        ? null
-                                        : _signUpWithGoogle,
-                                    icon: const GoogleLogo(size: 20),
-                                    label: const Text('Continue with Google'),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(46),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                OutlinedButton.icon(
+                                  onPressed: authState.isLoading
+                                      ? null
+                                      : _signUpWithGoogle,
+                                  icon: authState.isLoading
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const GoogleLogo(size: 20),
+                                  label: Text(
+                                    authState.isLoading
+                                        ? 'Connecting to Google...'
+                                        : 'Continue with Google',
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                ],
-
-                                if (isAppleAvailable) ...[
-                                  OutlinedButton.icon(
-                                    onPressed: authState.isLoading ? null : _signUpWithApple,
-                                    icon: const AppleLogo(size: 20),
-                                    label: const Text('Continue with Apple'),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(46),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
+                                ),
                               ],
 
                               if (isWindows) ...[

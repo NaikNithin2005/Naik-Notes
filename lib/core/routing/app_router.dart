@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 import 'package:naik_notes/features/authentication/presentation/screens/login_screen.dart';
-import 'package:naik_notes/features/authentication/presentation/screens/phone_auth_screen.dart';
 import 'package:naik_notes/features/authentication/presentation/screens/register_screen.dart';
 import 'package:naik_notes/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:naik_notes/features/dashboard/presentation/widgets/app_shell.dart';
@@ -22,16 +21,36 @@ final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'shell',
 );
 
+/// Reactive notifier that signals [GoRouter] to re-evaluate routes without reconstructing
+/// the entire GoRouter instance on state changes, eliminating screen blink and routing latency.
+class _RouterAuthNotifier extends ChangeNotifier {
+  final Ref _ref;
+  _RouterAuthNotifier(this._ref) {
+    _ref.listen<bool>(
+      authProvider.select((s) => s.isAuthenticated),
+      (_, __) => notifyListeners(),
+    );
+  }
+
+  bool get isAuthenticated => _ref.read(authProvider).isAuthenticated;
+}
+
+final _routerAuthNotifierProvider = Provider<_RouterAuthNotifier>((ref) {
+  return _RouterAuthNotifier(ref);
+});
+
 /// Riverpod provider for application router configuration.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final isAuth = ref.watch(authProvider.select((s) => s.isAuthenticated));
+  final authNotifier = ref.watch(_routerAuthNotifierProvider);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: isAuth
+    refreshListenable: authNotifier,
+    initialLocation: authNotifier.isAuthenticated
         ? RouteNames.dashboard
         : RouteNames.landing,
     redirect: (context, state) {
+      final isAuth = authNotifier.isAuthenticated;
       final location = state.matchedLocation;
       final isAuthRoute =
           location == RouteNames.landing ||
@@ -71,7 +90,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.phoneAuth,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const PhoneAuthScreen(),
+        redirect: (context, state) => RouteNames.login,
       ),
 
       // Primary Shell with NavigationRail / NavigationBar

@@ -85,6 +85,20 @@ class AuthNotifier extends Notifier<AuthState> {
   AuthState build() {
     ref.watch(authRepositoryProvider);
     final initial = _repository.currentUser;
+
+    // Listen to reactive auth state changes to auto-restore active sessions with zero latency
+    final sub = _repository.authStateChanges.listen((user) {
+      if (user != state.user) {
+        state = state.copyWith(
+          user: user,
+          clearUser: user == null,
+          isLoading: false,
+          authStatus: user != null ? AuthStatus.success : AuthStatus.idle,
+        );
+      }
+    });
+    ref.onDispose(() => sub.cancel());
+
     return AuthState(user: initial);
   }
 
