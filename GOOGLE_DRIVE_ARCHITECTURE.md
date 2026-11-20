@@ -92,3 +92,4 @@ Google Drive provides a specialized hidden directory alias called `appDataFolder
 2. **Zero Credentials in Firestore:** OAuth tokens, client secrets, and refresh tokens are **never** stored in Cloud Firestore or Git commits. They reside exclusively in platform secure storage.
 3. **Offline-First:** Users can attach files, create notes, and view cached attachments without network connectivity. Offline uploads automatically queue and sync when network and authorization are available.
 4. **Data Isolation:** Every local database and cache directory is partitioned by sanitized Firebase UID (`naik_notes_user_${uid}.sqlite`), preventing data leakage upon account switching.
+

@@ -57,3 +57,4 @@ match /users/{userId}/integrations/{integrationId} {
 ```
 
 Only the authenticated user matching `request.auth.uid == userId` can read or write their Google Drive integration metadata.
+

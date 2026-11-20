@@ -90,3 +90,4 @@ All keys are prefixed by the authenticated Firebase UID to guarantee total isola
 
 > [!CAUTION]
 > OAuth access tokens, refresh tokens, and client secrets are **NEVER** stored in Cloud Firestore or sent over application sync streams.
+

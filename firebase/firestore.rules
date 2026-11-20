@@ -83,7 +83,7 @@ service cloud.firestore {
 
     // Default deny for all other collections and documents
     match /{document=**} {
-      allow read, write: false;
+      allow read, write: if false;
     }
   }
 }

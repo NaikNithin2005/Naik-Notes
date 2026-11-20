@@ -74,3 +74,4 @@ sequenceDiagram
   - When disconnected via Settings, existing local cache copies remain intact.
   - Drive authorization tokens are purged from the device vault.
   - Firestore note references are preserved.
+
