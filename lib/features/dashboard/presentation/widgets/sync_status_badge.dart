@@ -23,7 +23,9 @@ class SyncStatusBadge extends ConsumerWidget {
     final driveState = ref.watch(googleDriveProvider);
 
     var effectiveStatus = status ?? syncState.status;
-    if (effectiveStatus == SyncUiStatus.synced && syncState.pendingCount > 0) {
+    if (status == null && driveState.isSyncing) {
+      effectiveStatus = SyncUiStatus.syncing;
+    } else if (effectiveStatus == SyncUiStatus.synced && syncState.pendingCount > 0) {
       effectiveStatus = SyncUiStatus.pending;
     }
 
@@ -95,7 +97,7 @@ class SyncStatusBadge extends ConsumerWidget {
           height: 12,
           child: CircularProgressIndicator(strokeWidth: 2, color: badgeColor),
         );
-        label = 'Synchronizing...';
+        label = status != null ? 'Synchronizing...' : 'Syncing';
         break;
       case SyncUiStatus.offline:
         badgeColor = AppColors.syncOffline;
@@ -104,7 +106,7 @@ class SyncStatusBadge extends ConsumerWidget {
           size: 14,
           color: badgeColor,
         );
-        label = 'Offline';
+        label = status != null ? 'Offline' : 'Waiting for Internet';
         break;
       case SyncUiStatus.error:
         badgeColor = AppColors.syncError;

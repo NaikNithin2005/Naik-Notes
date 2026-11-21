@@ -53,19 +53,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuth = authNotifier.isAuthenticated;
       final location = state.matchedLocation;
-      final isAuthRoute =
+      final isPublicAuthRoute =
           location == RouteNames.landing ||
           location == RouteNames.login ||
           location == RouteNames.register ||
-          location == RouteNames.resetPassword ||
           location == RouteNames.phoneAuth;
 
-      // Unauthenticated users are redirected to landing
-      if (!isAuth && !isAuthRoute) {
+      // Unauthenticated users are redirected to landing (except password reset)
+      if (!isAuth && !isPublicAuthRoute && location != RouteNames.resetPassword) {
         return RouteNames.landing;
       }
-      // Authenticated users on auth routes are redirected to dashboard
-      if (isAuth && isAuthRoute) {
+      // Authenticated users on login/landing/register are redirected to dashboard
+      // (Password reset remains accessible for authenticated users changing passwords)
+      if (isAuth && isPublicAuthRoute) {
         return RouteNames.dashboard;
       }
       return null;

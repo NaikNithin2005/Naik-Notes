@@ -6,9 +6,11 @@ import '../../../data/local/database_provider.dart';
 import '../../../data/models/notebook_model.dart';
 import '../../../data/models/sync_operation_model.dart';
 import '../../../data/repositories/notebook_repository.dart';
+import '../../../services/history/note_history_service.dart';
 import '../../sync/data/sync_provider.dart';
 
 import '../../authentication/data/auth_provider.dart';
+import '../../storage/data/google_drive_provider.dart';
 import 'welcome_notebook_service.dart';
 
 /// State notifier managing the reactive list of notebooks, backed by Drift SQLite.
@@ -115,6 +117,17 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           .read(syncServiceProvider)
           .enqueueNotebookMutation(newNotebook, SyncOperationType.insert);
     } catch (_) {}
+    try {
+      final userEmail = ref.read(authProvider).user?.email ?? 'local_user';
+      await ref.read(noteHistoryServiceProvider).recordActivity(
+        noteId: newNotebook.id,
+        noteTitle: newNotebook.title,
+        action: NoteActionType.created,
+        userEmail: userEmail,
+        details: 'Created notebook with ${newNotebook.pageCount} page',
+      );
+    } catch (_) {}
+    _triggerDriveAutoSync(reason: 'notebook_added');
     return newNotebook;
   }
 
@@ -153,6 +166,7 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           .read(syncServiceProvider)
           .enqueueNotebookMutation(updated, SyncOperationType.update);
     } catch (_) {}
+    _triggerDriveAutoSync(reason: 'notebook_renamed');
   }
 
   Future<Notebook?> duplicateNotebook(String id) async {
@@ -319,6 +333,7 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
             .read(syncServiceProvider)
             .enqueueNotebookMutation(updatedNb!, SyncOperationType.update);
       } catch (_) {}
+      _triggerDriveAutoSync(reason: 'cover_updated');
     }
   }
 
@@ -350,6 +365,22 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
       await ref
           .read(syncServiceProvider)
           .enqueueNotebookMutation(toDelete, SyncOperationType.delete);
+    } catch (_) {}
+    _triggerDriveAutoSync(
+      delay: const Duration(seconds: 1),
+      reason: 'notebook_deleted',
+    );
+  }
+
+  void _triggerDriveAutoSync({
+    Duration delay = const Duration(seconds: 3),
+    String reason = 'notebook_change',
+  }) {
+    try {
+      ref.read(googleDriveProvider.notifier).scheduleAutoSync(
+        delay: delay,
+        reason: reason,
+      );
     } catch (_) {}
   }
 

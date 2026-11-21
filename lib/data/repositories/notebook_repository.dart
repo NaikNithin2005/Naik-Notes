@@ -30,6 +30,8 @@ abstract class NotebookRepository {
   Future<void> archiveNotebook(String id);
   Future<void> unarchiveNotebook(String id);
   Future<void> deleteNotebook(String id);
+  Future<List<Notebook>> getDeletedNotebooks({String? ownerId});
+  Future<void> purgeNotebook(String id);
   Future<void> toggleFavorite(String id);
   Future<void> populateDefaultSamplesIfEmpty();
 }
@@ -243,6 +245,23 @@ class DriftNotebookRepository implements NotebookRepository {
     )..where((tbl) => tbl.id.equals(id))).write(
       NotebooksTableCompanion(deletedAt: Value(now), updatedAt: Value(now)),
     );
+  }
+
+  @override
+  Future<List<Notebook>> getDeletedNotebooks({String? ownerId}) async {
+    final query = _db.select(_db.notebooksTable)
+      ..where((tbl) {
+        final isDeleted = tbl.deletedAt.isNotNull();
+        final ownerFilter = ownerId != null ? tbl.ownerId.equals(ownerId) : const Constant(true);
+        return isDeleted & ownerFilter;
+      });
+    final rows = await query.get();
+    return rows.map(_toDomain).toList();
+  }
+
+  @override
+  Future<void> purgeNotebook(String id) async {
+    await (_db.delete(_db.notebooksTable)..where((tbl) => tbl.id.equals(id))).go();
   }
 
   @override

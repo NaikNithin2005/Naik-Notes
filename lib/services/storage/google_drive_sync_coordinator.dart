@@ -17,6 +17,7 @@ import '../../data/repositories/notebook_repository.dart';
 import '../../data/repositories/page_repository.dart';
 import '../../data/repositories/sticky_note_repository.dart';
 import '../../data/repositories/stroke_repository.dart';
+import '../history/note_history_service.dart';
 import 'google_drive_auth_service.dart';
 import 'google_drive_storage_service.dart';
 
@@ -30,6 +31,7 @@ class GoogleDriveSyncResult {
   final int uploadedAttachments;
   final int downloadedAttachments;
   final int conflictCount;
+  final int deletedCount;
   final String? errorMessage;
   final DateTime timestamp;
 
@@ -42,14 +44,22 @@ class GoogleDriveSyncResult {
     this.uploadedAttachments = 0,
     this.downloadedAttachments = 0,
     this.conflictCount = 0,
+    this.deletedCount = 0,
     this.errorMessage,
     required this.timestamp,
   });
 
+  bool get hasChanges =>
+      downloadedNotebooks > 0 ||
+      downloadedPages > 0 ||
+      uploadedNotebooks > 0 ||
+      uploadedPages > 0 ||
+      deletedCount > 0;
+
   @override
   String toString() =>
       'GoogleDriveSyncResult(success: $success, upNb: $uploadedNotebooks, downNb: $downloadedNotebooks, '
-      'upPg: $uploadedPages, downPg: $downloadedPages, upAtt: $uploadedAttachments, conflicts: $conflictCount, err: $errorMessage)';
+      'upPg: $uploadedPages, downPg: $downloadedPages, upAtt: $uploadedAttachments, conflicts: $conflictCount, deleted: $deletedCount, err: $errorMessage)';
 }
 
 /// Internal authenticated HTTP client injecting Bearer token into Google Drive API calls.
@@ -99,6 +109,14 @@ class GoogleDriveSyncCoordinator {
   // In-memory cache of folder paths to Drive folder IDs to minimize API calls
   final Map<String, String> _folderIdCache = {};
 
+  // Local tombstones to prevent deleted notebooks from being restored
+  final Set<String> _localDeletedNotebookIds = {};
+
+  // Incremental sync cache: pageId -> signature ("rev_updatedAt_strokesCount")
+  final Map<String, String> _syncedPageSignatures = {};
+
+  final String _deviceId;
+
   GoogleDriveSyncCoordinator({
     required GoogleDriveAuthService authService,
     required GoogleDriveStorageService storageService,
@@ -109,6 +127,7 @@ class GoogleDriveSyncCoordinator {
     required AttachmentRepository attachmentRepo,
     http.Client? httpClient,
     Uuid? uuid,
+    String? deviceId,
   })  : _authService = authService,
         _storageService = storageService,
         _notebookRepo = notebookRepo,
@@ -117,7 +136,8 @@ class GoogleDriveSyncCoordinator {
         _stickyNoteRepo = stickyNoteRepo,
         _attachmentRepo = attachmentRepo,
         _baseHttpClient = httpClient ?? http.Client(),
-        _uuid = uuid ?? const Uuid();
+        _uuid = uuid ?? const Uuid(),
+        _deviceId = deviceId ?? NoteHistoryService.currentDeviceName;
 
   Future<drive.DriveApi> _getDriveApi(String uid) async {
     final token = await _authService.getValidAccessToken(uid);
@@ -220,22 +240,59 @@ class GoogleDriveSyncCoordinator {
       int downPg = 0;
       int upAtt = 0;
       int conflicts = 0;
+      int deletedCount = 0;
 
       // -------------------------------------------------------------
-      // 1. LOCAL -> DRIVE: Push modified local notebooks & pages
+      // 0. BIDIRECTIONAL DELETIONS: Propagate deletions across devices
       // -------------------------------------------------------------
-      onProgress?.call('Checking local notebooks...', 0.15);
-      final localNotebooks = await _notebookRepo.getAllNotebooks(
+      onProgress?.call('Syncing deletions across devices...', 0.10);
+      deletedCount = await _syncDeletions(
+        api: api,
+        metadataFolderId: folders['metadata']!,
+        notebooksFolderId: notebooksFolderId,
+        uid: uid,
+      );
+
+      // -------------------------------------------------------------
+      // 1. DRIVE -> LOCAL: Pull new & updated remote notebooks FIRST!
+      // -------------------------------------------------------------
+      onProgress?.call('Checking cloud updates from other devices...', 0.20);
+      final localBeforePull = await _notebookRepo.getAllNotebooks(
         ownerId: uid,
         includeArchived: true,
       );
-      final totalLocal = localNotebooks.length;
+
+      final pullRes = await _pullNotebooksFromDrive(
+        api: api,
+        notebooksFolderId: notebooksFolderId,
+        uid: uid,
+        localNotebooks: localBeforePull,
+        onProgress: onProgress,
+      );
+
+      downNb = pullRes['downloadedNotebooks'] as int? ?? 0;
+      downPg = pullRes['downloadedPages'] as int? ?? 0;
+      conflicts = pullRes['conflicts'] as int? ?? 0;
+      final pulledIds = (pullRes['pulledNotebookIds'] as Set<String>?) ?? {};
+
+      // -------------------------------------------------------------
+      // 2. LOCAL -> DRIVE: Push modified local notebooks & pages
+      // -------------------------------------------------------------
+      onProgress?.call('Uploading local changes to cloud...', 0.60);
+      final localAfterPull = await _notebookRepo.getAllNotebooks(
+        ownerId: uid,
+        includeArchived: true,
+      );
+      final totalLocal = localAfterPull.length;
 
       for (int i = 0; i < totalLocal; i++) {
-        final nb = localNotebooks[i];
-        final progress = 0.2 + (0.4 * (i / (totalLocal == 0 ? 1 : totalLocal)));
+        final nb = localAfterPull[i];
+        if (_localDeletedNotebookIds.contains(nb.id)) continue;
+        if (pulledIds.contains(nb.id)) continue; // Already updated from cloud
+
+        final progress = 0.60 + (0.25 * (i / (totalLocal == 0 ? 1 : totalLocal)));
         onProgress?.call(
-          'Backing up notebook: ${nb.title} (${i + 1}/$totalLocal)...',
+          'Synchronizing: ${nb.title} (${i + 1}/$totalLocal)...',
           progress,
         );
 
@@ -249,22 +306,6 @@ class GoogleDriveSyncCoordinator {
         if (nbRes['uploaded'] == true) upNb++;
         upPg += (nbRes['pages'] as int? ?? 0);
       }
-
-      // -------------------------------------------------------------
-      // 2. DRIVE -> LOCAL: Pull new/updated remote notebooks
-      // -------------------------------------------------------------
-      onProgress?.call('Checking cloud updates...', 0.65);
-      final pullRes = await _pullNotebooksFromDrive(
-        api: api,
-        notebooksFolderId: notebooksFolderId,
-        uid: uid,
-        localNotebooks: localNotebooks,
-        onProgress: onProgress,
-      );
-
-      downNb = pullRes['downloadedNotebooks'] as int? ?? 0;
-      downPg = pullRes['downloadedPages'] as int? ?? 0;
-      conflicts = pullRes['conflicts'] as int? ?? 0;
 
       // -------------------------------------------------------------
       // 3. ATTACHMENT SYNC: Upload pending offline attachments
@@ -291,15 +332,33 @@ class GoogleDriveSyncCoordinator {
       }
 
       // -------------------------------------------------------------
-      // 4. WRITE SYNC MANIFEST
+      // 4. ACTIVITY HISTORY SYNC: Cross-device audit trail
       // -------------------------------------------------------------
-      onProgress?.call('Writing sync manifest...', 0.95);
+      onProgress?.call('Synchronizing notes activity history...', 0.92);
+      await _syncActivityHistory(
+        api: api,
+        metadataFolderId: folders['metadata']!,
+      );
+
+      // -------------------------------------------------------------
+      // 5. WRITE SYNC MANIFEST & BACKUP INFO
+      // -------------------------------------------------------------
+      onProgress?.call('Writing sync manifest and backup information...', 0.96);
       await _writeSyncManifest(
         api: api,
         metadataFolderId: folders['metadata']!,
         uid: uid,
         timestamp: now,
-        notebookCount: localNotebooks.length,
+        notebookCount: localAfterPull.length,
+      );
+      await _writeBackupInfo(
+        api: api,
+        backupInfoFolderId: folders['backupInfo']!,
+        uid: uid,
+        timestamp: now,
+        notebookCount: localAfterPull.length,
+        pagesCount: upPg + downPg,
+        attachmentsCount: upAtt,
       );
 
       onProgress?.call('Cloud sync complete!', 1.0);
@@ -312,6 +371,7 @@ class GoogleDriveSyncCoordinator {
         downloadedPages: downPg,
         uploadedAttachments: upAtt,
         conflictCount: conflicts,
+        deletedCount: deletedCount,
         timestamp: now,
       );
     } catch (e) {
@@ -357,13 +417,21 @@ class GoogleDriveSyncCoordinator {
       },
     );
 
-    // 4. Upload/Update Pages and vector handwriting strokes
+    // 4. Upload/Update Pages and vector handwriting strokes (Incremental Sync)
     int pagesUploaded = 0;
     final pages = await _pageRepo.getPagesForNotebook(notebook.id);
 
     for (final page in pages) {
       final strokes = await _strokeRepo.getStrokesForPage(page.id);
       final stickyNotes = await _stickyNoteRepo.getStickyNotesForPage(page.id);
+
+      // Intelligent Incremental Check: skip page if revision and timestamps match cached sync
+      final pageSignature =
+          '${page.revision}_${page.updatedAt.millisecondsSinceEpoch}_${strokes.length}_${stickyNotes.length}';
+      if (_syncedPageSignatures[page.id] == pageSignature) {
+        // Page has not changed since last cloud synchronization
+        continue;
+      }
 
       final pagePayload = {
         'page': page.toJson(),
@@ -385,6 +453,7 @@ class GoogleDriveSyncCoordinator {
           'revision': page.revision.toString(),
         },
       );
+      _syncedPageSignatures[page.id] = pageSignature;
       pagesUploaded++;
     }
 
@@ -402,6 +471,7 @@ class GoogleDriveSyncCoordinator {
     int downloadedNb = 0;
     int downloadedPg = 0;
     int conflicts = 0;
+    final Set<String> pulledNotebookIds = {};
 
     final localNbMap = {for (final nb in localNotebooks) nb.id: nb};
 
@@ -416,10 +486,16 @@ class GoogleDriveSyncCoordinator {
     );
 
     final remoteFolders = folderList.files ?? [];
+    final historyService = NoteHistoryService();
 
     for (final rf in remoteFolders) {
       final nbId = rf.name!;
       final folderId = rf.id!;
+
+      // 1. Tombstone check: if user deleted this notebook locally, do not restore it!
+      if (_localDeletedNotebookIds.contains(nbId)) {
+        continue;
+      }
 
       // Find notebook.json in this folder
       final nbFile = await _findFile(api, folderId, 'notebook.json');
@@ -431,19 +507,49 @@ class GoogleDriveSyncCoordinator {
       final nbMap = jsonDecode(nbContent) as Map<String, dynamic>;
       final remoteNb = Notebook.fromJson(nbMap);
 
+      if (remoteNb.deletedAt != null) {
+        _localDeletedNotebookIds.add(nbId);
+        await _notebookRepo.deleteNotebook(nbId);
+        continue;
+      }
+
       final localNb = localNbMap[nbId];
 
       bool shouldRestore = false;
 
       if (localNb == null) {
-        // Missing notebook: restore locally
+        // Missing notebook: restore locally from cloud
         shouldRestore = true;
+        historyService.recordActivity(
+          noteId: remoteNb.id,
+          noteTitle: remoteNb.title,
+          action: NoteActionType.created,
+          userEmail: uid,
+          deviceName: 'Cloud Synced',
+          details: 'Retrieved notebook created on another device',
+        );
       } else if (remoteNb.revision > localNb.revision) {
         // Remote has newer changes
         shouldRestore = true;
+        historyService.recordActivity(
+          noteId: remoteNb.id,
+          noteTitle: remoteNb.title,
+          action: NoteActionType.updated,
+          userEmail: uid,
+          deviceName: 'Cloud Synced',
+          details: 'Retrieved updates from another device',
+        );
       } else if (remoteNb.revision == localNb.revision &&
           remoteNb.updatedAt.isAfter(localNb.updatedAt)) {
         shouldRestore = true;
+        historyService.recordActivity(
+          noteId: remoteNb.id,
+          noteTitle: remoteNb.title,
+          action: NoteActionType.updated,
+          userEmail: uid,
+          deviceName: 'Cloud Synced',
+          details: 'Retrieved cloud updates',
+        );
       } else if (localNb.updatedAt.isAfter(remoteNb.updatedAt) &&
           remoteNb.updatedAt.difference(localNb.updatedAt).abs().inMinutes > 5) {
         // Potential conflict: both edited independently.
@@ -455,11 +561,16 @@ class GoogleDriveSyncCoordinator {
         );
         await _notebookRepo.saveNotebook(conflictNb);
         await _pullPagesForNotebook(api, folderId, conflictNb.id);
+        pulledNotebookIds.add(conflictNb.id);
+      } else {
+        // Already identical
+        pulledNotebookIds.add(remoteNb.id);
       }
 
       if (shouldRestore) {
         await _notebookRepo.saveNotebook(remoteNb);
         downloadedNb++;
+        pulledNotebookIds.add(remoteNb.id);
 
         // Restore pages and strokes
         final pCount = await _pullPagesForNotebook(api, folderId, remoteNb.id);
@@ -471,7 +582,127 @@ class GoogleDriveSyncCoordinator {
       'downloadedNotebooks': downloadedNb,
       'downloadedPages': downloadedPg,
       'conflicts': conflicts,
+      'pulledNotebookIds': pulledNotebookIds,
     };
+  }
+
+  /// Bidirectionally syncs deletion tombstones across devices using deletions_manifest.json.
+  Future<int> _syncDeletions({
+    required drive.DriveApi api,
+    required String metadataFolderId,
+    required String notebooksFolderId,
+    required String uid,
+  }) async {
+    int deletedCount = 0;
+    try {
+      final cloudDeletedIds = <String>{};
+      final historyService = NoteHistoryService();
+
+      // 1. Download existing cloud deletions manifest if present
+      final manifestFile =
+          await _findFile(api, metadataFolderId, 'deletions_manifest.json');
+      if (manifestFile != null && manifestFile.id != null) {
+        final content = await _downloadFileAsString(api, manifestFile.id!);
+        if (content != null && content.isNotEmpty) {
+          try {
+            final data = jsonDecode(content) as Map<String, dynamic>;
+            final list = (data['deletedNotebookIds'] as List<dynamic>?) ?? [];
+            for (final item in list) {
+              if (item is String) cloudDeletedIds.add(item);
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 2. Apply cloud deletions to local database
+      for (final delId in cloudDeletedIds) {
+        _localDeletedNotebookIds.add(delId);
+        final existingLocal = await _notebookRepo.getNotebookById(delId);
+        if (existingLocal != null && !existingLocal.isDeleted) {
+          await _notebookRepo.deleteNotebook(delId);
+          await historyService.recordActivity(
+            noteId: delId,
+            noteTitle: existingLocal.title,
+            action: NoteActionType.deleted,
+            userEmail: uid,
+            deviceName: 'Cloud Synced',
+            details: 'Deleted from another device via cloud',
+          );
+          deletedCount++;
+        }
+      }
+
+      // 3. Gather local deletions and append to manifest
+      final localDeleted =
+          await _notebookRepo.getDeletedNotebooks(ownerId: uid);
+      for (final d in localDeleted) {
+        _localDeletedNotebookIds.add(d.id);
+        cloudDeletedIds.add(d.id);
+
+        // Clean up remote folder in Drive if it exists
+        final folder = await _findFile(api, notebooksFolderId, d.id);
+        if (folder != null && folder.id != null) {
+          try {
+            await api.files.delete(folder.id!);
+          } catch (_) {}
+        }
+      }
+
+      // 4. Update deletions_manifest.json in Google Drive
+      final manifestJson = jsonEncode({
+        'version': 1,
+        'updatedAt': DateTime.now().toIso8601String(),
+        'deletedNotebookIds': cloudDeletedIds.toList(),
+      });
+      await _createOrUpdateJsonFile(
+        api: api,
+        parentId: metadataFolderId,
+        fileName: 'deletions_manifest.json',
+        content: manifestJson,
+      );
+    } catch (e) {
+      debugPrint('[GoogleDriveSyncCoordinator] _syncDeletions error: $e');
+    }
+    return deletedCount;
+  }
+
+  /// Synchronizes cross-device notes activity history with Google Drive.
+  Future<void> _syncActivityHistory({
+    required drive.DriveApi api,
+    required String metadataFolderId,
+  }) async {
+    try {
+      final historyService = NoteHistoryService();
+
+      // 1. Download cloud activity history if present
+      final historyFile =
+          await _findFile(api, metadataFolderId, 'activity_history.json');
+      if (historyFile != null && historyFile.id != null) {
+        final content = await _downloadFileAsString(api, historyFile.id!);
+        if (content != null && content.isNotEmpty) {
+          try {
+            final list = jsonDecode(content) as List<dynamic>;
+            final cloudEntries = list
+                .map((e) =>
+                    NoteActivityEntry.fromJson(e as Map<String, dynamic>))
+                .toList();
+            await historyService.mergeCloudHistory(cloudEntries);
+          } catch (_) {}
+        }
+      }
+
+      // 2. Export local + merged history and update in Drive
+      final mergedJson = await historyService.exportJson();
+      await _createOrUpdateJsonFile(
+        api: api,
+        parentId: metadataFolderId,
+        fileName: 'activity_history.json',
+        content: mergedJson,
+      );
+    } catch (e) {
+      debugPrint('[GoogleDriveSyncCoordinator] _syncActivityHistory error: $e');
+    }
+  }
   }
 
   /// Downloads pages and vector handwriting strokes for [notebookId] from Drive into local SQLite.
@@ -628,6 +859,36 @@ class GoogleDriveSyncCoordinator {
       parentId: metadataFolderId,
       fileName: 'sync_manifest.json',
       content: jsonEncode(manifest),
+    );
+  }
+
+  Future<void> _writeBackupInfo({
+    required drive.DriveApi api,
+    required String backupInfoFolderId,
+    required String uid,
+    required DateTime timestamp,
+    required int notebookCount,
+    required int pagesCount,
+    required int attachmentsCount,
+  }) async {
+    final backupInfo = {
+      'application': 'Naik Notes',
+      'publisher': 'Naik Publications-Notes',
+      'version': '1.0.0',
+      'ownerId': uid,
+      'deviceId': _deviceId,
+      'platform': defaultTargetPlatform.name,
+      'backupTimestamp': timestamp.toIso8601String(),
+      'totalNotebooks': notebookCount,
+      'totalPages': pagesCount,
+      'totalAttachments': attachmentsCount,
+      'integrityStatus': 'verified',
+    };
+    await _createOrUpdateJsonFile(
+      api: api,
+      parentId: backupInfoFolderId,
+      fileName: 'backup_info.json',
+      content: jsonEncode(backupInfo),
     );
   }
 }

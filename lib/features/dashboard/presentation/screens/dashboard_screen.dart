@@ -28,6 +28,7 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/export_notebook_dialog.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
+import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 import 'package:naik_notes/features/storage/presentation/widgets/google_drive_connect_dialog.dart';
 
 import '../widgets/notebook_card.dart';
@@ -50,12 +51,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
   }
 
-  void _checkDriveOnStartup() {
+  Future<void> _checkDriveOnStartup() async {
     if (!mounted) return;
     final authState = ref.read(authProvider);
-    if (authState.isAuthenticated) {
-      GoogleDriveConnectDialog.checkAndShow(context, ref);
+    if (!authState.isAuthenticated) return;
+
+    // Await initial Drive status resolution to prevent false popup triggers if already connected
+    await ref.read(googleDriveProvider.notifier).initializationFuture;
+    if (!mounted) return;
+
+    final driveState = ref.read(googleDriveProvider);
+    if (driveState.isConnected) {
+      // Already authorized and connected: do not show popup
+      return;
     }
+
+    await GoogleDriveConnectDialog.checkAndShow(context, ref);
   }
 
   void _showCreateNotebookDialog(BuildContext context, {String? folderId}) {

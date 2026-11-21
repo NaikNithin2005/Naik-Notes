@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:naik_notes/features/authentication/presentation/screens/reset_password_screen.dart';
+import 'package:naik_notes/features/dashboard/presentation/widgets/sync_status_badge.dart';
+import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 import 'package:naik_notes/features/storage/presentation/widgets/google_drive_connect_dialog.dart';
 import 'package:naik_notes/features/settings/presentation/widgets/google_drive_settings_card.dart';
+import 'package:naik_notes/features/sync/data/sync_provider.dart';
 import 'package:naik_notes/services/storage/google_drive_sync_coordinator.dart';
 
 void main() {
@@ -88,6 +91,60 @@ void main() {
       expect(find.text('Connect Google Drive'), findsOneWidget);
     });
 
+    testWidgets('SyncStatusBadge renders correct labels for various sync states', (tester) async {
+      // 1. Explicit Sync Failed
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SyncStatusBadge(status: SyncUiStatus.error),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Sync Failed'), findsOneWidget);
+
+      // 2. Explicit Synchronizing (uses pump instead of pumpAndSettle due to CircularProgressIndicator animation)
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SyncStatusBadge(status: SyncUiStatus.syncing),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Synchronizing...'), findsOneWidget);
+
+      // 3. Explicit Offline
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SyncStatusBadge(status: SyncUiStatus.offline),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Offline'), findsOneWidget);
+
+      // 4. Default unconnected state renders Backup Required
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SyncStatusBadge(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Backup Required'), findsOneWidget);
+    });
+
     testWidgets('ResetPasswordScreen renders branded header, inputs, and submit button', (
       tester,
     ) async {
@@ -108,6 +165,26 @@ void main() {
       expect(find.text('Confirm New Password'), findsOneWidget);
       expect(find.text('Reset My Password'), findsOneWidget);
       expect(find.text('Back to Sign In'), findsOneWidget);
+    });
+
+    test('GoogleDriveState cleanly isolates isConnecting and isSyncing to prevent infinite loading', () {
+      const state = GoogleDriveState(
+        status: DriveConnectionStatus.connecting,
+        isSyncing: false,
+      );
+
+      expect(state.isConnecting, isTrue);
+      expect(state.isSyncing, isFalse);
+
+      final connectedState = state.copyWith(
+        status: DriveConnectionStatus.connected,
+        isConnected: true,
+        isSyncing: true,
+      );
+
+      expect(connectedState.isConnected, isTrue);
+      expect(connectedState.isConnecting, isFalse);
+      expect(connectedState.isSyncing, isTrue);
     });
 
     test('GoogleDriveSyncResult model serializes and tracks metrics correctly', () {

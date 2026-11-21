@@ -6,6 +6,7 @@ import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/data/repositories/stroke_repository.dart';
 import 'package:naik_notes/features/audio/data/audio_provider.dart';
 import 'package:naik_notes/features/pdf/data/sticky_note_provider.dart';
+import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 import 'package:naik_notes/services/recognition/handwriting_recognition_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -636,6 +637,14 @@ class StrokesNotifier extends Notifier<StrokesState> {
 
     await _repo.saveStroke(stroke);
 
+    // Schedule debounced Google Drive cloud backup for handwriting strokes
+    try {
+      ref.read(googleDriveProvider.notifier).scheduleAutoSync(
+        delay: const Duration(seconds: 5),
+        reason: 'handwriting_strokes',
+      );
+    } catch (_) {}
+
     // Synchronize stroke with active audio recording session
     final isRecordingActive = ref.read(isAudioRecordingActiveProvider);
     if (isRecordingActive) {
@@ -666,6 +675,12 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedMap[pageId] = currentList;
     state = state.copyWith(pageStrokes: updatedMap);
     await _repo.saveStroke(stroke);
+    try {
+      ref.read(googleDriveProvider.notifier).scheduleAutoSync(
+        delay: const Duration(seconds: 5),
+        reason: 'handwriting_strokes',
+      );
+    } catch (_) {}
   }
 
   /// Indexes handwriting strokes for full-text search recognition.

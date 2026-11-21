@@ -10,6 +10,7 @@ import '../../../services/storage/google_drive_storage_service.dart';
 import '../../../services/storage/google_drive_sync_coordinator.dart';
 import '../../authentication/data/auth_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
+import '../../../services/history/note_history_service.dart';
 
 /// Explicit lifecycle states for Google Drive authorization and connection.
 enum DriveConnectionStatus {
@@ -34,6 +35,7 @@ class GoogleDriveState {
   final int totalSyncedFiles;
   final String? storageUsageText;
   final bool isLoading;
+  final bool isSyncing;
   final String? errorMessage;
   final double syncProgress;
   final String? syncProgressMessage;
@@ -51,6 +53,7 @@ class GoogleDriveState {
     this.totalSyncedFiles = 0,
     this.storageUsageText,
     this.isLoading = false,
+    this.isSyncing = false,
     this.errorMessage,
     this.syncProgress = 0.0,
     this.syncProgressMessage,
@@ -73,6 +76,7 @@ class GoogleDriveState {
     int? totalSyncedFiles,
     String? storageUsageText,
     bool? isLoading,
+    bool? isSyncing,
     String? errorMessage,
     double? syncProgress,
     String? syncProgressMessage,
@@ -97,6 +101,7 @@ class GoogleDriveState {
       totalSyncedFiles: totalSyncedFiles ?? this.totalSyncedFiles,
       storageUsageText: storageUsageText ?? this.storageUsageText,
       isLoading: isLoading ?? this.isLoading,
+      isSyncing: isSyncing ?? this.isSyncing,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       syncProgress: syncProgress ?? this.syncProgress,
       syncProgressMessage: syncProgressMessage ?? this.syncProgressMessage,
@@ -154,6 +159,9 @@ final googleDriveSyncCoordinatorProvider =
 });
 
 class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
+  static const String _prefDeclinedKey = 'google_drive_backup_declined';
+  static const String _prefSnoozeKey = 'google_drive_backup_snooze_timestamp';
+
   GoogleDriveAuthService get _authService =>
       ref.read(googleDriveAuthServiceProvider);
   AttachmentRepository get _attachmentRepo =>
@@ -161,16 +169,95 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
   GoogleDriveSyncCoordinator get _syncCoordinator =>
       ref.read(googleDriveSyncCoordinatorProvider);
 
+  Completer<void>? _initCompleter;
+  Timer? _autoSyncDebounceTimer;
+  Timer? _periodicSyncTimer;
+  bool _isDisposed = false;
+
+  /// Completes when the initial Drive status has been validated on startup.
+  Future<void> get initializationFuture =>
+      _initCompleter?.future ?? Future.value();
+
   @override
   GoogleDriveState build() {
+    _isDisposed = false;
     ref.watch(authProvider);
-    Future.microtask(() => refreshStatus());
+    _initCompleter = Completer<void>();
+    Future.microtask(() {
+      if (!_isDisposed) refreshStatus();
+    });
+
+    // Automatically check for cloud updates from other devices periodically every 45s
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (!_isDisposed && state.isConnected && !state.isSyncing) {
+        debugPrint('[GoogleDriveProvider] Running periodic background cloud sync...');
+        syncNow(silent: true);
+      }
+    });
+
+    ref.onDispose(() {
+      _isDisposed = true;
+      _autoSyncDebounceTimer?.cancel();
+      _periodicSyncTimer?.cancel();
+    });
     return const GoogleDriveState();
   }
 
   String get _currentUid {
-    final user = ref.read(authProvider).user;
-    return user?.id ?? 'local_user';
+    if (_isDisposed) return 'local_user';
+    try {
+      final user = ref.read(authProvider).user;
+      return user?.id ?? 'local_user';
+    } catch (_) {
+      return 'local_user';
+    }
+  }
+
+  /// Checks if the user explicitly declined cloud backup.
+  Future<bool> isDeclined() async {
+    try {
+      final val = await _authService.secureStorage.read(key: _prefDeclinedKey);
+      return val == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Sets whether the user explicitly declined cloud backup.
+  Future<void> setDeclined(bool value) async {
+    try {
+      if (value) {
+        await _authService.secureStorage.write(
+          key: _prefDeclinedKey,
+          value: 'true',
+        );
+      } else {
+        await _authService.secureStorage.delete(key: _prefDeclinedKey);
+      }
+    } catch (_) {}
+  }
+
+  /// Checks if the connection prompt is currently snoozed (default 3 days).
+  Future<bool> isSnoozed() async {
+    try {
+      final val = await _authService.secureStorage.read(key: _prefSnoozeKey);
+      if (val == null) return false;
+      final snoozeTime = DateTime.tryParse(val);
+      if (snoozeTime == null) return false;
+      return DateTime.now().difference(snoozeTime).inDays < 3;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Snoozes the connection prompt for 3 days.
+  Future<void> setSnoozed() async {
+    try {
+      await _authService.secureStorage.write(
+        key: _prefSnoozeKey,
+        value: DateTime.now().toIso8601String(),
+      );
+    } catch (_) {}
   }
 
   /// Refreshes connection status and validates live Google Drive API authorization.
@@ -185,9 +272,9 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
 
       if (meta != null && meta.connected) {
         // Validate live API access
-        final isValid = await _authService.validateDriveAccess(uid);
+        final validationError = await _authService.validateDriveAccess(uid);
 
-        if (isValid) {
+        if (validationError == null) {
           state = state.copyWith(
             status: DriveConnectionStatus.connected,
             isConnected: true,
@@ -209,8 +296,7 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
             pendingUploadsCount: pendingCount,
             failedUploadsCount: failedCount,
             isLoading: false,
-            errorMessage:
-                'Google Drive authorization expired. Please reconnect.',
+            errorMessage: validationError,
           );
         }
       } else {
@@ -230,6 +316,10 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
         isConnected: false,
         isLoading: false,
       );
+    } finally {
+      if (_initCompleter != null && !_initCompleter!.isCompleted) {
+        _initCompleter!.complete();
+      }
     }
   }
 
@@ -252,16 +342,20 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
         forceAccountSelection: forceAccountSelection,
       );
 
-      // Validate live API access immediately
-      final isAccessValid = await _authService.validateDriveAccess(uid);
-      if (!isAccessValid) {
-        throw Exception(
-          'Google Drive access could not be verified. Please check permissions.',
-        );
+      // Validate live API access immediately using the acquired token
+      final validationError = await _authService.validateDriveAccess(
+        uid,
+        accessToken: creds.accessToken,
+      );
+      if (validationError != null) {
+        throw Exception(validationError);
       }
 
       final pendingCount = await _attachmentRepo.getPendingUploadsCount(uid);
       final failedCount = await _attachmentRepo.getFailedUploadsCount(uid);
+
+      // Clear decline flag on explicit connection
+      await setDeclined(false);
 
       state = state.copyWith(
         status: DriveConnectionStatus.connected,
@@ -276,7 +370,10 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
       );
 
       // Trigger automatic background synchronization immediately upon connection
-      syncNow();
+      scheduleAutoSync(
+        delay: const Duration(milliseconds: 300),
+        reason: 'initial_connection',
+      );
 
       return true;
     } catch (e) {
@@ -313,27 +410,51 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
     }
   }
 
+  /// Schedules a debounced automatic background sync.
+  /// Used when notes, pages, drawings, or annotations are edited.
+  void scheduleAutoSync({
+    Duration delay = const Duration(seconds: 4),
+    String reason = 'data_change',
+  }) {
+    if (!state.isConnected) return;
+    _autoSyncDebounceTimer?.cancel();
+    _autoSyncDebounceTimer = Timer(delay, () {
+      if (state.isConnected && !state.isSyncing) {
+        debugPrint(
+          '[GoogleDriveProvider] Executing debounced cloud sync (reason: $reason)...',
+        );
+        syncNow();
+      }
+    });
+  }
+
   /// Retries uploading and synchronizing all notes and attachments now.
-  Future<void> syncNow() async {
+  Future<void> syncNow({bool silent = false}) async {
+    if (_isDisposed || state.isSyncing) return; // Prevent concurrent sync loops
     final uid = _currentUid;
     state = state.copyWith(
-      isLoading: true,
+      isSyncing: true,
       clearError: true,
       syncProgress: 0.05,
-      syncProgressMessage: 'Initiating cloud sync...',
+      syncProgressMessage: silent ? null : 'Initiating cloud sync...',
     );
 
     try {
       final result = await _syncCoordinator.syncAll(
         uid: uid,
-        onProgress: (message, progress) {
-          state = state.copyWith(
-            syncProgress: progress,
-            syncProgressMessage: message,
-          );
-        },
+        onProgress: silent
+            ? null
+            : (message, progress) {
+                if (!_isDisposed) {
+                  state = state.copyWith(
+                    syncProgress: progress,
+                    syncProgressMessage: message,
+                  );
+                }
+              },
       );
 
+      if (_isDisposed) return;
       final pendingCount = await _attachmentRepo.getPendingUploadsCount(uid);
       final failedCount = await _attachmentRepo.getFailedUploadsCount(uid);
 
@@ -341,33 +462,45 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
         state = state.copyWith(
           status: DriveConnectionStatus.connected,
           isConnected: true,
-          totalSyncedNotebooks: result.uploadedNotebooks + result.downloadedNotebooks,
+          totalSyncedNotebooks:
+              result.uploadedNotebooks + result.downloadedNotebooks,
           totalSyncedFiles: result.uploadedPages + result.uploadedAttachments,
           pendingUploadsCount: pendingCount,
           failedUploadsCount: failedCount,
           lastVerifiedAt: DateTime.now(),
-          isLoading: false,
+          isSyncing: false,
           syncProgress: 1.0,
-          syncProgressMessage: 'Sync complete',
+          syncProgressMessage: silent ? null : 'Sync complete',
         );
 
         // Reload local notebooks into provider
-        await ref.read(notebooksProvider.notifier).loadFromDatabase();
+        if (result.downloadedNotebooks > 0 ||
+            result.deletedCount > 0 ||
+            result.downloadedPages > 0) {
+          await ref.read(notebooksProvider.notifier).loadFromDatabase();
+          ref.read(noteHistoryProvider.notifier).refresh();
+        }
       } else {
         state = state.copyWith(
-          isLoading: false,
+          isSyncing: false,
           errorMessage: result.errorMessage ?? 'Sync encountered an issue',
           syncProgress: 0.0,
           syncProgressMessage: null,
         );
       }
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Sync failed: $e',
-        syncProgress: 0.0,
-        syncProgressMessage: null,
-      );
+      if (!_isDisposed) {
+        state = state.copyWith(
+          isSyncing: false,
+          errorMessage: 'Sync failed: $e',
+          syncProgress: 0.0,
+          syncProgressMessage: null,
+        );
+      }
+    } finally {
+      if (!_isDisposed && state.isSyncing) {
+        state = state.copyWith(isSyncing: false);
+      }
     }
   }
 }

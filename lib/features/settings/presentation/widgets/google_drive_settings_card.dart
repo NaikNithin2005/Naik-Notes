@@ -279,24 +279,26 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: driveState.isLoading
+                      onPressed: driveState.isSyncing
                           ? null
                           : () => ref
                               .read(googleDriveProvider.notifier)
                               .syncNow(),
-                      icon: driveState.isLoading
+                      icon: driveState.isSyncing
                           ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.sync_rounded, size: 18),
-                      label: const Text('Sync Now'),
+                      label: Text(
+                        driveState.isSyncing ? 'Syncing...' : 'Sync Now',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   OutlinedButton.icon(
-                    onPressed: driveState.isLoading
+                    onPressed: driveState.isLoading || driveState.isSyncing
                         ? null
                         : () => _confirmDisconnect(context, ref),
                     icon: const Icon(
@@ -362,12 +364,12 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: driveState.isLoading
+                  onPressed: driveState.isConnecting
                       ? null
                       : () => ref
                           .read(googleDriveProvider.notifier)
                           .connectDrive(),
-                  icon: driveState.isLoading
+                  icon: driveState.isConnecting
                       ? const SizedBox(
                           width: 18,
                           height: 18,

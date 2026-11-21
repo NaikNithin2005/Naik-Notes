@@ -37,10 +37,16 @@ class GoogleDriveConnectDialog extends ConsumerStatefulWidget {
     final driveState = ref.read(googleDriveProvider);
     if (driveState.isConnected && !force) return;
 
-    if (!force && _lastDismissedAt != null) {
-      if (DateTime.now().difference(_lastDismissedAt!).inDays < 3) {
-        // Snoozed for 3 days to avoid repeatedly interrupting users
-        return;
+    final driveNotifier = ref.read(googleDriveProvider.notifier);
+    if (!force) {
+      final isDeclined = await driveNotifier.isDeclined();
+      if (isDeclined) return;
+      final isSnoozed = await driveNotifier.isSnoozed();
+      if (isSnoozed) return;
+      if (_lastDismissedAt != null) {
+        if (DateTime.now().difference(_lastDismissedAt!).inDays < 3) {
+          return;
+        }
       }
     }
 
@@ -105,6 +111,11 @@ class _GoogleDriveConnectDialogState
 
   Future<void> _handleMaybeLater() async {
     GoogleDriveConnectDialog._lastDismissedAt = DateTime.now();
+    if (widget.isPoliteReminder) {
+      await ref.read(googleDriveProvider.notifier).setDeclined(true);
+    } else {
+      await ref.read(googleDriveProvider.notifier).setSnoozed();
+    }
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -164,9 +175,11 @@ class _GoogleDriveConnectDialogState
 
               // Description
               Text(
-                'Connect your Google Drive to securely back up your notebooks, '
-                'handwritten notes, PDFs, and other documents. Access your notes '
-                'across your devices whenever you need them.',
+                widget.isPoliteReminder
+                    ? 'Your notes are currently saved only on this device. Cloud backup is not enabled, so your notes may not be available on your other devices. Connect Google Drive to keep your notebooks backed up and access them across your devices.'
+                    : 'Connect your Google Drive to securely back up your notebooks, '
+                        'handwritten notes, PDFs, and other documents. Access your notes '
+                        'across your devices whenever you need them.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
