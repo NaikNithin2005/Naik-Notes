@@ -45,6 +45,8 @@ class NotebooksTable extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
   TextColumn get syncStatus => text().withDefault(const Constant('synced'))();
+  TextColumn get deletionId => text().nullable()();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -291,10 +293,43 @@ class NotesTable extends Table {
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
+  TextColumn get deletionId => text().nullable()();
+  TextColumn get syncStatus => text().withDefault(const Constant('synced'))();
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+  IntColumn get localVersion => integer().withDefault(const Constant(1))();
+  IntColumn get serverVersion => integer().withDefault(const Constant(1))();
+  TextColumn get deviceId => text().nullable()();
+  TextColumn get lastModifiedBy => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Table representing permanent deletion tombstones.
+/// Prevents permanently deleted notebooks and notes from resurrecting through cloud sync.
+class TombstonesTable extends Table {
+  TextColumn get id => text()(); // Original notebookId or noteId
+  TextColumn get ownerId => text().withDefault(const Constant('local_user'))();
+  TextColumn get entityType => text()(); // 'notebook' | 'note'
+  TextColumn get deletionId => text()();
+  DateTimeColumn get deletedAt => dateTime()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table mapping local entity IDs to Google Drive file/folder IDs.
+/// Guarantees that sync updates existing Drive files/folders instead of creating duplicates.
+class DriveFileMappingsTable extends Table {
+  TextColumn get entityId => text()(); // notebookId, noteId, pageId, folderId
+  TextColumn get ownerId => text().withDefault(const Constant('local_user'))();
+  TextColumn get entityType => text()();
+  TextColumn get driveFileId => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {entityId};
 }
 
 @DriftDatabase(
@@ -313,6 +348,8 @@ class NotesTable extends Table {
     CustomTemplatesTable,
     AttachmentsTable,
     NotesTable,
+    TombstonesTable,
+    DriveFileMappingsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -345,7 +382,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -365,6 +402,20 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 13) {
         await m.createTable(notesTable);
+      }
+      if (from < 14) {
+        await m.addColumn(notebooksTable, notebooksTable.deletionId);
+        await m.addColumn(notebooksTable, notebooksTable.lastSyncedAt);
+        await m.addColumn(notesTable, notesTable.deletionId);
+        await m.addColumn(notesTable, notesTable.syncStatus);
+        await m.createTable(tombstonesTable);
+        await m.createTable(driveFileMappingsTable);
+      }
+      if (from < 15) {
+        await m.addColumn(notesTable, notesTable.localVersion);
+        await m.addColumn(notesTable, notesTable.serverVersion);
+        await m.addColumn(notesTable, notesTable.deviceId);
+        await m.addColumn(notesTable, notesTable.lastModifiedBy);
       }
     },
   );

@@ -11,6 +11,7 @@ class RouteNames {
   static const String phoneAuth = '/phone-auth';
   static const String notebookView = '/notebook/:id';
   static const String templateGallery = '/templates';
+  static const String trash = '/trash';
   static const String profile = '/profile';
   static const String settings = '/settings';
   static const String pdfEditor = '/pdf';

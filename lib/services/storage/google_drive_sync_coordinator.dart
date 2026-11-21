@@ -11,6 +11,7 @@ import '../../data/models/notebook_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/sticky_note_model.dart';
 import '../../data/models/stroke_model.dart';
+import '../../data/models/tombstone_model.dart';
 import '../../data/repositories/attachment_repository.dart';
 import '../../data/repositories/notebook_repository.dart';
 import '../../data/repositories/page_repository.dart';
@@ -145,14 +146,35 @@ class GoogleDriveSyncCoordinator {
   }
 
   /// Locates an existing folder with [folderName] under [parentId], or creates one.
+  /// Uses persisted Drive file mappings to guarantee idempotent folder resolution.
   Future<String> _getOrCreateFolder(
     drive.DriveApi api,
     String parentId,
-    String folderName,
-  ) async {
+    String folderName, {
+    String? entityId,
+    String? ownerId,
+  }) async {
     final cacheKey = '$parentId/$folderName';
     if (_folderIdCache.containsKey(cacheKey)) {
       return _folderIdCache[cacheKey]!;
+    }
+
+    // Check persistent SQLite mapping first
+    if (entityId != null) {
+      final mapping = await _notebookRepo.getDriveMapping(entityId);
+      if (mapping != null) {
+        try {
+          final file = await api.files.get(
+            mapping.driveFileId,
+            $fields: 'id, name, trashed',
+          );
+          if (file is drive.File && file.trashed != true) {
+            final id = file.id!;
+            _folderIdCache[cacheKey] = id;
+            return id;
+          }
+        } catch (_) {}
+      }
     }
 
     // Query Google Drive appDataFolder for folder
@@ -168,6 +190,14 @@ class GoogleDriveSyncCoordinator {
     if (result.files != null && result.files!.isNotEmpty) {
       final id = result.files!.first.id!;
       _folderIdCache[cacheKey] = id;
+      if (entityId != null && ownerId != null) {
+        await _notebookRepo.saveDriveMapping(
+          entityId: entityId,
+          driveFileId: id,
+          entityType: 'folder',
+          ownerId: ownerId,
+        );
+      }
       return id;
     }
 
@@ -184,6 +214,14 @@ class GoogleDriveSyncCoordinator {
 
     final id = created.id!;
     _folderIdCache[cacheKey] = id;
+    if (entityId != null && ownerId != null) {
+      await _notebookRepo.saveDriveMapping(
+        entityId: entityId,
+        driveFileId: id,
+        entityType: 'folder',
+        ownerId: ownerId,
+      );
+    }
     return id;
   }
 
@@ -278,6 +316,14 @@ class GoogleDriveSyncCoordinator {
       downPg = pullRes['downloadedPages'] as int? ?? 0;
       conflicts = pullRes['conflicts'] as int? ?? 0;
       final pulledIds = (pullRes['pulledNotebookIds'] as Set<String>?) ?? {};
+
+      // Run post-pull consolidation to eliminate any remaining Drive duplicates
+      final postDeduplicated = await _cleanupDuplicateNotebooks(
+        api: api,
+        notebooksFolderId: notebooksFolderId,
+        uid: uid,
+      );
+      deletedCount += postDeduplicated;
 
       // -------------------------------------------------------------
       // 2. LOCAL -> DRIVE: Push modified local notebooks & pages
@@ -477,8 +523,6 @@ class GoogleDriveSyncCoordinator {
     int conflicts = 0;
     final Set<String> pulledNotebookIds = {};
 
-    final localNbMap = {for (final nb in localNotebooks) nb.id: nb};
-
     // List all folders in User Data/Notebooks
     final q =
         "'$notebooksFolderId' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
@@ -496,8 +540,12 @@ class GoogleDriveSyncCoordinator {
       final nbId = rf.name!;
       final folderId = rf.id!;
 
-      // 1. Tombstone check: if user deleted this notebook locally, do not restore it!
-      if (_localDeletedNotebookIds.contains(nbId)) {
+      // 1. Tombstone check: if permanently deleted, remove from Drive and NEVER restore!
+      if (await _notebookRepo.isTombstoned(nbId) || _localDeletedNotebookIds.contains(nbId)) {
+        try {
+          await api.files.delete(folderId);
+          await _notebookRepo.removeDriveMapping(nbId);
+        } catch (_) {}
         continue;
       }
 
@@ -511,39 +559,55 @@ class GoogleDriveSyncCoordinator {
       final nbMap = jsonDecode(nbContent) as Map<String, dynamic>;
       final remoteNb = Notebook.fromJson(nbMap);
 
+      final localNb = await _notebookRepo.getAnyNotebookById(nbId, ownerId: uid);
+
       if (remoteNb.deletedAt != null) {
         _localDeletedNotebookIds.add(nbId);
-        await _notebookRepo.deleteNotebook(nbId);
+        if (localNb != null && localNb.deletedAt == null) {
+          await _notebookRepo.deleteNotebook(nbId, deletionId: remoteNb.deletionId);
+        }
         continue;
       }
-
-      final localNb = localNbMap[nbId];
 
       bool shouldRestore = false;
 
       // Duplicate safeguard: if remote notebook is a (Cloud Copy) whose base exists locally,
       // clean it up and do not restore it!
-      final cloudCopyRegex = RegExp(
-        r'\s*\((?:Cloud Copy|Conflict Copy)(?: \d+)?\)$',
-        caseSensitive: false,
-      );
-      if (cloudCopyRegex.hasMatch(remoteNb.title)) {
-        final baseTitle =
-            remoteNb.title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
+      final cleanTitle = _extractCleanTitle(remoteNb.title);
+      final baseTitle = cleanTitle.toLowerCase();
+      final isRemoteCopy = remoteNb.title != cleanTitle;
+
+      if (isRemoteCopy) {
         final hasBaseLocal = localNotebooks.any((n) =>
-            !cloudCopyRegex.hasMatch(n.title) &&
-            n.title.trim().toLowerCase() == baseTitle &&
+            _extractCleanTitle(n.title).toLowerCase() == baseTitle &&
             n.deletedAt == null);
         if (hasBaseLocal) {
           try {
             await api.files.delete(folderId);
+            await _notebookRepo.removeDriveMapping(nbId);
             _localDeletedNotebookIds.add(nbId);
           } catch (_) {}
           continue;
         }
       }
 
-      if (localNb == null) {
+      if (localNb != null && localNb.deletedAt != null) {
+        // Local notebook was moved to Trash on this device!
+        // Was it explicitly restored on remote?
+        if (remoteNb.updatedAt.isAfter(localNb.deletedAt!) && remoteNb.revision > localNb.revision) {
+          await _notebookRepo.restoreNotebook(nbId);
+          shouldRestore = true;
+        } else {
+          // Stale remote file: update Drive with local deletion!
+          await _createOrUpdateJsonFile(
+            api: api,
+            parentId: folderId,
+            fileName: 'notebook.json',
+            content: jsonEncode(localNb.toJson()),
+          );
+          continue;
+        }
+      } else if (localNb == null) {
         // Missing notebook: restore locally from cloud
         shouldRestore = true;
         historyService.recordActivity(
@@ -578,8 +642,6 @@ class GoogleDriveSyncCoordinator {
         );
       } else {
         // Local is newer or identical.
-        // If identical, add to pulledNotebookIds to prevent redundant re-upload.
-        // If local is strictly newer, do NOT add so Step 2 pushes local updates to Drive.
         if (localNb.revision == remoteNb.revision &&
             (localNb.updatedAt == remoteNb.updatedAt ||
                 localNb.updatedAt.difference(remoteNb.updatedAt).abs().inSeconds <= 2)) {
@@ -588,12 +650,29 @@ class GoogleDriveSyncCoordinator {
       }
 
       if (shouldRestore) {
-        await _notebookRepo.saveNotebook(remoteNb);
+        final targetNb = isRemoteCopy ? remoteNb.copyWith(title: cleanTitle) : remoteNb;
+        await _notebookRepo.saveNotebook(targetNb);
+        await _notebookRepo.saveDriveMapping(
+          entityId: targetNb.id,
+          driveFileId: folderId,
+          entityType: 'notebook_folder',
+          ownerId: uid,
+        );
+        if (isRemoteCopy) {
+          try {
+            await _createOrUpdateJsonFile(
+              api: api,
+              parentId: folderId,
+              fileName: 'notebook.json',
+              content: jsonEncode(targetNb.toJson()),
+            );
+          } catch (_) {}
+        }
         downloadedNb++;
-        pulledNotebookIds.add(remoteNb.id);
+        pulledNotebookIds.add(targetNb.id);
 
         // Restore pages and strokes
-        final pCount = await _pullPagesForNotebook(api, folderId, remoteNb.id);
+        final pCount = await _pullPagesForNotebook(api, folderId, targetNb.id);
         downloadedPg += pCount;
       }
     }
@@ -606,6 +685,18 @@ class GoogleDriveSyncCoordinator {
     };
   }
 
+  String _extractCleanTitle(String title) {
+    final copyPattern = RegExp(
+      r'\s*\((?:Cloud Copy|Conflict Copy|Copy)(?:\s+\d+)?\)$',
+      caseSensitive: false,
+    );
+    String clean = title.trim();
+    while (copyPattern.hasMatch(clean)) {
+      clean = clean.replaceAll(copyPattern, '').trim();
+    }
+    return clean.isEmpty ? 'Untitled Notebook' : clean;
+  }
+
   /// Cleans up any historical (Cloud Copy) duplicates caused by timestamp divergence,
   /// preserving user data by consolidating to the primary notebook.
   Future<int> _cleanupDuplicateNotebooks({
@@ -615,32 +706,18 @@ class GoogleDriveSyncCoordinator {
   }) async {
     int cleaned = 0;
     try {
-      final cloudCopyRegex = RegExp(
-        r'\s*\((?:Cloud Copy|Conflict Copy)(?: \d+)?\)$',
-        caseSensitive: false,
-      );
-
       // 1. Fetch current local notebooks
       final localNotebooks = await _notebookRepo.getAllNotebooks(
         ownerId: uid,
         includeArchived: true,
       );
 
-      // Build map of clean (non-copy) notebooks by trimmed lowercase title
-      final cleanNotebooksByTitle = <String, Notebook>{};
+      // Group all local notebooks by their lowercased base title
+      final groups = <String, List<Notebook>>{};
       for (final nb in localNotebooks) {
-        if (!cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
-          cleanNotebooksByTitle[nb.title.trim().toLowerCase()] = nb;
-        }
-      }
-
-      // Group copy notebooks by their base title
-      final copiesByBaseTitle = <String, List<Notebook>>{};
-      for (final nb in localNotebooks) {
-        if (cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
-          final base =
-              nb.title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
-          copiesByBaseTitle.putIfAbsent(base, () => []).add(nb);
+        if (nb.deletedAt == null) {
+          final base = _extractCleanTitle(nb.title).toLowerCase();
+          groups.putIfAbsent(base, () => []).add(nb);
         }
       }
 
@@ -659,83 +736,57 @@ class GoogleDriveSyncCoordinator {
           if (f.name != null) f.name!: f
       };
 
-      // 3. Process each group of copies
-      for (final entry in copiesByBaseTitle.entries) {
-        final baseTitleLower = entry.key;
-        final copies = entry.value;
-        final hasCleanOriginal =
-            cleanNotebooksByTitle.containsKey(baseTitleLower);
+      // 3. Process each group of notebooks
+      for (final entry in groups.entries) {
+        final list = entry.value;
 
-        // Sort copies by updatedAt descending (newest first)
-        copies.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        // Sort candidates: clean title first, highest pageCount, highest revision, newest updatedAt
+        list.sort((a, b) {
+          final aClean = a.title == _extractCleanTitle(a.title);
+          final bClean = b.title == _extractCleanTitle(b.title);
+          if (aClean && !bClean) return -1;
+          if (!aClean && bClean) return 1;
 
-        if (hasCleanOriginal) {
-          // A primary original notebook exists! All (Cloud Copy) instances are redundant.
-          for (final duplicate in copies) {
-            await _notebookRepo.deleteNotebook(duplicate.id);
-            _localDeletedNotebookIds.add(duplicate.id);
+          if (a.pageCount != b.pageCount) return b.pageCount.compareTo(a.pageCount);
+          if (a.revision != b.revision) return b.revision.compareTo(a.revision);
+          return b.updatedAt.compareTo(a.updatedAt);
+        });
 
-            // Remove remote folder from Drive if present
-            final remoteFolder = remoteFolderByNbId[duplicate.id];
-            if (remoteFolder != null && remoteFolder.id != null) {
-              try {
-                await api.files.delete(remoteFolder.id!);
-              } catch (_) {}
-            }
-            cleaned++;
-          }
-        } else {
-          // No clean original exists! Keep the newest copy and rename it to base title.
-          final primaryCopy = copies.first;
-          final cleanTitle =
-              primaryCopy.title.replaceAll(cloudCopyRegex, '').trim();
-          final renamed = primaryCopy.copyWith(
-            title: cleanTitle.isEmpty ? 'Untitled Notebook' : cleanTitle,
-          );
+        final canonical = list.first;
+        final cleanTitle = _extractCleanTitle(canonical.title);
+
+        if (canonical.title != cleanTitle) {
+          final renamed = canonical.copyWith(title: cleanTitle);
           await _notebookRepo.saveNotebook(renamed);
-          cleanNotebooksByTitle[baseTitleLower] = renamed;
 
-          // Delete all other secondary copies
-          for (int i = 1; i < copies.length; i++) {
-            final redundant = copies[i];
-            await _notebookRepo.deleteNotebook(redundant.id);
-            _localDeletedNotebookIds.add(redundant.id);
-
-            final remoteFolder = remoteFolderByNbId[redundant.id];
-            if (remoteFolder != null && remoteFolder.id != null) {
-              try {
-                await api.files.delete(remoteFolder.id!);
-              } catch (_) {}
-            }
-            cleaned++;
+          // Update Drive notebook.json
+          final primaryFolder = remoteFolderByNbId[canonical.id];
+          if (primaryFolder != null && primaryFolder.id != null) {
+            try {
+              await _createOrUpdateJsonFile(
+                api: api,
+                parentId: primaryFolder.id!,
+                fileName: 'notebook.json',
+                content: jsonEncode(renamed.toJson()),
+              );
+            } catch (_) {}
           }
         }
-      }
 
-      // 4. Also check remote folders for orphaned (Cloud Copy) folders on Drive
-      for (final rf in remoteFolders) {
-        final nbId = rf.name;
-        if (nbId == null || _localDeletedNotebookIds.contains(nbId)) continue;
+        // Delete all other secondary copies
+        for (int i = 1; i < list.length; i++) {
+          final redundant = list[i];
+          await _notebookRepo.permanentlyDeleteNotebook(redundant.id, ownerId: uid);
+          _localDeletedNotebookIds.add(redundant.id);
 
-        final nbFile = await _findFile(api, rf.id!, 'notebook.json');
-        if (nbFile == null || nbFile.id == null) continue;
-        final content = await _downloadFileAsString(api, nbFile.id!);
-        if (content == null) continue;
-
-        try {
-          final data = jsonDecode(content) as Map<String, dynamic>;
-          final title = data['title'] as String? ?? '';
-          if (cloudCopyRegex.hasMatch(title)) {
-            final base =
-                title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
-            if (cleanNotebooksByTitle.containsKey(base)) {
-              // Redundant cloud folder
-              await api.files.delete(rf.id!);
-              _localDeletedNotebookIds.add(nbId);
-              cleaned++;
-            }
+          final remoteFolder = remoteFolderByNbId[redundant.id];
+          if (remoteFolder != null && remoteFolder.id != null) {
+            try {
+              await api.files.delete(remoteFolder.id!);
+            } catch (_) {}
           }
-        } catch (_) {}
+          cleaned++;
+        }
       }
     } catch (e) {
       debugPrint(
@@ -744,7 +795,7 @@ class GoogleDriveSyncCoordinator {
     return cleaned;
   }
 
-  /// Bidirectionally syncs deletion tombstones across devices using deletions_manifest.json.
+  /// Bidirectionally syncs deletion tombstones and Trash state across devices.
   Future<int> _syncDeletions({
     required drive.DriveApi api,
     required String metadataFolderId,
@@ -753,71 +804,128 @@ class GoogleDriveSyncCoordinator {
   }) async {
     int deletedCount = 0;
     try {
-      final cloudDeletedIds = <String>{};
-      final historyService = NoteHistoryService();
+      final cloudTombstones = <String, Tombstone>{};
 
-      // 1. Download existing cloud deletions manifest if present
-      final manifestFile =
-          await _findFile(api, metadataFolderId, 'deletions_manifest.json');
-      if (manifestFile != null && manifestFile.id != null) {
-        final content = await _downloadFileAsString(api, manifestFile.id!);
+      // 1. Download existing cloud tombstones manifest from Google Drive
+      final tombstoneFile =
+          await _findFile(api, metadataFolderId, 'tombstones_manifest.json');
+      if (tombstoneFile != null && tombstoneFile.id != null) {
+        final content = await _downloadFileAsString(api, tombstoneFile.id!);
         if (content != null && content.isNotEmpty) {
           try {
             final data = jsonDecode(content) as Map<String, dynamic>;
-            final list = (data['deletedNotebookIds'] as List<dynamic>?) ?? [];
+            final list = (data['tombstones'] as List<dynamic>?) ?? [];
             for (final item in list) {
-              if (item is String) cloudDeletedIds.add(item);
+              if (item is Map<String, dynamic>) {
+                final t = Tombstone.fromJson(item);
+                cloudTombstones[t.id] = t;
+              }
             }
           } catch (_) {}
         }
       }
 
-      // 2. Apply cloud deletions to local database
-      for (final delId in cloudDeletedIds) {
-        _localDeletedNotebookIds.add(delId);
-        final existingLocal = await _notebookRepo.getNotebookById(delId);
-        if (existingLocal != null && existingLocal.deletedAt == null) {
-          await _notebookRepo.deleteNotebook(delId);
-          await historyService.recordActivity(
-            noteId: delId,
-            noteTitle: existingLocal.title,
-            action: NoteActionType.deleted,
-            userEmail: uid,
-            deviceName: 'Cloud Synced',
-            details: 'Deleted from another device via cloud',
-          );
-          deletedCount++;
-        }
-      }
-
-      // 3. Gather local deletions and append to manifest
-      final localDeleted =
-          await _notebookRepo.getDeletedNotebooks(ownerId: uid);
-      for (final d in localDeleted) {
-        _localDeletedNotebookIds.add(d.id);
-        cloudDeletedIds.add(d.id);
-
-        // Clean up remote folder in Drive if it exists
-        final folder = await _findFile(api, notebooksFolderId, d.id);
-        if (folder != null && folder.id != null) {
+      // Backward compatibility: download legacy deletions_manifest.json if present
+      final legacyFile =
+          await _findFile(api, metadataFolderId, 'deletions_manifest.json');
+      if (legacyFile != null && legacyFile.id != null) {
+        final content = await _downloadFileAsString(api, legacyFile.id!);
+        if (content != null && content.isNotEmpty) {
           try {
-            await api.files.delete(folder.id!);
+            final data = jsonDecode(content) as Map<String, dynamic>;
+            final list = (data['deletedNotebookIds'] as List<dynamic>?) ?? [];
+            for (final item in list) {
+              if (item is String && !cloudTombstones.containsKey(item)) {
+                cloudTombstones[item] = Tombstone(
+                  id: item,
+                  ownerId: uid,
+                  entityType: 'notebook',
+                  deletionId: item,
+                  deletedAt: DateTime.now(),
+                );
+              }
+            }
           } catch (_) {}
         }
       }
 
-      // 4. Update deletions_manifest.json in Google Drive
+      // 2. Apply cloud tombstones to local database (purges matching records)
+      for (final tombstone in cloudTombstones.values) {
+        _localDeletedNotebookIds.add(tombstone.id);
+        await _notebookRepo.saveTombstone(tombstone);
+      }
+
+      // 3. 30-Day Auto Retention: permanently delete expired trash
+      final expiredIds = await _notebookRepo.cleanupExpiredTrash(
+        retentionDays: 30,
+        ownerId: uid,
+      );
+      deletedCount += expiredIds.length;
+
+      // 4. Gather local tombstones and merge with cloud
+      final localTombstones =
+          await _notebookRepo.getAllTombstones(ownerId: uid);
+
+      // Fetch all remote notebook folders on Drive in ONE single call to eliminate 100+ slow individual HTTP calls
+      final remoteFolderList = await api.files.list(
+        q: "'$notebooksFolderId' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        spaces: 'appDataFolder',
+        $fields: 'files(id, name)',
+        pageSize: 200,
+      );
+      final remoteFoldersByName = {
+        for (final f in remoteFolderList.files ?? [])
+          if (f.name != null) f.name!: f
+      };
+
+      for (final lt in localTombstones) {
+        cloudTombstones[lt.id] = lt;
+        _localDeletedNotebookIds.add(lt.id);
+
+        // Delete remote folder on Google Drive for permanently deleted items
+        final folder = remoteFoldersByName[lt.id];
+        if (folder != null && folder.id != null) {
+          try {
+            await api.files.delete(folder.id!);
+            await _notebookRepo.removeDriveMapping(lt.id);
+            remoteFoldersByName.remove(lt.id);
+          } catch (_) {}
+        }
+      }
+
+      // 5. Upload updated tombstones_manifest.json to Google Drive
       final manifestJson = jsonEncode({
-        'version': 1,
+        'version': 2,
         'updatedAt': DateTime.now().toIso8601String(),
-        'deletedNotebookIds': cloudDeletedIds.toList(),
+        'tombstones': cloudTombstones.values.map((t) => t.toJson()).toList(),
       });
       await _createOrUpdateJsonFile(
         api: api,
         parentId: metadataFolderId,
-        fileName: 'deletions_manifest.json',
+        fileName: 'tombstones_manifest.json',
         content: manifestJson,
       );
+
+      // 6. Coordinate Trash (soft deletion): update remote notebook.json with deletedAt
+      // without deleting the Drive folder to preserve 30-day recovery!
+      final localInTrash =
+          await _notebookRepo.getDeletedNotebooks(ownerId: uid);
+      for (final nb in localInTrash) {
+        if (cloudTombstones.containsKey(nb.id)) continue;
+        final folder = remoteFoldersByName[nb.id];
+        if (folder != null && folder.id != null) {
+          await _createOrUpdateJsonFile(
+            api: api,
+            parentId: folder.id!,
+            fileName: 'notebook.json',
+            content: jsonEncode(nb.toJson()),
+            properties: {
+              'notebookId': nb.id,
+              'deletedAt': nb.deletedAt?.toIso8601String() ?? '',
+            },
+          );
+        }
+      }
     } catch (e) {
       debugPrint('[GoogleDriveSyncCoordinator] _syncDeletions error: $e');
     }

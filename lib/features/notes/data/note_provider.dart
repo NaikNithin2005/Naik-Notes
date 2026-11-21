@@ -168,11 +168,20 @@ class NotesNotifier extends Notifier<List<Note>> {
   }
 
   Future<void> permanentlyDeleteNote(String noteId) async {
-    await _repo.permanentlyDeleteNote(noteId);
+    final uid = ref.read(authProvider).user?.id ?? 'local_user';
+    await _repo.permanentlyDeleteNote(noteId, ownerId: uid);
     state = state.where((n) => n.id != noteId).toList();
     if (ref.read(selectedNoteProvider)?.id == noteId) {
       ref.read(selectedNoteProvider.notifier).selectNote(null);
     }
+    if (uid != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .permanentlyDeleteNote(uid, noteId);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'note_permanently_deleted');
   }
 
   Future<void> togglePin(String noteId) async {
@@ -283,8 +292,11 @@ class NotesNotifier extends Notifier<List<Note>> {
 
   Future<void> emptyTrash() async {
     final uid = ref.read(authProvider).user?.id ?? 'local_user';
-    await _repo.emptyTrash(ownerId: uid);
-    state = state.where((n) => !n.isDeleted).toList();
+    final trashNotes = await _repo.getTrashNotes(ownerId: uid);
+    final noteIds = trashNotes.map((n) => n.id).toList();
+    if (noteIds.isNotEmpty) {
+      await bulkPermanentDelete(noteIds);
+    }
   }
 
   Future<void> bulkDelete(Iterable<String> noteIds) async {
@@ -677,4 +689,11 @@ final notebooksNoteCountProvider = Provider<Map<String, int>>((ref) {
     map[note.notebookId] = (map[note.notebookId] ?? 0) + 1;
   }
   return map;
+});
+
+/// Reactive stream provider for notes in Trash.
+final trashNotesProvider = StreamProvider<List<Note>>((ref) {
+  final uid = ref.watch(authProvider.select((s) => s.user?.id ?? 'local_user'));
+  final repo = ref.watch(noteRepositoryProvider);
+  return repo.watchTrashNotes(ownerId: uid);
 });

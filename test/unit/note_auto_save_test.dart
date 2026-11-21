@@ -38,7 +38,7 @@ class _FakeNoteRepository implements NoteRepository {
       Stream.value(_store.values.toList());
 
   @override
-  Future<void> deleteNote(String id) async {
+  Future<void> deleteNote(String id, {String? deletionId}) async {
     final n = _store[id];
     if (n != null) {
       _store[id] = n.copyWith(isDeleted: true, deletedAt: DateTime.now());
@@ -54,7 +54,7 @@ class _FakeNoteRepository implements NoteRepository {
   }
 
   @override
-  Future<void> permanentlyDeleteNote(String id) async {
+  Future<void> permanentlyDeleteNote(String id, {String? deletionId, String? ownerId}) async {
     _store.remove(id);
   }
 
@@ -125,14 +125,20 @@ class _FakeNoteRepository implements NoteRepository {
   Future<List<Note>> getTrashNotes({String? ownerId}) async => [];
 
   @override
+  Stream<List<Note>> watchTrashNotes({String? ownerId}) => Stream.value([]);
+
+  @override
+  Future<List<String>> cleanupExpiredTrash({int retentionDays = 30, String? ownerId}) async => [];
+
+  @override
   Future<void> emptyTrash({String? ownerId}) async {
     _store.removeWhere((k, v) => v.isDeleted);
   }
 
   @override
-  Future<void> bulkDelete(Iterable<String> ids) async {
+  Future<void> bulkDelete(Iterable<String> ids, {String? deletionId}) async {
     for (final id in ids) {
-      await deleteNote(id);
+      await deleteNote(id, deletionId: deletionId);
     }
   }
 
@@ -144,7 +150,7 @@ class _FakeNoteRepository implements NoteRepository {
   }
 
   @override
-  Future<void> bulkPermanentDelete(Iterable<String> ids) async {
+  Future<void> bulkPermanentDelete(Iterable<String> ids, {String? ownerId}) async {
     for (final id in ids) {
       _store.remove(id);
     }

@@ -101,7 +101,9 @@ class NoteHistoryService {
     if (_cachedFile != null) return _cachedFile!;
     try {
       final name = WidgetsBinding.instance.runtimeType.toString();
-      if (name.contains('Test') || name.contains('Binding')) {
+      if (Platform.environment.containsKey('FLUTTER_TEST') ||
+          name.contains('TestWidgetsFlutterBinding') ||
+          name.contains('AutomatedTestWidgetsFlutterBinding')) {
         // In tests, avoid platform channel
         _cachedFile = File(_fileName);
         return _cachedFile!;

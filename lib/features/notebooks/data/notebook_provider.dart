@@ -42,32 +42,87 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
       );
       if (!ref.mounted) return;
 
-      // Local deduplication safeguard: clean up historical (Cloud Copy) duplicates
-      final cloudCopyRegex = RegExp(
-        r'\s*\((?:Cloud Copy|Conflict Copy)(?: \d+)?\)$',
-        caseSensitive: false,
-      );
-      final nonCopyTitles = <String>{};
+      // Universal deduplication safeguard: consolidate historical duplicates and clean titles
+      String cleanTitleRecursively(String title) {
+        final copyPattern = RegExp(
+          r'\s*\((?:Cloud Copy|Conflict Copy|Copy)(?:\s+\d+)?\)$',
+          caseSensitive: false,
+        );
+        String clean = title.trim();
+        while (copyPattern.hasMatch(clean)) {
+          clean = clean.replaceAll(copyPattern, '').trim();
+        }
+        return clean.isEmpty ? 'Untitled Notebook' : clean;
+      }
+
+      // Group all active (non-deleted) notebooks by their normalized base title
+      final groups = <String, List<Notebook>>{};
       for (final nb in dbNotebooks) {
-        if (!cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
-          nonCopyTitles.add(nb.title.trim().toLowerCase());
+        if (nb.deletedAt == null) {
+          final base = cleanTitleRecursively(nb.title).toLowerCase();
+          groups.putIfAbsent(base, () => []).add(nb);
         }
       }
 
       bool hadDuplicates = false;
-      for (final nb in dbNotebooks) {
-        if (cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
-          final base = nb.title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
-          if (nonCopyTitles.contains(base)) {
-            await _repository.deleteNotebook(nb.id);
-            hadDuplicates = true;
-          } else {
-            final cleanTitle = nb.title.replaceAll(cloudCopyRegex, '').trim();
-            final renamed = nb.copyWith(
-              title: cleanTitle.isEmpty ? 'Untitled Notebook' : cleanTitle,
-            );
-            await _repository.saveNotebook(renamed);
-            nonCopyTitles.add(base);
+      final copyPattern = RegExp(
+        r'\((?:Cloud Copy|Conflict Copy|Copy)',
+        caseSensitive: false,
+      );
+
+      for (final entry in groups.entries) {
+        final list = entry.value;
+
+        // Sort candidates to select the BEST canonical notebook:
+        // 1. Clean title preferred over copy suffix
+        // 2. Highest page count (preserves content)
+        // 3. Highest revision
+        // 4. Newest updatedAt
+        list.sort((a, b) {
+          final aIsCopy = copyPattern.hasMatch(a.title);
+          final bIsCopy = copyPattern.hasMatch(b.title);
+          if (!aIsCopy && bIsCopy) return -1;
+          if (aIsCopy && !bIsCopy) return 1;
+
+          if (a.pageCount != b.pageCount) return b.pageCount.compareTo(a.pageCount);
+          if (a.revision != b.revision) return b.revision.compareTo(a.revision);
+          return b.updatedAt.compareTo(a.updatedAt);
+        });
+
+        final canonical = list.first;
+        final cleanTitle = cleanTitleRecursively(canonical.title);
+
+        // A. If canonical notebook title still has copy suffixes, clean it
+        if (canonical.title != cleanTitle) {
+          final cleaned = canonical.copyWith(
+            title: cleanTitle,
+            updatedAt: DateTime.now(),
+            syncStatus: 'pending',
+          );
+          await _repository.saveNotebook(cleaned);
+          if (userId != 'local_user') {
+            try {
+              await ref
+                  .read(firebaseSyncServiceProvider)
+                  .pushNotebook(userId, cleaned);
+            } catch (_) {}
+          }
+          hadDuplicates = true;
+        }
+
+        // B. Permanently delete all other redundant copies in this group
+        if (list.length > 1) {
+          for (int i = 1; i < list.length; i++) {
+            final duplicate = list[i];
+            await _repository.permanentlyDeleteNotebook(duplicate.id, ownerId: userId);
+            if (userId != 'local_user') {
+              try {
+                await ref
+                    .read(firebaseSyncServiceProvider)
+                    .permanentlyDeleteNotebook(userId, duplicate.id);
+              } catch (_) {}
+            }
+            _triggerDriveAutoSync(reason: 'duplicate_cleaned');
             hadDuplicates = true;
           }
         }
@@ -472,6 +527,62 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     );
   }
 
+  Future<void> restoreNotebook(String id) async {
+    await bulkRestore([id]);
+  }
+
+  Future<void> permanentlyDeleteNotebook(String id) async {
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    await _repository.permanentlyDeleteNotebook(id, ownerId: currentUserId);
+    state = state.where((nb) => nb.id != id).toList();
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .permanentlyDeleteNotebook(currentUserId, id);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(
+      delay: const Duration(seconds: 1),
+      reason: 'notebook_permanently_deleted',
+    );
+  }
+
+  Future<void> bulkPermanentDelete(Iterable<String> notebookIds) async {
+    final idSet = notebookIds.toSet();
+    if (idSet.isEmpty) return;
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    await _repository.bulkPermanentDelete(idSet, ownerId: currentUserId);
+    state = state.where((nb) => !idSet.contains(nb.id)).toList();
+
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .permanentlyDeleteNotebooksBatch(currentUserId, idSet.toList());
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(
+      delay: const Duration(seconds: 1),
+      reason: 'notebooks_bulk_permanently_deleted',
+    );
+  }
+
+  Future<void> emptyTrash() async {
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    final deleted = await _repository.getDeletedNotebooks(ownerId: currentUserId);
+    final ids = deleted.map((n) => n.id).toList();
+    if (ids.isNotEmpty) {
+      await bulkPermanentDelete(ids);
+    }
+  }
+
+  Future<void> cleanupDuplicates() async {
+    final user = ref.read(authProvider).user;
+    await loadForUser(user?.id);
+  }
+
   Future<void> bulkRestore(Iterable<String> notebookIds) async {
     final idSet = notebookIds.toSet();
     if (idSet.isEmpty) return;
@@ -655,3 +766,10 @@ class IsGridViewNotifier extends Notifier<bool> {
 final isGridViewProvider = NotifierProvider<IsGridViewNotifier, bool>(
   IsGridViewNotifier.new,
 );
+
+/// Reactive stream provider for notebooks in Trash.
+final trashNotebooksProvider = StreamProvider<List<Notebook>>((ref) {
+  final userId = ref.watch(authProvider.select((s) => s.user?.id));
+  final repo = ref.watch(notebookRepositoryProvider);
+  return repo.watchDeletedNotebooks(ownerId: userId);
+});

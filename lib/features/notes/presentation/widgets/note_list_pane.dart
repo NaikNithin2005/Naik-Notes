@@ -779,6 +779,30 @@ class _NoteCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                     ],
+                    if (note.title.contains('(Conflict Copy')) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.deepOrange.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Colors.deepOrange.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Text(
+                          'Conflict',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.deepOrange,
+                          ),
+                        ),
+                      ),
+                    ],
                     Expanded(
                       child: Text(
                         note.title.trim().isEmpty ? 'Untitled Note' : note.title,

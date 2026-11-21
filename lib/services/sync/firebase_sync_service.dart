@@ -11,6 +11,27 @@ import '../../data/models/page_model.dart';
 import '../../data/models/paper_template_model.dart';
 import '../../data/models/sticky_note_model.dart';
 import '../../data/models/stroke_model.dart';
+import '../../data/models/tombstone_model.dart';
+import 'package:uuid/uuid.dart';
+
+/// Result container for cursor-based paginated note queries.
+class PaginatedNotesResult {
+  final List<Note> notes;
+  final DocumentSnapshot<Map<String, dynamic>>? lastDocument;
+  final bool hasMore;
+
+  const PaginatedNotesResult({
+    required this.notes,
+    this.lastDocument,
+    required this.hasMore,
+  });
+
+  factory PaginatedNotesResult.empty() => const PaginatedNotesResult(
+        notes: [],
+        lastDocument: null,
+        hasMore: false,
+      );
+}
 
 /// Direct Firebase Cloud Firestore synchronization service.
 /// Enforces user-isolated paths: `/users/{uid}/...`
@@ -46,6 +67,10 @@ class FirebaseSyncService {
     return _firestore?.collection('users').doc(uid).collection('notes');
   }
 
+  CollectionReference<Map<String, dynamic>>? _userTombstonesRef(String uid) {
+    return _firestore?.collection('users').doc(uid).collection('tombstones');
+  }
+
   CollectionReference<Map<String, dynamic>>? _userPagesRef(
     String uid,
     String notebookId,
@@ -67,6 +92,84 @@ class FirebaseSyncService {
     String pageId,
   ) {
     return _userPagesRef(uid, notebookId)?.doc(pageId).collection('sticky_notes');
+  }
+
+  // --- TOMBSTONES ---
+
+  /// Pushes a permanent deletion tombstone to `/users/{uid}/tombstones/{id}`.
+  Future<bool> pushTombstone(String uid, Tombstone tombstone) async {
+    final ref = _userTombstonesRef(uid);
+    if (ref == null) return false;
+    try {
+      await ref.doc(tombstone.id).set({
+        'id': tombstone.id,
+        'ownerId': uid,
+        'entityType': tombstone.entityType,
+        'deletionId': tombstone.deletionId,
+        'deletedAt': tombstone.deletedAt.toIso8601String(),
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] pushTombstone failed for ${tombstone.id}: $e');
+      return false;
+    }
+  }
+
+  /// Batches pushing multiple deletion tombstones to Firestore.
+  Future<bool> pushTombstonesBatch(String uid, List<Tombstone> tombstones) async {
+    final ref = _userTombstonesRef(uid);
+    if (ref == null || _firestore == null || tombstones.isEmpty) return false;
+    try {
+      const chunkSize = 100;
+      for (var i = 0; i < tombstones.length; i += chunkSize) {
+        final end = (i + chunkSize < tombstones.length) ? i + chunkSize : tombstones.length;
+        final chunk = tombstones.sublist(i, end);
+        final batch = _firestore!.batch();
+        for (final t in chunk) {
+          batch.set(ref.doc(t.id), {
+            'id': t.id,
+            'ownerId': uid,
+            'entityType': t.entityType,
+            'deletionId': t.deletionId,
+            'deletedAt': t.deletedAt.toIso8601String(),
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        await batch.commit();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] pushTombstonesBatch failed: $e');
+      return false;
+    }
+  }
+
+  /// Fetches all active deletion tombstones for [uid].
+  Future<List<Tombstone>> fetchTombstones(String uid) async {
+    final ref = _userTombstonesRef(uid);
+    if (ref == null) return [];
+    try {
+      final snapshot = await ref.get();
+      final list = <Tombstone>[];
+      for (final doc in snapshot.docs) {
+        final d = doc.data();
+        list.add(Tombstone(
+          id: doc.id,
+          ownerId: uid,
+          entityType: d['entityType'] as String? ?? 'notebook',
+          deletionId: d['deletionId'] as String? ?? doc.id,
+          deletedAt: d['deletedAt'] != null
+              ? DateTime.tryParse(d['deletedAt'] as String) ?? DateTime.now()
+              : DateTime.now(),
+          syncedAt: DateTime.now(),
+        ));
+      }
+      return list;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] fetchTombstones note: $e');
+      return [];
+    }
   }
 
   // --- NOTEBOOKS ---
@@ -97,6 +200,10 @@ class FirebaseSyncService {
         'createdAt': notebook.createdAt.toIso8601String(),
         'updatedAt': FieldValue.serverTimestamp(),
         'deletedAt': notebook.deletedAt?.toIso8601String(),
+        'deletionId': notebook.deletionId,
+        'isDeleted': notebook.isDeleted,
+        'syncStatus': 'synced',
+        'lastSyncedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       return true;
     } catch (e) {
@@ -105,18 +212,55 @@ class FirebaseSyncService {
     }
   }
 
-  /// Soft or hard deletes a notebook document from Firestore.
-  Future<bool> deleteNotebook(String uid, String notebookId) async {
+  /// Soft deletes a notebook document from Firestore (moves to Trash).
+  Future<bool> deleteNotebook(String uid, String notebookId, {String? deletionId}) async {
     final ref = _userNotebooksRef(uid);
     if (ref == null) return false;
     try {
+      final delId = deletionId ?? const Uuid().v4();
       await ref.doc(notebookId).set({
+        'ownerId': uid,
+        'isDeleted': true,
         'deletedAt': DateTime.now().toIso8601String(),
+        'deletionId': delId,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('[FirebaseSyncService] deleteNotebook failed for $notebookId: $e');
+      return false;
+    }
+  }
+
+  /// Permanently removes a notebook document from Firestore and records a tombstone.
+  Future<bool> permanentlyDeleteNotebook(
+    String uid,
+    String notebookId, {
+    String? deletionId,
+  }) async {
+    final ref = _userNotebooksRef(uid);
+    final tombRef = _userTombstonesRef(uid);
+    if (ref == null) return false;
+    try {
+      final delId = deletionId ?? const Uuid().v4();
+      if (tombRef != null) {
+        try {
+          await tombRef.doc(notebookId).set({
+            'id': notebookId,
+            'ownerId': uid,
+            'entityType': 'notebook',
+            'deletionId': delId,
+            'deletedAt': DateTime.now().toIso8601String(),
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } catch (te) {
+          debugPrint('[FirebaseSyncService] push tombstone inside permanentlyDeleteNotebook: $te');
+        }
+      }
+      await ref.doc(notebookId).delete();
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] permanentlyDeleteNotebook failed: $e');
       return false;
     }
   }
@@ -154,6 +298,10 @@ class FirebaseSyncService {
             'createdAt': nb.createdAt.toIso8601String(),
             'updatedAt': FieldValue.serverTimestamp(),
             'deletedAt': nb.deletedAt?.toIso8601String(),
+            'deletionId': nb.deletionId,
+            'isDeleted': nb.isDeleted,
+            'syncStatus': 'synced',
+            'lastSyncedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
         }
         await batch.commit();
@@ -166,19 +314,27 @@ class FirebaseSyncService {
   }
 
   /// Batches soft deleting multiple notebooks from Firestore.
-  Future<bool> deleteNotebooksBatch(String uid, List<String> notebookIds) async {
+  Future<bool> deleteNotebooksBatch(
+    String uid,
+    List<String> notebookIds, {
+    String? deletionId,
+  }) async {
     final ref = _userNotebooksRef(uid);
     if (ref == null || _firestore == null || notebookIds.isEmpty) return false;
     try {
       const chunkSize = 100;
       final nowIso = DateTime.now().toIso8601String();
+      final delId = deletionId ?? const Uuid().v4();
       for (var i = 0; i < notebookIds.length; i += chunkSize) {
         final end = (i + chunkSize < notebookIds.length) ? i + chunkSize : notebookIds.length;
         final chunk = notebookIds.sublist(i, end);
         final batch = _firestore!.batch();
         for (final id in chunk) {
           batch.set(ref.doc(id), {
+            'ownerId': uid,
+            'isDeleted': true,
             'deletedAt': nowIso,
+            'deletionId': delId,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
         }
@@ -187,6 +343,54 @@ class FirebaseSyncService {
       return true;
     } catch (e) {
       debugPrint('[FirebaseSyncService] deleteNotebooksBatch failed: $e');
+      return false;
+    }
+  }
+
+  /// Batches permanently deleting multiple notebooks from Firestore and records tombstones.
+  Future<bool> permanentlyDeleteNotebooksBatch(
+    String uid,
+    List<String> notebookIds, {
+    String? deletionId,
+  }) async {
+    final ref = _userNotebooksRef(uid);
+    final tombRef = _userTombstonesRef(uid);
+    if (ref == null || _firestore == null || notebookIds.isEmpty) return false;
+    try {
+      const chunkSize = 100;
+      final nowIso = DateTime.now().toIso8601String();
+      final delId = deletionId ?? const Uuid().v4();
+      for (var i = 0; i < notebookIds.length; i += chunkSize) {
+        final end = (i + chunkSize < notebookIds.length) ? i + chunkSize : notebookIds.length;
+        final chunk = notebookIds.sublist(i, end);
+        final deleteBatch = _firestore!.batch();
+        for (final id in chunk) {
+          deleteBatch.delete(ref.doc(id));
+        }
+        await deleteBatch.commit();
+
+        if (tombRef != null) {
+          try {
+            final tombBatch = _firestore!.batch();
+            for (final id in chunk) {
+              tombBatch.set(tombRef.doc(id), {
+                'id': id,
+                'ownerId': uid,
+                'entityType': 'notebook',
+                'deletionId': delId,
+                'deletedAt': nowIso,
+                'createdAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+            }
+            await tombBatch.commit();
+          } catch (te) {
+            debugPrint('[FirebaseSyncService] tombstone batch set notice: $te');
+          }
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] permanentlyDeleteNotebooksBatch failed: $e');
       return false;
     }
   }
@@ -272,6 +476,7 @@ class FirebaseSyncService {
     if (ref == null) return false;
     try {
       await ref.doc(folderId).set({
+        'ownerId': uid,
         'deletedAt': DateTime.now().toIso8601String(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -583,7 +788,13 @@ class FirebaseSyncService {
         'createdAt': note.createdAt.toIso8601String(),
         'updatedAt': FieldValue.serverTimestamp(),
         'deletedAt': note.deletedAt?.toIso8601String(),
+        'deletionId': note.deletionId,
+        'syncStatus': 'synced',
         'lastSyncedAt': FieldValue.serverTimestamp(),
+        'localVersion': note.localVersion,
+        'serverVersion': note.serverVersion,
+        'deviceId': note.deviceId,
+        'lastModifiedBy': note.lastModifiedBy,
       }, SetOptions(merge: true));
       return true;
     } catch (e) {
@@ -598,6 +809,7 @@ class FirebaseSyncService {
     if (ref == null) return false;
     try {
       await ref.doc(noteId).set({
+        'ownerId': uid,
         'isDeleted': true,
         'deletedAt': DateTime.now().toIso8601String(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -649,7 +861,13 @@ class FirebaseSyncService {
             'createdAt': note.createdAt.toIso8601String(),
             'updatedAt': FieldValue.serverTimestamp(),
             'deletedAt': note.deletedAt?.toIso8601String(),
+            'deletionId': note.deletionId,
+            'syncStatus': 'synced',
             'lastSyncedAt': FieldValue.serverTimestamp(),
+            'localVersion': note.localVersion,
+            'serverVersion': note.serverVersion,
+            'deviceId': note.deviceId,
+            'lastModifiedBy': note.lastModifiedBy,
           }, SetOptions(merge: true));
         }
         await batch.commit();
@@ -674,6 +892,7 @@ class FirebaseSyncService {
         final batch = _firestore!.batch();
         for (final id in chunk) {
           batch.set(ref.doc(id), {
+            'ownerId': uid,
             'isDeleted': true,
             'deletedAt': nowIso,
             'updatedAt': FieldValue.serverTimestamp(),
@@ -739,13 +958,13 @@ class FirebaseSyncService {
   /// Listens to real-time changes on `/users/{uid}/notes` and invokes callback.
   void listenToNotes(
     String uid,
-    void Function(List<Note> notes) onData,
+    void Function(List<Note> notes, bool hasPendingWrites) onData,
   ) {
     _notesSubscription?.cancel();
     final ref = _userNotesRef(uid);
     if (ref == null) return;
     try {
-      _notesSubscription = ref.snapshots().listen(
+      _notesSubscription = ref.snapshots(includeMetadataChanges: true).listen(
         (snapshot) {
           final list = <Note>[];
           for (final doc in snapshot.docs) {
@@ -755,7 +974,7 @@ class FirebaseSyncService {
               debugPrint('Parsing remote note error: $e');
             }
           }
-          onData(list);
+          onData(list, snapshot.metadata.hasPendingWrites);
         },
         onError: (err) {
           debugPrint('Firestore notes listener error: $err');
@@ -766,9 +985,77 @@ class FirebaseSyncService {
     }
   }
 
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _scopedNotebookSub;
+
+  /// Attaches a scoped real-time listener to notes within an active notebook.
+  void listenToNotebookNotes(
+    String uid,
+    String notebookId,
+    void Function(List<Note> notes, bool hasPendingWrites) onData,
+  ) {
+    _scopedNotebookSub?.cancel();
+    final ref = _userNotesRef(uid);
+    if (ref == null) return;
+    try {
+      _scopedNotebookSub = ref
+          .where('notebookId', isEqualTo: notebookId)
+          .snapshots(includeMetadataChanges: true)
+          .listen((snapshot) {
+        final list = <Note>[];
+        for (final doc in snapshot.docs) {
+          try {
+            list.add(_noteFromFirestore(doc.id, doc.data()));
+          } catch (_) {}
+        }
+        onData(list, snapshot.metadata.hasPendingWrites);
+      });
+    } catch (e) {
+      debugPrint('Listen to scoped notebook notes error: $e');
+    }
+  }
+
+  /// Cursor-based pagination query for notes under `/users/{uid}/notes`.
+  Future<PaginatedNotesResult> fetchNotesPaginated(
+    String uid, {
+    String? notebookId,
+    int pageSize = 20,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+  }) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null) return PaginatedNotesResult.empty();
+    try {
+      Query<Map<String, dynamic>> query = ref
+          .where('isDeleted', isEqualTo: false)
+          .where('isArchived', isEqualTo: false)
+          .orderBy('updatedAt', descending: true)
+          .limit(pageSize);
+
+      if (notebookId != null) {
+        query = query.where('notebookId', isEqualTo: notebookId);
+      }
+      if (startAfter != null) {
+        query = query.startAfterDocument(startAfter);
+      }
+
+      final snapshot = await query.get();
+      final notes = snapshot.docs
+          .map((doc) => _noteFromFirestore(doc.id, doc.data()))
+          .toList();
+      return PaginatedNotesResult(
+        notes: notes,
+        lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+        hasMore: snapshot.docs.length == pageSize,
+      );
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] fetchNotesPaginated error: $e');
+      return PaginatedNotesResult.empty();
+    }
+  }
+
   void dispose() {
     _notebooksSubscription?.cancel();
     _notesSubscription?.cancel();
+    _scopedNotebookSub?.cancel();
   }
 
   Note _noteFromFirestore(String id, Map<String, dynamic> d) {
@@ -803,12 +1090,26 @@ class FirebaseSyncService {
       createdAt: parseDate(d['createdAt']) ?? now,
       updatedAt: parseDate(d['updatedAt']) ?? now,
       deletedAt: parseDate(d['deletedAt']),
+      deletionId: d['deletionId'] as String?,
+      syncStatus: d['syncStatus'] as String? ?? 'synced',
       lastSyncedAt: parseDate(d['lastSyncedAt']) ?? now,
+      localVersion: d['localVersion'] as int? ?? 1,
+      serverVersion: d['serverVersion'] as int? ?? 1,
+      deviceId: d['deviceId'] as String?,
+      lastModifiedBy: d['lastModifiedBy'] as String?,
     );
   }
 
   Notebook _notebookFromFirestore(String id, Map<String, dynamic> d) {
     final now = DateTime.now();
+
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
     return Notebook(
       id: id,
       ownerId: d['ownerId'] as String? ?? 'unknown',
@@ -827,13 +1128,12 @@ class FirebaseSyncService {
       isPdf: d['isPdf'] as bool? ?? false,
       pdfPath: d['pdfPath'] as String?,
       revision: d['revision'] as int? ?? 1,
-      createdAt: d['createdAt'] != null
-          ? DateTime.tryParse(d['createdAt'] as String) ?? now
-          : now,
-      updatedAt: now,
-      deletedAt: d['deletedAt'] != null
-          ? DateTime.tryParse(d['deletedAt'] as String)
-          : null,
+      createdAt: parseDate(d['createdAt']) ?? now,
+      updatedAt: parseDate(d['updatedAt']) ?? now,
+      deletedAt: parseDate(d['deletedAt']),
+      deletionId: d['deletionId'] as String?,
+      syncStatus: d['syncStatus'] as String? ?? 'synced',
+      lastSyncedAt: parseDate(d['lastSyncedAt']) ?? now,
     );
   }
 }

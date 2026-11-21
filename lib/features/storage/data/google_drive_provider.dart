@@ -452,6 +452,13 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
                   );
                 }
               },
+      ).timeout(
+        const Duration(seconds: 45),
+        onTimeout: () => GoogleDriveSyncResult(
+          success: false,
+          errorMessage: 'Google Drive sync timed out after 45 seconds',
+          timestamp: DateTime.now(),
+        ),
       );
 
       if (_isDisposed) return;
@@ -473,10 +480,8 @@ class GoogleDriveNotifier extends Notifier<GoogleDriveState> {
           syncProgressMessage: silent ? null : 'Sync complete',
         );
 
-        // Reload local notebooks into provider
-        if (result.downloadedNotebooks > 0 ||
-            result.deletedCount > 0 ||
-            result.downloadedPages > 0) {
+        // Reload local notebooks into provider only if new content was downloaded
+        if (result.downloadedNotebooks > 0 || result.downloadedPages > 0) {
           await ref.read(notebooksProvider.notifier).loadFromDatabase();
           ref.read(noteHistoryProvider.notifier).refresh();
         }

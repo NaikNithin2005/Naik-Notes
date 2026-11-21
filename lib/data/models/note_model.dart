@@ -19,7 +19,13 @@ class Note {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
+  final String? deletionId;
+  final String syncStatus;
   final DateTime? lastSyncedAt;
+  final int localVersion;
+  final int serverVersion;
+  final String? deviceId;
+  final String? lastModifiedBy;
 
   const Note({
     required this.id,
@@ -37,7 +43,13 @@ class Note {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
+    this.deletionId,
+    this.syncStatus = 'synced',
     this.lastSyncedAt,
+    this.localVersion = 1,
+    this.serverVersion = 1,
+    this.deviceId,
+    this.lastModifiedBy,
   });
 
   /// Creates a blank note with empty Quill Delta JSON.
@@ -46,6 +58,8 @@ class Note {
     required String notebookId,
     String title = 'Untitled Note',
     List<String> tags = const [],
+    String? deviceId,
+    String? lastModifiedBy,
   }) {
     final now = DateTime.now();
     const defaultDeltaJson = '[{"insert":"\\n"}]';
@@ -64,6 +78,11 @@ class Note {
       isDeleted: false,
       createdAt: now,
       updatedAt: now,
+      syncStatus: 'synced',
+      localVersion: 1,
+      serverVersion: 1,
+      deviceId: deviceId,
+      lastModifiedBy: lastModifiedBy,
     );
   }
 
@@ -103,8 +122,15 @@ class Note {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    String? deletionId,
+    String? syncStatus,
     DateTime? lastSyncedAt,
+    int? localVersion,
+    int? serverVersion,
+    String? deviceId,
+    String? lastModifiedBy,
     bool clearDeletedAt = false,
+    bool clearDeletionId = false,
   }) {
     final newDelta = contentDelta ?? this.contentDelta;
     final newPlainText = plainText ??
@@ -128,7 +154,13 @@ class Note {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
+      deletionId: clearDeletionId ? null : (deletionId ?? this.deletionId),
+      syncStatus: syncStatus ?? this.syncStatus,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      localVersion: localVersion ?? this.localVersion,
+      serverVersion: serverVersion ?? this.serverVersion,
+      deviceId: deviceId ?? this.deviceId,
+      lastModifiedBy: lastModifiedBy ?? this.lastModifiedBy,
     );
   }
 
@@ -149,7 +181,13 @@ class Note {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'deletedAt': deletedAt?.toIso8601String(),
+      'deletionId': deletionId,
+      'syncStatus': syncStatus,
       'lastSyncedAt': lastSyncedAt?.toIso8601String(),
+      'localVersion': localVersion,
+      'serverVersion': serverVersion,
+      'deviceId': deviceId,
+      'lastModifiedBy': lastModifiedBy,
     };
   }
 
@@ -183,10 +221,15 @@ class Note {
       deletedAt: json['deletedAt'] != null
           ? DateTime.tryParse(json['deletedAt'] as String)
           : null,
+      deletionId: json['deletionId'] as String?,
+      syncStatus: json['syncStatus'] as String? ?? 'synced',
       lastSyncedAt: json['lastSyncedAt'] != null
           ? DateTime.tryParse(json['lastSyncedAt'] as String)
           : null,
+      localVersion: json['localVersion'] as int? ?? 1,
+      serverVersion: json['serverVersion'] as int? ?? 1,
+      deviceId: json['deviceId'] as String?,
+      lastModifiedBy: json['lastModifiedBy'] as String?,
     );
   }
 }
-

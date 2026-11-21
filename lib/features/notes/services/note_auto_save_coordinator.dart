@@ -154,6 +154,8 @@ class NoteAutoSaveCoordinator extends Notifier<NoteSaveState>
       preview: preview,
       tags: pending.tags ?? pending.originalNote.tags,
       updatedAt: now,
+      localVersion: pending.originalNote.localVersion + 1,
+      syncStatus: 'pending',
     );
 
     // 1. Immediate offline-first local persistence to SQLite
@@ -180,6 +182,12 @@ class NoteAutoSaveCoordinator extends Notifier<NoteSaveState>
         final pushed = await _firebaseSync.pushNote(uid, updatedNote);
         if (!ref.mounted) return;
         if (pushed) {
+          final syncedNote = updatedNote.copyWith(
+            serverVersion: updatedNote.localVersion,
+            syncStatus: 'synced',
+            lastSyncedAt: now,
+          );
+          await _noteRepo.saveNote(syncedNote);
           state = state.copyWith(
             status: SaveStatus.saved,
             lastSavedAt: now,
@@ -188,7 +196,7 @@ class NoteAutoSaveCoordinator extends Notifier<NoteSaveState>
           );
         } else {
           state = state.copyWith(
-            status: SaveStatus.failed,
+            status: SaveStatus.saved,
             errorMessage: 'Saved locally (Offline)',
             lastSavedAt: now,
             isDirty: false,
@@ -197,8 +205,8 @@ class NoteAutoSaveCoordinator extends Notifier<NoteSaveState>
       } catch (e) {
         if (!ref.mounted) return;
         state = state.copyWith(
-          status: SaveStatus.failed,
-          errorMessage: 'Saved locally (Cloud push failed: $e)',
+          status: SaveStatus.saved,
+          errorMessage: 'Saved locally (Offline)',
           lastSavedAt: now,
           isDirty: false,
         );

@@ -13,6 +13,7 @@ import 'package:naik_notes/features/notes/presentation/screens/notes_screen.dart
 import 'package:naik_notes/features/profile/presentation/screens/profile_screen.dart';
 import 'package:naik_notes/features/settings/presentation/screens/settings_screen.dart';
 import 'package:naik_notes/features/templates/presentation/screens/template_gallery_screen.dart';
+import 'package:naik_notes/features/trash/presentation/screens/trash_screen.dart';
 
 import 'route_names.dart';
 
@@ -125,6 +126,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.templateGallery,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: TemplateGalleryScreen()),
+          ),
+          GoRoute(
+            path: RouteNames.trash,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TrashScreen()),
           ),
           GoRoute(
             path: RouteNames.profile,

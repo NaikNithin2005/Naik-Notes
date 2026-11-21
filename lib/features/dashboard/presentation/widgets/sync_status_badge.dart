@@ -90,6 +90,15 @@ class SyncStatusBadge extends ConsumerWidget {
         );
         label = driveState.isConnected ? 'Cloud Synced' : 'Synced';
         break;
+      case SyncUiStatus.saving:
+        badgeColor = Colors.blue.shade700;
+        leadingWidget = SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(strokeWidth: 2, color: badgeColor),
+        );
+        label = 'Saving';
+        break;
       case SyncUiStatus.syncing:
         badgeColor = AppColors.syncPending;
         leadingWidget = SizedBox(
@@ -126,10 +135,29 @@ class SyncStatusBadge extends ConsumerWidget {
         );
         label = 'Pending Changes';
         break;
+      case SyncUiStatus.conflict:
+        badgeColor = Colors.deepOrange.shade600;
+        leadingWidget = Icon(
+          Icons.call_split_rounded,
+          size: 14,
+          color: badgeColor,
+        );
+        label = 'Conflict Copy';
+        break;
     }
 
+    final tooltipMessage = switch (effectiveStatus) {
+      SyncUiStatus.synced => 'All notes are up to date.',
+      SyncUiStatus.saving => 'Saving changes locally to this device...',
+      SyncUiStatus.syncing => 'Synchronizing changes with cloud...',
+      SyncUiStatus.offline => 'Your changes are saved on this device and will sync when you\'re online.',
+      SyncUiStatus.pending => 'Your changes are saved on this device and will sync when you\'re online.',
+      SyncUiStatus.error => 'Some changes could not be synchronized. Your local content is safe.',
+      SyncUiStatus.conflict => 'Conflicting edits were detected. A separate copy has been preserved.',
+    };
+
     return Tooltip(
-      message: 'Cloud Sync: $label (Tap for details)',
+      message: tooltipMessage,
       child: InkWell(
         onTap: onTap ?? () => SyncDetailsDialog.show(context),
         borderRadius: BorderRadius.circular(20),

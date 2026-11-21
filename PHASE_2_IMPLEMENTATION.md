@@ -160,17 +160,24 @@ Wrapped at the root of the editor layouts via `NoteShortcuts`:
 
 ---
 
-## 8. Test Verification & Code Quality
+## 8. Centralized Deletion System, Tombstones & Trash Retention
+
+### Architecture Overview
+1. **Immutable Globally Unique IDs:** Every notebook and note uses stable, immutable UUIDs (`id`, `ownerId`/`userId`, `createdAt`, `updatedAt`, `deletedAt`, `deletionId`, `syncStatus`, `lastSyncedAt`). The same ID is preserved across Android, iPad, Windows, Firebase, and Google Drive.
+2. **Persistent Tombstone Ledger:** Permanently deleted items record a tombstone in `tombstonesTable` (SQLite), sync to `/users/{uid}/tombstones/{id}` in Firestore, and persist in `tombstones_manifest.json` on Google Drive. Incoming synchronization payloads are checked against the tombstone registry; tombstoned entities are rejected and can never be resurrected by stale offline devices.
+3. **30-Day Trash Retention:** Moving a notebook or note to Trash sets `deletedAt = now()` and `deletionId`. In Google Drive, cloud recovery files are retained. The auto-retention policy (`cleanupExpiredTrash`) automatically calculates expiration (`now - deletedAt >= 30 days`), permanently purging expired files and recording tombstones.
+4. **Elimination of `(Cloud Copy)` Duplication:** Removed conflict renaming logic that previously minted new UUIDs. Remote files and local files are unified through `driveFileMappingsTable` (`entityId` <-> `driveFileId`), with deterministic Last-Write-Wins and Tombstone priority.
+5. **Dedicated Trash Screen:** Accessible via `/trash` with tabs for Notebooks and Notes, dynamic 30-day countdown chips ("Deleted X days ago · Y days left"), gallery-style multi-selection toolbar, individual/bulk restoration, and irreversible permanent deletion.
+
+---
+
+## 9. Test Verification & Code Quality
 
 ### Automated Test Results
-- **Phase 2 Test Suite:** 31 tests passed (100%).
-- **Pre-existing App & Regression Suite:** 20 tests passed (100%).
-- **Total Tests Passed:** **51 of 51 tests**.
+- **Phase 2 Note Suite:** 31 tests passed.
+- **Tombstones & 30-Day Retention Suite:** 7 tests passed.
+- **Sync Deduplication & Conflict Suite:** 3 tests passed.
+- **Gallery Multi-Selection Suite:** 12 tests passed.
+- **Pre-existing App & Regression Suite:** 20 tests passed.
 - **Static Analysis:** `flutter analyze` completed with **0 warnings and 0 errors**.
-
-```
-00:03 +31: All tests passed! (Phase 2 Test Suite)
-00:03 +20: All tests passed! (Pre-existing Regression Suite)
-Analyzing Naik Notes... No issues found! (ran in 3.2s)
-```
 

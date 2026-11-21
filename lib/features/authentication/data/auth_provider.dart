@@ -5,6 +5,7 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/firebase_auth_repository.dart';
 import '../../folders/data/folder_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
+import '../../notes/data/note_provider.dart';
 import '../../sync/data/sync_provider.dart';
 import 'auth_error_handler.dart';
 
@@ -497,6 +498,9 @@ class AuthNotifier extends Notifier<AuthState> {
       try {
         ref.invalidate(notebooksProvider);
         ref.invalidate(foldersProvider);
+        ref.invalidate(notesProvider);
+        ref.invalidate(selectedNoteProvider);
+        ref.invalidate(trashNotesProvider);
         ref.read(selectedFolderProvider.notifier).clearSelection();
         ref.invalidate(syncProvider);
         ref.read(firebaseSyncServiceProvider).dispose();

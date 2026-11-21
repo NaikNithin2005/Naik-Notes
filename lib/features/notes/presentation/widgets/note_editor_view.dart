@@ -548,6 +548,63 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
             ],
 
             // Note Content Canvas (Title, Tags, Quill Editor)
+            if (widget.note.title.contains('(Conflict Copy'))
+              Container(
+                margin: EdgeInsets.symmetric(
+                  horizontal: widget.isMobile ? 16 : 48,
+                  vertical: 8,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.deepOrange.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.call_split_rounded, size: 20, color: Colors.deepOrange),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Conflicting Edits Preserved',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepOrange,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'This conflict copy was preserved to prevent overwriting edits from another device.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      ),
+                      onPressed: () {
+                        final cleanTitle = widget.note.title
+                            .replaceAll(RegExp(r'\s*\(Conflict Copy[^\)]*\)'), '')
+                            .trim();
+                        ref.read(notesProvider.notifier).renameNote(widget.note.id, cleanTitle);
+                      },
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text('Keep This Copy', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+
             Expanded(
               child: SingleChildScrollView(
                 controller: _editorScrollController,

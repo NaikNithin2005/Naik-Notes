@@ -15,8 +15,9 @@ class AppShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith(RouteNames.notes)) return 1;
     if (location.startsWith(RouteNames.templateGallery)) return 2;
-    if (location.startsWith(RouteNames.profile)) return 3;
-    if (location.startsWith(RouteNames.settings)) return 4;
+    if (location.startsWith(RouteNames.trash)) return 3;
+    if (location.startsWith(RouteNames.profile)) return 4;
+    if (location.startsWith(RouteNames.settings)) return 5;
     return 0; // Dashboard
   }
 
@@ -32,9 +33,12 @@ class AppShell extends StatelessWidget {
         context.go(RouteNames.templateGallery);
         break;
       case 3:
-        context.go(RouteNames.profile);
+        context.go(RouteNames.trash);
         break;
       case 4:
+        context.go(RouteNames.profile);
+        break;
+      case 5:
         context.go(RouteNames.settings);
         break;
     }
@@ -91,6 +95,11 @@ class AppShell extends StatelessWidget {
                   label: Text('Templates'),
                 ),
                 NavigationRailDestination(
+                  icon: Icon(Icons.delete_outline_rounded),
+                  selectedIcon: Icon(Icons.delete_rounded),
+                  label: Text('Trash'),
+                ),
+                NavigationRailDestination(
                   icon: Icon(Icons.person_outline_rounded),
                   selectedIcon: Icon(Icons.person_rounded),
                   label: Text('Profile'),
@@ -130,6 +139,11 @@ class AppShell extends StatelessWidget {
             icon: Icon(Icons.dashboard_customize_outlined),
             selectedIcon: Icon(Icons.dashboard_customize_rounded),
             label: 'Templates',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.delete_outline_rounded),
+            selectedIcon: Icon(Icons.delete_rounded),
+            label: 'Trash',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),

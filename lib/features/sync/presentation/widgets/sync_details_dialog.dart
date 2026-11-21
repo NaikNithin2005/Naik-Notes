@@ -34,6 +34,11 @@ class SyncDetailsDialog extends ConsumerWidget {
         statusTitle = 'All Changes Synced';
         statusIcon = Icons.cloud_done_rounded;
         break;
+      case SyncUiStatus.saving:
+        statusColor = Colors.blue.shade700;
+        statusTitle = 'Saving Locally...';
+        statusIcon = Icons.save_outlined;
+        break;
       case SyncUiStatus.syncing:
         statusColor = AppColors.syncPending;
         statusTitle = 'Synchronizing...';
@@ -53,6 +58,11 @@ class SyncDetailsDialog extends ConsumerWidget {
         statusColor = AppColors.syncError;
         statusTitle = 'Sync Error';
         statusIcon = Icons.error_outline_rounded;
+        break;
+      case SyncUiStatus.conflict:
+        statusColor = Colors.deepOrange.shade600;
+        statusTitle = 'Conflict Copy Created';
+        statusIcon = Icons.call_split_rounded;
         break;
     }
 

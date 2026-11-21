@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../data/local/database_provider.dart';
@@ -12,12 +13,13 @@ import '../../../data/models/sticky_note_model.dart';
 import '../../../data/models/stroke_model.dart';
 import '../../../data/models/sync_operation_model.dart';
 import '../../../services/storage/firebase_storage_service.dart';
+import '../../../services/history/note_history_service.dart';
 import '../../../services/sync/firebase_sync_service.dart';
 import '../../../services/sync/sync_service.dart';
 import '../../authentication/data/auth_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
 
-enum SyncUiStatus { synced, syncing, offline, error, pending }
+enum SyncUiStatus { synced, saving, syncing, offline, error, pending, conflict }
 
 class SyncState {
   final SyncUiStatus status;
@@ -125,6 +127,18 @@ class SyncNotifier extends Notifier<SyncState> {
     return const SyncState();
   }
 
+  String _extractCleanTitle(String title) {
+    final copyPattern = RegExp(
+      r'\s*\((?:Cloud Copy|Conflict Copy|Copy)(?:\s+\d+)?\)$',
+      caseSensitive: false,
+    );
+    String clean = title.trim();
+    while (copyPattern.hasMatch(clean)) {
+      clean = clean.replaceAll(copyPattern, '').trim();
+    }
+    return clean.isEmpty ? 'Untitled Notebook' : clean;
+  }
+
   void _setupRealTimeSync(String uid) {
     final fbSync = ref.read(firebaseSyncServiceProvider);
     fbSync.listenToNotebooks(uid, (remoteNotebooks) async {
@@ -134,13 +148,65 @@ class SyncNotifier extends Notifier<SyncState> {
         bool hasChanges = false;
 
         for (final rNb in remoteNotebooks) {
-          if (rNb.deletedAt != null) {
-            await notebookRepo.deleteNotebook(rNb.id);
-            hasChanges = true;
+          // 1. Tombstone check: if permanently deleted, purge from cloud too!
+          if (await notebookRepo.isTombstoned(rNb.id)) {
+            await fbSync.permanentlyDeleteNotebook(uid, rNb.id);
+            continue;
+          }
+
+          // 2. Duplicate safeguard: prevent resurrecting redundant (Cloud Copy) duplicates
+          final cleanTitle = _extractCleanTitle(rNb.title);
+          final cleanBaseLower = cleanTitle.toLowerCase();
+          final isCopy = rNb.title != cleanTitle;
+
+          final allLocal = await notebookRepo.getAllNotebooks(
+            ownerId: uid,
+            includeArchived: true,
+          );
+          final hasCanonical = allLocal.any(
+            (n) =>
+                n.id != rNb.id &&
+                _extractCleanTitle(n.title).toLowerCase() == cleanBaseLower &&
+                n.deletedAt == null,
+          );
+
+          if (isCopy && hasCanonical) {
+            // A canonical notebook already exists locally; purge redundant remote copy
+            await notebookRepo.permanentlyDeleteNotebook(rNb.id, ownerId: uid);
+            await fbSync.permanentlyDeleteNotebook(uid, rNb.id);
+            continue;
+          }
+
+          final targetNb = isCopy ? rNb.copyWith(title: cleanTitle) : rNb;
+          final local = await notebookRepo.getAnyNotebookById(rNb.id, ownerId: uid);
+
+          if (targetNb.deletedAt != null) {
+            // Remote is soft-deleted
+            if (local != null && local.deletedAt == null) {
+              await notebookRepo.deleteNotebook(targetNb.id, deletionId: targetNb.deletionId);
+              hasChanges = true;
+            }
           } else {
-            final local = await notebookRepo.getNotebookById(rNb.id, ownerId: uid);
-            if (local == null || rNb.revision >= local.revision) {
-              await notebookRepo.saveNotebook(rNb);
+            // Remote is active
+            if (local != null && local.deletedAt != null) {
+              // Local is in Trash! Only restore if remote was explicitly edited/restored after deletion
+              if (targetNb.updatedAt.isAfter(local.deletedAt!) && targetNb.revision > local.revision) {
+                await notebookRepo.restoreNotebook(targetNb.id);
+                hasChanges = true;
+              } else {
+                // Re-propagate local deletion to cloud
+                await fbSync.deleteNotebook(uid, local.id, deletionId: local.deletionId);
+              }
+            } else if (local == null) {
+              // Truly new notebook from another device
+              await notebookRepo.saveNotebook(targetNb);
+              if (isCopy) {
+                await fbSync.pushNotebook(uid, targetNb);
+              }
+              hasChanges = true;
+            } else if (targetNb.revision > local.revision ||
+                (targetNb.revision == local.revision && targetNb.updatedAt.isAfter(local.updatedAt))) {
+              await notebookRepo.saveNotebook(targetNb);
               hasChanges = true;
             }
           }
@@ -280,24 +346,195 @@ class SyncNotifier extends Notifier<SyncState> {
           }
         }
 
-        // 2. Push user's local notebooks to Firestore
+        // 0. Tombstone & Retention Sync
+        final remoteTombstones = await fbSync.fetchTombstones(uid);
+        for (final t in remoteTombstones) {
+          await notebookRepo.saveTombstone(t);
+        }
+        final localTombstones = await notebookRepo.getAllTombstones(ownerId: uid);
+        if (localTombstones.isNotEmpty) {
+          await fbSync.pushTombstonesBatch(uid, localTombstones);
+        }
+        await notebookRepo.cleanupExpiredTrash(retentionDays: 30, ownerId: uid);
+        final noteRepo = ref.read(noteRepositoryProvider);
+        await noteRepo.cleanupExpiredTrash(retentionDays: 30, ownerId: uid);
+
+        // 2. Push user's pending local notebooks to Firestore in batch
         final localNotebooks = await notebookRepo.getAllNotebooks(
           ownerId: uid,
           includeArchived: true,
         );
-        for (final nb in localNotebooks) {
-          await fbSync.pushNotebook(uid, nb);
+        final localDeletedNotebooks = await notebookRepo.getDeletedNotebooks(ownerId: uid);
+        final pendingNotebooks = [...localNotebooks, ...localDeletedNotebooks]
+            .where((nb) => nb.syncStatus == 'pending')
+            .toList();
+        if (pendingNotebooks.isNotEmpty) {
+          await fbSync.pushNotebooksBatch(uid, pendingNotebooks);
         }
 
-        // 3. Pull remote notebooks from Firestore
+        // 3. Pull remote notebooks from Firestore with deterministic conflict resolution & copy prevention
         final remoteNotebooks = await fbSync.fetchNotebooks(uid);
         for (final rNb in remoteNotebooks) {
-          if (rNb.deletedAt != null) {
-            await notebookRepo.deleteNotebook(rNb.id);
+          if (await notebookRepo.isTombstoned(rNb.id)) {
+            await fbSync.permanentlyDeleteNotebook(uid, rNb.id);
+            continue;
+          }
+
+          final cleanTitle = _extractCleanTitle(rNb.title);
+          final cleanBaseLower = cleanTitle.toLowerCase();
+          final isCopy = rNb.title != cleanTitle;
+
+          final allLocal = await notebookRepo.getAllNotebooks(
+            ownerId: uid,
+            includeArchived: true,
+          );
+          final hasCanonical = allLocal.any(
+            (n) =>
+                n.id != rNb.id &&
+                _extractCleanTitle(n.title).toLowerCase() == cleanBaseLower &&
+                n.deletedAt == null,
+          );
+
+          if (isCopy && hasCanonical) {
+            // Redundant copy: permanently delete from cloud and tombstone locally
+            await notebookRepo.permanentlyDeleteNotebook(rNb.id, ownerId: uid);
+            await fbSync.permanentlyDeleteNotebook(uid, rNb.id);
+            continue;
+          }
+
+          final targetNb = isCopy ? rNb.copyWith(title: cleanTitle) : rNb;
+          final local = await notebookRepo.getAnyNotebookById(rNb.id, ownerId: uid);
+          if (targetNb.deletedAt != null) {
+            if (local != null && local.deletedAt == null) {
+              await notebookRepo.deleteNotebook(targetNb.id, deletionId: targetNb.deletionId);
+            }
           } else {
-            final local = await notebookRepo.getNotebookById(rNb.id, ownerId: uid);
-            if (local == null || rNb.revision >= local.revision) {
-              await notebookRepo.saveNotebook(rNb);
+            if (local != null && local.deletedAt != null) {
+              if (targetNb.updatedAt.isAfter(local.deletedAt!) && targetNb.revision > local.revision) {
+                await notebookRepo.restoreNotebook(targetNb.id);
+              } else {
+                await fbSync.deleteNotebook(uid, local.id, deletionId: local.deletionId);
+              }
+            } else if (local == null) {
+              await notebookRepo.saveNotebook(targetNb);
+              if (isCopy) {
+                await fbSync.pushNotebook(uid, targetNb);
+              }
+            } else if (targetNb.revision > local.revision ||
+                (targetNb.revision == local.revision && targetNb.updatedAt.isAfter(local.updatedAt))) {
+              await notebookRepo.saveNotebook(targetNb);
+            }
+          }
+        }
+
+        // 3b. Push & pull rich-text notes with Multi-Device Collision Detection
+        int noteConflicts = 0;
+        final localNotes = await noteRepo.getAllNotes(
+          ownerId: uid,
+          includeArchived: true,
+          includeDeleted: true,
+        );
+        final remoteNotes = await fbSync.fetchNotes(uid);
+        final remoteNotesById = {for (final r in remoteNotes) r.id: r};
+
+        for (final rNote in remoteNotes) {
+          if (await notebookRepo.isTombstoned(rNote.id)) {
+            await fbSync.permanentlyDeleteNote(uid, rNote.id);
+            continue;
+          }
+          final localNote = await noteRepo.getNoteById(rNote.id, ownerId: uid);
+          if (rNote.deletedAt != null || rNote.isDeleted) {
+            if (localNote != null && !localNote.isDeleted) {
+              await noteRepo.deleteNote(rNote.id, deletionId: rNote.deletionId);
+            }
+          } else {
+            if (localNote != null && localNote.isDeleted) {
+              if (rNote.updatedAt.isAfter(localNote.deletedAt ?? localNote.updatedAt)) {
+                await noteRepo.restoreNote(rNote.id);
+              } else {
+                await fbSync.deleteNote(uid, localNote.id);
+              }
+            } else if (localNote == null) {
+              await noteRepo.saveNote(rNote);
+            } else {
+              // Both local and remote active versions exist: detect collisions
+              final isLocalModified = localNote.syncStatus == 'pending';
+              final isRemoteNewer = rNote.serverVersion > localNote.serverVersion ||
+                  (rNote.serverVersion == localNote.serverVersion &&
+                      rNote.updatedAt.isAfter(localNote.updatedAt));
+              final hasContentDiverged =
+                  localNote.contentDelta != rNote.contentDelta ||
+                  localNote.title != rNote.title;
+
+              if (isLocalModified && isRemoteNewer && hasContentDiverged) {
+                // COLLISION DETECTED!
+                // Preserve local offline work as a Conflict Copy (never overwrite)
+                final platform = NoteHistoryService.currentDeviceName.split(' ').first;
+                final conflictTitle = '${localNote.title} (Conflict Copy - $platform)';
+
+                // Prevent infinite conflict copy duplication on sync retries
+                final existingInNotebook = await noteRepo.getAllNotes(
+                  ownerId: uid,
+                  notebookId: localNote.notebookId,
+                );
+                final alreadyExists = existingInNotebook.any(
+                  (n) => n.title == conflictTitle && n.contentDelta == localNote.contentDelta,
+                );
+
+                if (!alreadyExists) {
+                  final conflictNote = localNote.copyWith(
+                    id: const Uuid().v4(),
+                    title: conflictTitle,
+                    localVersion: 1,
+                    serverVersion: 1,
+                    syncStatus: 'pending',
+                    updatedAt: DateTime.now(),
+                  );
+                  await noteRepo.saveNote(conflictNote);
+                  await fbSync.pushNote(uid, conflictNote);
+                  noteConflicts++;
+                }
+
+                // Accept authoritative remote note as canonical
+                await noteRepo.saveNote(rNote.copyWith(
+                  syncStatus: 'synced',
+                  localVersion: rNote.serverVersion,
+                ));
+              } else if (isRemoteNewer) {
+                // Remote is simply newer with no local pending conflict
+                await noteRepo.saveNote(rNote.copyWith(
+                  syncStatus: 'synced',
+                  localVersion: rNote.serverVersion,
+                ));
+              } else if (isLocalModified) {
+                // Local is newer: push to Firestore with incremented revision
+                final pushedNote = localNote.copyWith(
+                  serverVersion: localNote.localVersion,
+                  syncStatus: 'synced',
+                  lastSyncedAt: DateTime.now(),
+                );
+                final ok = await fbSync.pushNote(uid, pushedNote);
+                if (ok) {
+                  await noteRepo.saveNote(pushedNote);
+                }
+              }
+            }
+          }
+        }
+
+        // Push any brand-new local notes that do not exist remotely yet
+        for (final localNote in localNotes) {
+          if (!remoteNotesById.containsKey(localNote.id) &&
+              localNote.syncStatus == 'pending' &&
+              !localNote.isDeleted) {
+            if (await notebookRepo.isTombstoned(localNote.id)) continue;
+            final pushed = await fbSync.pushNote(uid, localNote);
+            if (pushed) {
+              await noteRepo.saveNote(localNote.copyWith(
+                syncStatus: 'synced',
+                serverVersion: localNote.localVersion,
+                lastSyncedAt: DateTime.now(),
+              ));
             }
           }
         }
@@ -318,18 +555,19 @@ class SyncNotifier extends Notifier<SyncState> {
 
         final now = DateTime.now();
         state = state.copyWith(
-          status: SyncUiStatus.synced,
+          status: noteConflicts > 0 ? SyncUiStatus.conflict : SyncUiStatus.synced,
           lastSyncedAt: now,
           pendingCount: pendingRemaining,
           lastPushed: pushedCount + localNotebooks.length,
-          lastPulled: remoteNotebooks.length,
+          lastPulled: remoteNotes.length + remoteNotebooks.length,
+          lastConflicts: state.lastConflicts + noteConflicts,
           clearError: true,
         );
 
         return SyncResult(
           isSuccess: true,
           pushedCount: pushedCount + localNotebooks.length,
-          pulledCount: remoteNotebooks.length,
+          pulledCount: remoteNotebooks.length + remoteNotes.length,
           timestamp: now,
         );
       } else {
@@ -352,6 +590,10 @@ class SyncNotifier extends Notifier<SyncState> {
         errorMessage: e.toString(),
         timestamp: DateTime.now(),
       );
+    } finally {
+      if (state.status == SyncUiStatus.syncing) {
+        state = state.copyWith(status: SyncUiStatus.synced);
+      }
     }
   }
 }

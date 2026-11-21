@@ -4,7 +4,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:naik_notes/core/constants/app_constants.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
 import 'package:naik_notes/data/models/notebook_model.dart';
 import 'package:naik_notes/data/models/search_index_model.dart';
@@ -477,21 +476,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const NaikNotesLogo(size: 32, showText: true),
+                        const Flexible(
+                          child: NaikNotesLogo(size: 28, showText: true),
+                        ),
+                        const SizedBox(width: 6),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            const SyncStatusBadge(),
+                            const SizedBox(width: 2),
                             // Theme toggle button (Dark vs Reading Mode)
                             IconButton(
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
                               icon: Icon(
                                 ref.watch(themeControllerProvider).themeMode ==
                                         AppThemeMode.dark
                                     ? Icons.auto_stories_outlined
                                     : Icons.dark_mode_outlined,
-                                size: 20,
+                                size: 18,
                               ),
-                              tooltip:
-                                  ref
+                              tooltip: ref
                                           .watch(themeControllerProvider)
                                           .themeMode ==
                                       AppThemeMode.dark
@@ -501,43 +510,64 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   .read(themeControllerProvider.notifier)
                                   .toggleTheme(),
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.storefront_outlined,
-                                size: 20,
+                            // Overflow menu for Template Store and History
+                            PopupMenuButton<String>(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
                               ),
-                              tooltip: 'Template Store',
-                              onPressed: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (ctx) => const TemplateStoreSheet(),
-                                );
+                              icon: const Icon(Icons.more_vert_rounded, size: 20),
+                              tooltip: 'More actions',
+                              onSelected: (val) {
+                                if (val == 'templates') {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (ctx) =>
+                                        const TemplateStoreSheet(),
+                                  );
+                                } else if (val == 'history') {
+                                  NotesHistorySheet.show(context);
+                                }
                               },
+                              itemBuilder: (ctx) => const [
+                                PopupMenuItem(
+                                  value: 'templates',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.storefront_outlined, size: 18),
+                                      SizedBox(width: 10),
+                                      Text('Template Store'),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'history',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.history_edu_rounded, size: 18),
+                                      SizedBox(width: 10),
+                                      Text('Notes & Sync History'),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.history_edu_rounded,
-                                size: 20,
-                              ),
-                              tooltip: 'Notes & Sync History',
-                              onPressed: () => NotesHistorySheet.show(context),
-                            ),
-                            const SyncStatusBadge(),
                             const SizedBox(width: 4),
                             InkWell(
                               onTap: () => context.go(RouteNames.profile),
                               borderRadius: BorderRadius.circular(20),
                               child: CircleAvatar(
-                                radius: 14,
+                                radius: 13,
                                 backgroundColor: theme.colorScheme.primary,
                                 child: Text(
                                   (currentUser?.displayName ?? 'U')
                                       .substring(0, 1)
                                       .toUpperCase(),
                                   style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -724,9 +754,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   : selectedFolderId,
                             ),
                             icon: const Icon(Icons.add_rounded, size: 18),
-                            label: const Text('New Notebook'),
+                            label: const Text(
+                              'New Notebook',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -740,10 +777,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             Icons.picture_as_pdf_outlined,
                             size: 18,
                           ),
-                          label: const Text('Import PDF'),
+                          label: const Text(
+                            'Import PDF',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
+                              horizontal: 12,
                               vertical: 12,
                             ),
                             shape: RoundedRectangleBorder(
@@ -1221,18 +1262,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               sliver: SliverLayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.crossAxisExtent;
-                  final crossAxisCount = width > AppConstants.tabletBreakpoint
-                      ? 4
-                      : width > AppConstants.mobileBreakpoint
-                      ? 3
-                      : 2;
+                  final crossAxisCount = width > 1600
+                      ? 6
+                      : width > 1200
+                          ? 5
+                          : width > 850
+                              ? 4
+                              : width > 550
+                                  ? 3
+                                  : 2;
 
                   return SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       crossAxisSpacing: 20,
                       mainAxisSpacing: 24,
-                      childAspectRatio: 0.68,
+                      childAspectRatio: 0.72,
                     ),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final nb = filteredNotebooks[index];

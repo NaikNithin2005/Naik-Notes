@@ -115,6 +115,16 @@ class NaikEmptyState extends StatelessWidget {
     );
   }
 
+  /// Factory for empty trash tab.
+  factory NaikEmptyState.trash() {
+    return const NaikEmptyState(
+      icon: Icons.delete_outline_rounded,
+      title: 'Trash is Empty',
+      description:
+          'Notebooks and notes moved to trash will appear here. They are automatically permanently deleted after 30 days.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
