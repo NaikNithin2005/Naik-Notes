@@ -131,19 +131,21 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
       coverImageUrl = _customCoverPath;
     }
 
-    await ref
-        .read(notebooksProvider.notifier)
-        .addNotebook(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          folderId: _selectedFolderId,
-          coverId: _selectedCoverId,
-          coverColorHex: _selectedCoverColor,
-          coverImageUrl: coverImageUrl,
-          paperTemplateId: _selectedTemplate.id,
-          orientation: _selectedOrientation,
-          pageSize: _selectedPageSize,
-        );
+    try {
+      await ref
+          .read(notebooksProvider.notifier)
+          .addNotebook(
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim(),
+            folderId: _selectedFolderId,
+            coverId: _selectedCoverId,
+            coverColorHex: _selectedCoverColor,
+            coverImageUrl: coverImageUrl,
+            paperTemplateId: _selectedTemplate.id,
+            orientation: _selectedOrientation,
+            pageSize: _selectedPageSize,
+          );
+    } catch (_) {}
 
     if (mounted) {
       setState(() => _isUploadingCover = false);

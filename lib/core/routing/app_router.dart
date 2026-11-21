@@ -9,6 +9,7 @@ import 'package:naik_notes/features/dashboard/presentation/screens/dashboard_scr
 import 'package:naik_notes/features/dashboard/presentation/widgets/app_shell.dart';
 import 'package:naik_notes/features/landing/presentation/screens/landing_screen.dart';
 import 'package:naik_notes/features/notebooks/presentation/screens/notebook_view_screen.dart';
+import 'package:naik_notes/features/notes/presentation/screens/notes_screen.dart';
 import 'package:naik_notes/features/profile/presentation/screens/profile_screen.dart';
 import 'package:naik_notes/features/settings/presentation/screens/settings_screen.dart';
 import 'package:naik_notes/features/templates/presentation/screens/template_gallery_screen.dart';
@@ -114,6 +115,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.dashboard,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: DashboardScreen()),
+          ),
+          GoRoute(
+            path: RouteNames.notes,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: NotesScreen()),
           ),
           GoRoute(
             path: RouteNames.templateGallery,

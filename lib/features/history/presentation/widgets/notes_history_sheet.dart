@@ -74,12 +74,12 @@ class _NotesHistorySheetState extends ConsumerState<NotesHistorySheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.12),
+                    color: AppColors.leatherTerracotta.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.history_edu_rounded,
-                    color: AppColors.accent,
+                    color: AppColors.leatherTerracotta,
                     size: 24,
                   ),
                 ),
@@ -208,7 +208,7 @@ class _NotesHistorySheetState extends ConsumerState<NotesHistorySheet> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final item = filtered[index];
                       return _HistoryCard(entry: item);
@@ -414,3 +414,4 @@ class _HistoryCard extends StatelessWidget {
     );
   }
 }
+

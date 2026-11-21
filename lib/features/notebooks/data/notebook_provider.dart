@@ -20,12 +20,10 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
 
   @override
   List<Notebook> build() {
-    ref.watch(notebookRepositoryProvider);
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
+    final userId = ref.watch(authProvider.select((s) => s.user?.id));
 
-    if (user != null) {
-      Future.microtask(() => loadForUser(user.id));
+    if (userId != null) {
+      Future.microtask(() => loadForUser(userId));
     } else {
       state = const [];
     }
@@ -43,6 +41,46 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
         includeArchived: true,
       );
       if (!ref.mounted) return;
+
+      // Local deduplication safeguard: clean up historical (Cloud Copy) duplicates
+      final cloudCopyRegex = RegExp(
+        r'\s*\((?:Cloud Copy|Conflict Copy)(?: \d+)?\)$',
+        caseSensitive: false,
+      );
+      final nonCopyTitles = <String>{};
+      for (final nb in dbNotebooks) {
+        if (!cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
+          nonCopyTitles.add(nb.title.trim().toLowerCase());
+        }
+      }
+
+      bool hadDuplicates = false;
+      for (final nb in dbNotebooks) {
+        if (cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
+          final base = nb.title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
+          if (nonCopyTitles.contains(base)) {
+            await _repository.deleteNotebook(nb.id);
+            hadDuplicates = true;
+          } else {
+            final cleanTitle = nb.title.replaceAll(cloudCopyRegex, '').trim();
+            final renamed = nb.copyWith(
+              title: cleanTitle.isEmpty ? 'Untitled Notebook' : cleanTitle,
+            );
+            await _repository.saveNotebook(renamed);
+            nonCopyTitles.add(base);
+            hadDuplicates = true;
+          }
+        }
+      }
+
+      if (hadDuplicates) {
+        dbNotebooks = await _repository.getAllNotebooks(
+          ownerId: userId,
+          includeArchived: true,
+        );
+        if (!ref.mounted) return;
+      }
+
       if (dbNotebooks.isEmpty) {
         try {
           await ref
@@ -166,6 +204,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
           .read(syncServiceProvider)
           .enqueueNotebookMutation(updated, SyncOperationType.update);
     } catch (_) {}
+    try {
+      final userEmail = ref.read(authProvider).user?.email ?? 'local_user';
+      await ref.read(noteHistoryServiceProvider).recordActivity(
+        noteId: id,
+        noteTitle: newTitle,
+        action: NoteActionType.updated,
+        userEmail: userEmail,
+        details: 'Renamed notebook to "$newTitle"',
+      );
+    } catch (_) {}
     _triggerDriveAutoSync(reason: 'notebook_renamed');
   }
 
@@ -186,6 +234,17 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
             .read(syncServiceProvider)
             .enqueueNotebookMutation(duplicated, SyncOperationType.insert);
       } catch (_) {}
+      try {
+        final userEmail = ref.read(authProvider).user?.email ?? 'local_user';
+        await ref.read(noteHistoryServiceProvider).recordActivity(
+          noteId: duplicated.id,
+          noteTitle: duplicated.title,
+          action: NoteActionType.created,
+          userEmail: userEmail,
+          details: 'Duplicated from notebook',
+        );
+      } catch (_) {}
+      _triggerDriveAutoSync(reason: 'notebook_duplicated');
     }
     return duplicated;
   }
@@ -333,6 +392,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
             .read(syncServiceProvider)
             .enqueueNotebookMutation(updatedNb!, SyncOperationType.update);
       } catch (_) {}
+      try {
+        final userEmail = ref.read(authProvider).user?.email ?? 'local_user';
+        await ref.read(noteHistoryServiceProvider).recordActivity(
+          noteId: notebookId,
+          noteTitle: updatedNb!.title,
+          action: NoteActionType.updated,
+          userEmail: userEmail,
+          details: 'Updated notebook cover',
+        );
+      } catch (_) {}
       _triggerDriveAutoSync(reason: 'cover_updated');
     }
   }
@@ -365,6 +434,16 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
       await ref
           .read(syncServiceProvider)
           .enqueueNotebookMutation(toDelete, SyncOperationType.delete);
+    } catch (_) {}
+    try {
+      final userEmail = ref.read(authProvider).user?.email ?? 'local_user';
+      await ref.read(noteHistoryServiceProvider).recordActivity(
+        noteId: notebookId,
+        noteTitle: toDelete.title,
+        action: NoteActionType.deleted,
+        userEmail: userEmail,
+        details: 'Deleted notebook',
+      );
     } catch (_) {}
     _triggerDriveAutoSync(
       delay: const Duration(seconds: 1),

@@ -15,11 +15,9 @@ class FoldersNotifier extends Notifier<List<Folder>> {
 
   @override
   List<Folder> build() {
-    ref.watch(folderRepositoryProvider);
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-    if (user != null) {
-      _loadInitial(user.id);
+    final userId = ref.watch(authProvider.select((s) => s.user?.id));
+    if (userId != null) {
+      _loadInitial(userId);
     } else {
       state = const [];
     }

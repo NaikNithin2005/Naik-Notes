@@ -28,6 +28,7 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/export_notebook_dialog.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
+import 'package:naik_notes/features/history/presentation/widgets/notes_history_sheet.dart';
 import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 import 'package:naik_notes/features/storage/presentation/widgets/google_drive_connect_dialog.dart';
 
@@ -42,13 +43,34 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkDriveOnStartup();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final driveState = ref.read(googleDriveProvider);
+      if (driveState.isConnected) {
+        ref.read(googleDriveProvider.notifier).scheduleAutoSync(
+          delay: const Duration(seconds: 1),
+          reason: 'app_resumed',
+        );
+      }
+    }
   }
 
   Future<void> _checkDriveOnStartup() async {
@@ -62,7 +84,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final driveState = ref.read(googleDriveProvider);
     if (driveState.isConnected) {
-      // Already authorized and connected: do not show popup
+      // Already authorized: automatically pull latest notes from other devices
+      ref.read(googleDriveProvider.notifier).syncNow(silent: true);
       return;
     }
 
@@ -461,6 +484,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 );
                               },
                             ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.history_edu_rounded,
+                                size: 20,
+                              ),
+                              tooltip: 'Notes & Sync History',
+                              onPressed: () => NotesHistorySheet.show(context),
+                            ),
                             const SyncStatusBadge(),
                             const SizedBox(width: 4),
                             InkWell(
@@ -554,6 +585,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   builder: (ctx) => const TemplateStoreSheet(),
                                 );
                               },
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.history_edu_rounded),
+                              tooltip: 'Notes & Sync History',
+                              onPressed: () => NotesHistorySheet.show(context),
                             ),
                             const SizedBox(width: 4),
                             const SyncStatusBadge(),
@@ -684,6 +721,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.go(RouteNames.notes),
+                        icon: const Icon(Icons.edit_note_rounded, size: 18),
+                        label: const Text('Open Rich Text Notes'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
                   ] else ...[
                     Row(
                       children: [
@@ -720,6 +772,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             size: 18,
                           ),
                           label: const Text('Import PDF'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => context.go(RouteNames.notes),
+                          icon: const Icon(
+                            Icons.edit_note_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Rich Notes'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,

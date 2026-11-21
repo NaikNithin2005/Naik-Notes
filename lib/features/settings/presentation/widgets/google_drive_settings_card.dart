@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:naik_notes/core/theme/app_colors.dart';
+import 'package:naik_notes/features/history/presentation/widgets/notes_history_sheet.dart';
 import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 
 /// Card widget displayed under Settings → Cloud Storage for configuring
@@ -312,6 +313,15 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => NotesHistorySheet.show(context),
+                  icon: const Icon(Icons.history_edu_rounded, size: 18),
+                  label: const Text('View Notes & Sync History'),
+                ),
               ),
             ] else ...[
               // Disconnected / Failed Explanation

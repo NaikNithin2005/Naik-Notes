@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../data/models/folder_model.dart';
+import '../../data/models/note_model.dart';
 import '../../data/models/notebook_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/paper_template_model.dart';
@@ -16,6 +18,8 @@ class FirebaseSyncService {
   final FirebaseFirestore? _customFirestore;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
   _notebooksSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _notesSubscription;
 
   FirebaseSyncService({FirebaseFirestore? firestore})
     : _customFirestore = firestore;
@@ -23,6 +27,7 @@ class FirebaseSyncService {
   FirebaseFirestore? get _firestore {
     if (_customFirestore != null) return _customFirestore;
     try {
+      if (Firebase.apps.isEmpty) return null;
       return FirebaseFirestore.instance;
     } catch (_) {
       return null;
@@ -35,6 +40,10 @@ class FirebaseSyncService {
 
   CollectionReference<Map<String, dynamic>>? _userFoldersRef(String uid) {
     return _firestore?.collection('users').doc(uid).collection('folders');
+  }
+
+  CollectionReference<Map<String, dynamic>>? _userNotesRef(String uid) {
+    return _firestore?.collection('users').doc(uid).collection('notes');
   }
 
   CollectionReference<Map<String, dynamic>>? _userPagesRef(
@@ -481,8 +490,163 @@ class FirebaseSyncService {
     }
   }
 
+  // --- RICH-TEXT NOTES ---
+
+  /// Pushes a rich-text note document to `/users/{uid}/notes/{noteId}`.
+  Future<bool> pushNote(String uid, Note note) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null) return false;
+    try {
+      await ref.doc(note.id).set({
+        'id': note.id,
+        'ownerId': uid,
+        'notebookId': note.notebookId,
+        'title': note.title,
+        'contentDelta': note.contentDelta,
+        'plainText': note.plainText,
+        'preview': note.preview,
+        'tags': note.tags,
+        'isPinned': note.isPinned,
+        'isFavorite': note.isFavorite,
+        'isArchived': note.isArchived,
+        'isDeleted': note.isDeleted,
+        'createdAt': note.createdAt.toIso8601String(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'deletedAt': note.deletedAt?.toIso8601String(),
+        'lastSyncedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] pushNote failed for ${note.id}: $e');
+      return false;
+    }
+  }
+
+  /// Soft deletes a rich-text note document in Firestore.
+  Future<bool> deleteNote(String uid, String noteId) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null) return false;
+    try {
+      await ref.doc(noteId).set({
+        'isDeleted': true,
+        'deletedAt': DateTime.now().toIso8601String(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] deleteNote failed for $noteId: $e');
+      return false;
+    }
+  }
+
+  /// Permanently removes a note document from Firestore.
+  Future<bool> permanentlyDeleteNote(String uid, String noteId) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null) return false;
+    try {
+      await ref.doc(noteId).delete();
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] permanentlyDeleteNote failed for $noteId: $e');
+      return false;
+    }
+  }
+
+  /// Fetches remote notes for [uid], with optional [notebookId] or [tag] filter.
+  Future<List<Note>> fetchNotes(
+    String uid, {
+    String? notebookId,
+    String? tag,
+  }) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null) return [];
+    try {
+      Query<Map<String, dynamic>> query = ref;
+      if (notebookId != null) {
+        query = query.where('notebookId', isEqualTo: notebookId);
+      }
+      if (tag != null) {
+        query = query.where('tags', arrayContains: tag);
+      }
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => _noteFromFirestore(doc.id, doc.data()))
+          .toList();
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] fetchNotes error: $e');
+      return [];
+    }
+  }
+
+  /// Listens to real-time changes on `/users/{uid}/notes` and invokes callback.
+  void listenToNotes(
+    String uid,
+    void Function(List<Note> notes) onData,
+  ) {
+    _notesSubscription?.cancel();
+    final ref = _userNotesRef(uid);
+    if (ref == null) return;
+    try {
+      _notesSubscription = ref.snapshots().listen(
+        (snapshot) {
+          final list = <Note>[];
+          for (final doc in snapshot.docs) {
+            try {
+              list.add(_noteFromFirestore(doc.id, doc.data()));
+            } catch (e) {
+              debugPrint('Parsing remote note error: $e');
+            }
+          }
+          onData(list);
+        },
+        onError: (err) {
+          debugPrint('Firestore notes listener error: $err');
+        },
+      );
+    } catch (e) {
+      debugPrint('Listen to notes error: $e');
+    }
+  }
+
   void dispose() {
     _notebooksSubscription?.cancel();
+    _notesSubscription?.cancel();
+  }
+
+  Note _noteFromFirestore(String id, Map<String, dynamic> d) {
+    final now = DateTime.now();
+    final rawDelta = d['contentDelta'] as String? ?? '[{"insert":"\\n"}]';
+    final rawText = d['plainText'] as String? ?? Note.extractPlainText(rawDelta);
+    final rawPreview = d['preview'] as String? ?? Note.generatePreview(rawText);
+
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
+    return Note(
+      id: id,
+      ownerId: d['ownerId'] as String? ?? 'unknown',
+      notebookId: d['notebookId'] as String? ?? '',
+      title: d['title'] as String? ?? 'Untitled Note',
+      contentDelta: rawDelta,
+      plainText: rawText,
+      preview: rawPreview,
+      tags: (d['tags'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      isPinned: d['isPinned'] as bool? ?? false,
+      isFavorite: d['isFavorite'] as bool? ?? false,
+      isArchived: d['isArchived'] as bool? ?? false,
+      isDeleted: d['isDeleted'] as bool? ?? false,
+      createdAt: parseDate(d['createdAt']) ?? now,
+      updatedAt: parseDate(d['updatedAt']) ?? now,
+      deletedAt: parseDate(d['deletedAt']),
+      lastSyncedAt: parseDate(d['lastSyncedAt']) ?? now,
+    );
   }
 
   Notebook _notebookFromFirestore(String id, Map<String, dynamic> d) {

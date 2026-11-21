@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../history/presentation/widgets/notes_history_sheet.dart';
 import '../../data/sync_provider.dart';
 
 /// Modal dialog displaying detailed synchronization diagnostics, status,
@@ -63,12 +64,13 @@ class SyncDetailsDialog extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -217,40 +219,57 @@ class SyncDetailsDialog extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // Action buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      NotesHistorySheet.show(context);
+                    },
+                    icon: const Icon(Icons.history_edu_rounded, size: 16),
+                    label: const Text('History'),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: syncState.status == SyncUiStatus.syncing
-                        ? null
-                        : () async {
-                            await ref.read(syncProvider.notifier).syncNow();
-                          },
-                    icon: syncState.status == SyncUiStatus.syncing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.sync, size: 18),
-                    label: Text(
-                      syncState.status == SyncUiStatus.syncing
-                          ? 'Syncing...'
-                          : 'Sync Now',
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Close'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: syncState.status == SyncUiStatus.syncing
+                            ? null
+                            : () async {
+                                await ref.read(syncProvider.notifier).syncNow();
+                              },
+                        icon: syncState.status == SyncUiStatus.syncing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.sync, size: 18),
+                        label: Text(
+                          syncState.status == SyncUiStatus.syncing
+                              ? 'Syncing...'
+                              : 'Sync Now',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
+        ),
         ),
       ),
     );

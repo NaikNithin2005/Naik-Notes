@@ -126,7 +126,7 @@ void main() {
     testWidgets('opens Create Notebook dialog and validates input', (
       tester,
     ) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      await tester.binding.setSurfaceSize(const Size(1400, 1200));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(
@@ -157,17 +157,26 @@ void main() {
           .widgetWithText(FilledButton, 'Create Notebook')
           .last;
       await tester.tap(createButton);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('Please enter a notebook title'), findsOneWidget);
 
       // Enter valid title
       await tester.enterText(
-        find.byType(TextFormField).first,
+        find.widgetWithText(TextFormField, 'Notebook Title *'),
         'Quantum Mechanics',
       );
-      await tester.tap(createButton);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      final b = find.descendant(
+        of: find.byType(Dialog),
+        matching: find.widgetWithText(FilledButton, 'Create Notebook'),
+      );
+      await tester.tap(b);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
 
       // Dialog should close and new notebook should be listed
       expect(find.text('Create New Notebook'), findsNothing);

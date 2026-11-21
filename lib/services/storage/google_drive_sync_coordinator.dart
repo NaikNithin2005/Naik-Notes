@@ -6,7 +6,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
-import 'package:uuid/uuid.dart';
 
 import '../../data/models/notebook_model.dart';
 import '../../data/models/page_model.dart';
@@ -104,7 +103,6 @@ class GoogleDriveSyncCoordinator {
   final StickyNoteRepository _stickyNoteRepo;
   final AttachmentRepository _attachmentRepo;
   final http.Client _baseHttpClient;
-  final Uuid _uuid;
 
   // In-memory cache of folder paths to Drive folder IDs to minimize API calls
   final Map<String, String> _folderIdCache = {};
@@ -126,7 +124,6 @@ class GoogleDriveSyncCoordinator {
     required StickyNoteRepository stickyNoteRepo,
     required AttachmentRepository attachmentRepo,
     http.Client? httpClient,
-    Uuid? uuid,
     String? deviceId,
   })  : _authService = authService,
         _storageService = storageService,
@@ -136,7 +133,6 @@ class GoogleDriveSyncCoordinator {
         _stickyNoteRepo = stickyNoteRepo,
         _attachmentRepo = attachmentRepo,
         _baseHttpClient = httpClient ?? http.Client(),
-        _uuid = uuid ?? const Uuid(),
         _deviceId = deviceId ?? NoteHistoryService.currentDeviceName;
 
   Future<drive.DriveApi> _getDriveApi(String uid) async {
@@ -243,7 +239,7 @@ class GoogleDriveSyncCoordinator {
       int deletedCount = 0;
 
       // -------------------------------------------------------------
-      // 0. BIDIRECTIONAL DELETIONS: Propagate deletions across devices
+      // 0. BIDIRECTIONAL DELETIONS & DEDUPLICATION
       // -------------------------------------------------------------
       onProgress?.call('Syncing deletions across devices...', 0.10);
       deletedCount = await _syncDeletions(
@@ -252,6 +248,14 @@ class GoogleDriveSyncCoordinator {
         notebooksFolderId: notebooksFolderId,
         uid: uid,
       );
+
+      // Clean up any historical duplicate (Cloud Copy) notebooks across Drive and local
+      final deduplicatedCount = await _cleanupDuplicateNotebooks(
+        api: api,
+        notebooksFolderId: notebooksFolderId,
+        uid: uid,
+      );
+      deletedCount += deduplicatedCount;
 
       // -------------------------------------------------------------
       // 1. DRIVE -> LOCAL: Pull new & updated remote notebooks FIRST!
@@ -517,6 +521,28 @@ class GoogleDriveSyncCoordinator {
 
       bool shouldRestore = false;
 
+      // Duplicate safeguard: if remote notebook is a (Cloud Copy) whose base exists locally,
+      // clean it up and do not restore it!
+      final cloudCopyRegex = RegExp(
+        r'\s*\((?:Cloud Copy|Conflict Copy)(?: \d+)?\)$',
+        caseSensitive: false,
+      );
+      if (cloudCopyRegex.hasMatch(remoteNb.title)) {
+        final baseTitle =
+            remoteNb.title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
+        final hasBaseLocal = localNotebooks.any((n) =>
+            !cloudCopyRegex.hasMatch(n.title) &&
+            n.title.trim().toLowerCase() == baseTitle &&
+            n.deletedAt == null);
+        if (hasBaseLocal) {
+          try {
+            await api.files.delete(folderId);
+            _localDeletedNotebookIds.add(nbId);
+          } catch (_) {}
+          continue;
+        }
+      }
+
       if (localNb == null) {
         // Missing notebook: restore locally from cloud
         shouldRestore = true;
@@ -550,21 +576,15 @@ class GoogleDriveSyncCoordinator {
           deviceName: 'Cloud Synced',
           details: 'Retrieved cloud updates',
         );
-      } else if (localNb.updatedAt.isAfter(remoteNb.updatedAt) &&
-          remoteNb.updatedAt.difference(localNb.updatedAt).abs().inMinutes > 5) {
-        // Potential conflict: both edited independently.
-        // Preserve both versions!
-        conflicts++;
-        final conflictNb = remoteNb.copyWith(
-          id: _uuid.v4(),
-          title: '${remoteNb.title} (Cloud Copy)',
-        );
-        await _notebookRepo.saveNotebook(conflictNb);
-        await _pullPagesForNotebook(api, folderId, conflictNb.id);
-        pulledNotebookIds.add(conflictNb.id);
       } else {
-        // Already identical
-        pulledNotebookIds.add(remoteNb.id);
+        // Local is newer or identical.
+        // If identical, add to pulledNotebookIds to prevent redundant re-upload.
+        // If local is strictly newer, do NOT add so Step 2 pushes local updates to Drive.
+        if (localNb.revision == remoteNb.revision &&
+            (localNb.updatedAt == remoteNb.updatedAt ||
+                localNb.updatedAt.difference(remoteNb.updatedAt).abs().inSeconds <= 2)) {
+          pulledNotebookIds.add(remoteNb.id);
+        }
       }
 
       if (shouldRestore) {
@@ -584,6 +604,144 @@ class GoogleDriveSyncCoordinator {
       'conflicts': conflicts,
       'pulledNotebookIds': pulledNotebookIds,
     };
+  }
+
+  /// Cleans up any historical (Cloud Copy) duplicates caused by timestamp divergence,
+  /// preserving user data by consolidating to the primary notebook.
+  Future<int> _cleanupDuplicateNotebooks({
+    required drive.DriveApi api,
+    required String notebooksFolderId,
+    required String uid,
+  }) async {
+    int cleaned = 0;
+    try {
+      final cloudCopyRegex = RegExp(
+        r'\s*\((?:Cloud Copy|Conflict Copy)(?: \d+)?\)$',
+        caseSensitive: false,
+      );
+
+      // 1. Fetch current local notebooks
+      final localNotebooks = await _notebookRepo.getAllNotebooks(
+        ownerId: uid,
+        includeArchived: true,
+      );
+
+      // Build map of clean (non-copy) notebooks by trimmed lowercase title
+      final cleanNotebooksByTitle = <String, Notebook>{};
+      for (final nb in localNotebooks) {
+        if (!cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
+          cleanNotebooksByTitle[nb.title.trim().toLowerCase()] = nb;
+        }
+      }
+
+      // Group copy notebooks by their base title
+      final copiesByBaseTitle = <String, List<Notebook>>{};
+      for (final nb in localNotebooks) {
+        if (cloudCopyRegex.hasMatch(nb.title) && nb.deletedAt == null) {
+          final base =
+              nb.title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
+          copiesByBaseTitle.putIfAbsent(base, () => []).add(nb);
+        }
+      }
+
+      // 2. Scan remote folders on Drive
+      final q =
+          "'$notebooksFolderId' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+      final folderList = await api.files.list(
+        q: q,
+        spaces: 'appDataFolder',
+        $fields: 'files(id, name)',
+        pageSize: 200,
+      );
+      final remoteFolders = folderList.files ?? [];
+      final remoteFolderByNbId = {
+        for (final f in remoteFolders)
+          if (f.name != null) f.name!: f
+      };
+
+      // 3. Process each group of copies
+      for (final entry in copiesByBaseTitle.entries) {
+        final baseTitleLower = entry.key;
+        final copies = entry.value;
+        final hasCleanOriginal =
+            cleanNotebooksByTitle.containsKey(baseTitleLower);
+
+        // Sort copies by updatedAt descending (newest first)
+        copies.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+        if (hasCleanOriginal) {
+          // A primary original notebook exists! All (Cloud Copy) instances are redundant.
+          for (final duplicate in copies) {
+            await _notebookRepo.deleteNotebook(duplicate.id);
+            _localDeletedNotebookIds.add(duplicate.id);
+
+            // Remove remote folder from Drive if present
+            final remoteFolder = remoteFolderByNbId[duplicate.id];
+            if (remoteFolder != null && remoteFolder.id != null) {
+              try {
+                await api.files.delete(remoteFolder.id!);
+              } catch (_) {}
+            }
+            cleaned++;
+          }
+        } else {
+          // No clean original exists! Keep the newest copy and rename it to base title.
+          final primaryCopy = copies.first;
+          final cleanTitle =
+              primaryCopy.title.replaceAll(cloudCopyRegex, '').trim();
+          final renamed = primaryCopy.copyWith(
+            title: cleanTitle.isEmpty ? 'Untitled Notebook' : cleanTitle,
+          );
+          await _notebookRepo.saveNotebook(renamed);
+          cleanNotebooksByTitle[baseTitleLower] = renamed;
+
+          // Delete all other secondary copies
+          for (int i = 1; i < copies.length; i++) {
+            final redundant = copies[i];
+            await _notebookRepo.deleteNotebook(redundant.id);
+            _localDeletedNotebookIds.add(redundant.id);
+
+            final remoteFolder = remoteFolderByNbId[redundant.id];
+            if (remoteFolder != null && remoteFolder.id != null) {
+              try {
+                await api.files.delete(remoteFolder.id!);
+              } catch (_) {}
+            }
+            cleaned++;
+          }
+        }
+      }
+
+      // 4. Also check remote folders for orphaned (Cloud Copy) folders on Drive
+      for (final rf in remoteFolders) {
+        final nbId = rf.name;
+        if (nbId == null || _localDeletedNotebookIds.contains(nbId)) continue;
+
+        final nbFile = await _findFile(api, rf.id!, 'notebook.json');
+        if (nbFile == null || nbFile.id == null) continue;
+        final content = await _downloadFileAsString(api, nbFile.id!);
+        if (content == null) continue;
+
+        try {
+          final data = jsonDecode(content) as Map<String, dynamic>;
+          final title = data['title'] as String? ?? '';
+          if (cloudCopyRegex.hasMatch(title)) {
+            final base =
+                title.replaceAll(cloudCopyRegex, '').trim().toLowerCase();
+            if (cleanNotebooksByTitle.containsKey(base)) {
+              // Redundant cloud folder
+              await api.files.delete(rf.id!);
+              _localDeletedNotebookIds.add(nbId);
+              cleaned++;
+            }
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint(
+          '[GoogleDriveSyncCoordinator] _cleanupDuplicateNotebooks error: $e');
+    }
+    return cleaned;
   }
 
   /// Bidirectionally syncs deletion tombstones across devices using deletions_manifest.json.
@@ -618,7 +776,7 @@ class GoogleDriveSyncCoordinator {
       for (final delId in cloudDeletedIds) {
         _localDeletedNotebookIds.add(delId);
         final existingLocal = await _notebookRepo.getNotebookById(delId);
-        if (existingLocal != null && !existingLocal.isDeleted) {
+        if (existingLocal != null && existingLocal.deletedAt == null) {
           await _notebookRepo.deleteNotebook(delId);
           await historyService.recordActivity(
             noteId: delId,
@@ -702,7 +860,6 @@ class GoogleDriveSyncCoordinator {
     } catch (e) {
       debugPrint('[GoogleDriveSyncCoordinator] _syncActivityHistory error: $e');
     }
-  }
   }
 
   /// Downloads pages and vector handwriting strokes for [notebookId] from Drive into local SQLite.

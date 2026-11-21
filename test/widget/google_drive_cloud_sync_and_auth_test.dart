@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:naik_notes/features/authentication/presentation/screens/reset_password_screen.dart';
 import 'package:naik_notes/features/dashboard/presentation/widgets/sync_status_badge.dart';
+import 'package:naik_notes/features/history/presentation/widgets/notes_history_sheet.dart';
 import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 import 'package:naik_notes/features/storage/presentation/widgets/google_drive_connect_dialog.dart';
 import 'package:naik_notes/features/settings/presentation/widgets/google_drive_settings_card.dart';
 import 'package:naik_notes/features/sync/data/sync_provider.dart';
+import 'package:naik_notes/services/history/note_history_service.dart';
 import 'package:naik_notes/services/storage/google_drive_sync_coordinator.dart';
 
 void main() {
@@ -193,6 +195,7 @@ void main() {
         success: true,
         uploadedNotebooks: 4,
         downloadedNotebooks: 2,
+        deletedCount: 1,
         uploadedPages: 16,
         downloadedPages: 8,
         uploadedAttachments: 3,
@@ -203,11 +206,110 @@ void main() {
       expect(result.success, isTrue);
       expect(result.uploadedNotebooks, equals(4));
       expect(result.downloadedNotebooks, equals(2));
+      expect(result.deletedCount, equals(1));
       expect(result.uploadedPages, equals(16));
       expect(result.downloadedPages, equals(8));
       expect(result.uploadedAttachments, equals(3));
       expect(result.conflictCount, equals(1));
+      expect(result.hasChanges, isTrue);
       expect(result.toString(), contains('upNb: 4'));
+      expect(result.toString(), contains('deleted: 1'));
+    });
+
+    test('NoteActivityEntry serializes and deserializes accurately with date, device, and user', () {
+      final entry = NoteActivityEntry(
+        id: 'act-1',
+        noteId: 'nb-123',
+        noteTitle: 'Calculus Notes',
+        action: NoteActionType.created,
+        timestamp: DateTime(2026, 11, 21, 14, 30),
+        deviceName: 'Windows Desktop',
+        userEmail: 'student@example.com',
+        details: 'Initial creation',
+      );
+
+      final json = entry.toJson();
+      expect(json['id'], equals('act-1'));
+      expect(json['noteId'], equals('nb-123'));
+      expect(json['noteTitle'], equals('Calculus Notes'));
+      expect(json['action'], equals('created'));
+      expect(json['deviceName'], equals('Windows Desktop'));
+      expect(json['userEmail'], equals('student@example.com'));
+
+      final fromJson = NoteActivityEntry.fromJson(json);
+      expect(fromJson.id, equals('act-1'));
+      expect(fromJson.noteTitle, equals('Calculus Notes'));
+      expect(fromJson.action, equals(NoteActionType.created));
+      expect(fromJson.userEmail, equals('student@example.com'));
+      expect(fromJson.deviceName, equals('Windows Desktop'));
+    });
+
+    testWidgets('NotesHistorySheet renders title, filters, and activity entries', (tester) async {
+      final testEntries = [
+        NoteActivityEntry(
+          id: 'test-act-1',
+          noteId: 'nb-1',
+          noteTitle: 'Physics Semester 1',
+          action: NoteActionType.created,
+          timestamp: DateTime(2026, 11, 21, 10, 0),
+          deviceName: 'iPad Pro',
+          userEmail: 'naik@example.com',
+          details: 'Notebook created',
+        ),
+        NoteActivityEntry(
+          id: 'test-act-2',
+          noteId: 'nb-2',
+          noteTitle: 'Old Drafts',
+          action: NoteActionType.deleted,
+          timestamp: DateTime(2026, 11, 21, 11, 0),
+          deviceName: 'Windows PC',
+          userEmail: 'naik@example.com',
+          details: 'Notebook deleted',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            noteHistoryProvider.overrideWith(() => _FakeHistoryNotifier(testEntries)),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: NotesHistorySheet(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify Header
+      expect(find.text('Notes & Sync History'), findsOneWidget);
+      expect(
+        find.text('Timeline of notes created, updated, and deleted across devices'),
+        findsOneWidget,
+      );
+
+      // Verify Action Filters
+      expect(find.text('All Activity'), findsOneWidget);
+      expect(find.text('Created'), findsOneWidget);
+      expect(find.text('Updated'), findsOneWidget);
+      expect(find.text('Deleted'), findsOneWidget);
+
+      // Verify Entries
+      expect(find.text('Physics Semester 1'), findsOneWidget);
+      expect(find.text('Old Drafts'), findsOneWidget);
+      expect(find.text('iPad Pro'), findsOneWidget);
+      expect(find.text('Windows PC'), findsOneWidget);
+      expect(find.text('naik@example.com'), findsNWidgets(2));
     });
   });
+}
+
+class _FakeHistoryNotifier extends NoteHistoryNotifier {
+  final List<NoteActivityEntry> _initial;
+  _FakeHistoryNotifier(this._initial);
+
+  @override
+  List<NoteActivityEntry> build() => _initial;
 }
