@@ -28,7 +28,10 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/export_notebook_dialog.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
 
+import 'package:flutter/services.dart';
 import 'package:naik_notes/features/history/presentation/widgets/notes_history_sheet.dart';
+import 'package:naik_notes/features/notebooks/data/notebook_selection_provider.dart';
+import 'package:naik_notes/features/notebooks/presentation/widgets/notebook_selection_toolbar.dart';
 import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 import 'package:naik_notes/features/storage/presentation/widgets/google_drive_connect_dialog.dart';
 
@@ -389,6 +392,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final isGridView = ref.watch(isGridViewProvider);
     final authState = ref.watch(authProvider);
     final currentUser = authState.user;
+    final notebookSelection = ref.watch(notebookSelectionProvider);
 
     // Filter notebooks according to search, folder, and tab
     final filteredNotebooks = notebooks.where((nb) {
@@ -430,10 +434,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     final isCompact = MediaQuery.of(context).size.width < 600;
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Top Header & Search Bar
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (ref.read(notebookSelectionProvider).isSelectionMode) {
+            ref.read(notebookSelectionProvider.notifier).exitSelectionMode();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.keyA, control: true): () {
+          ref
+              .read(notebookSelectionProvider.notifier)
+              .selectAll(filteredNotebooks.map((n) => n.id));
+        },
+        const SingleActivator(LogicalKeyboardKey.keyA, meta: true): () {
+          ref
+              .read(notebookSelectionProvider.notifier)
+              .selectAll(filteredNotebooks.map((n) => n.id));
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              // Contextual Selection Toolbar
+              if (notebookSelection.isSelectionMode)
+                SliverToBoxAdapter(
+                  child: NotebookSelectionToolbar(
+                    visibleNotebooks: filteredNotebooks,
+                  ),
+                ),
+
+              // Top Header & Search Bar
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
@@ -1206,7 +1238,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       final nb = filteredNotebooks[index];
                       return NotebookCard(
                         notebook: nb,
-                        onTap: () => context.go(RouteNames.notebookPath(nb.id)),
+                        isSelectionMode: notebookSelection.isSelectionMode,
+                        isSelected: notebookSelection.isSelected(nb.id),
+                        onTap: () {
+                          if (notebookSelection.isSelectionMode) {
+                            if (HardwareKeyboard.instance.isShiftPressed) {
+                              ref
+                                  .read(notebookSelectionProvider.notifier)
+                                  .rangeSelect(
+                                    nb.id,
+                                    filteredNotebooks.map((n) => n.id).toList(),
+                                  );
+                            } else {
+                              ref
+                                  .read(notebookSelectionProvider.notifier)
+                                  .toggle(nb.id);
+                            }
+                          } else {
+                            if (HardwareKeyboard.instance.isControlPressed ||
+                                HardwareKeyboard.instance.isMetaPressed) {
+                              ref
+                                  .read(notebookSelectionProvider.notifier)
+                                  .enterSelectionMode(nb.id);
+                            } else {
+                              context.go(RouteNames.notebookPath(nb.id));
+                            }
+                          }
+                        },
+                        onSelect: () {
+                          ref
+                              .read(notebookSelectionProvider.notifier)
+                              .toggle(nb.id);
+                        },
+                        onLongPress: () {
+                          ref
+                              .read(notebookSelectionProvider.notifier)
+                              .enterSelectionMode(nb.id);
+                        },
                         onToggleFavorite: () {
                           ref
                               .read(notebooksProvider.notifier)
@@ -1272,35 +1340,95 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final nb = filteredNotebooks[index];
+                  final isSelected = notebookSelection.isSelected(nb.id);
                   return Card(
                     margin: const EdgeInsets.only(bottom: 10),
+                    color: isSelected
+                        ? theme.colorScheme.primary.withValues(alpha: 0.12)
+                        : null,
+                    shape: isSelected
+                        ? RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: theme.colorScheme.primary,
+                              width: 2,
+                            ),
+                          )
+                        : null,
                     child: ListTile(
-                      leading: Container(
-                        width: 40,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: _parseColor(nb.coverColorHex),
-                          borderRadius: BorderRadius.circular(6),
-                          image:
-                              nb.coverImageUrl != null &&
-                                  nb.coverImageUrl!.isNotEmpty
-                              ? DecorationImage(
-                                  image: (nb.coverImageUrl!.startsWith('http')
-                                      ? NetworkImage(nb.coverImageUrl!)
-                                      : FileImage(File(nb.coverImageUrl!))) as ImageProvider,
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child:
-                            nb.coverImageUrl != null &&
-                                nb.coverImageUrl!.isNotEmpty
-                            ? null
-                            : const Icon(
-                                Icons.book,
-                                color: Colors.white,
-                                size: 20,
+                      onTap: () {
+                        if (notebookSelection.isSelectionMode) {
+                          ref
+                              .read(notebookSelectionProvider.notifier)
+                              .toggle(nb.id);
+                        } else {
+                          context.go(RouteNames.notebookPath(nb.id));
+                        }
+                      },
+                      onLongPress: () {
+                        ref
+                            .read(notebookSelectionProvider.notifier)
+                            .enterSelectionMode(nb.id);
+                      },
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (notebookSelection.isSelectionMode) ...[
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.4),
+                                  width: 2,
+                                ),
                               ),
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.check,
+                                      size: 16,
+                                      color: Colors.white,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Container(
+                            width: 40,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: _parseColor(nb.coverColorHex),
+                              borderRadius: BorderRadius.circular(6),
+                              image: nb.coverImageUrl != null &&
+                                      nb.coverImageUrl!.isNotEmpty
+                                  ? DecorationImage(
+                                      image: (nb.coverImageUrl!.startsWith('http')
+                                          ? NetworkImage(nb.coverImageUrl!)
+                                          : FileImage(
+                                              File(nb.coverImageUrl!),
+                                            )) as ImageProvider,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: nb.coverImageUrl != null &&
+                                    nb.coverImageUrl!.isNotEmpty
+                                ? null
+                                : const Icon(
+                                    Icons.book,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                          ),
+                        ],
                       ),
                       title: Text(
                         nb.title,
@@ -1403,7 +1531,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           ),
                         ],
                       ),
-                      onTap: () => context.go(RouteNames.notebookPath(nb.id)),
                     ),
                   );
                 }, childCount: filteredNotebooks.length),
@@ -1413,6 +1540,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
+    ),
+    ),
     );
   }
 }

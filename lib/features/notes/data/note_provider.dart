@@ -5,6 +5,8 @@ import '../../../data/local/database_provider.dart';
 import '../../../data/models/note_model.dart';
 import '../../../data/repositories/note_repository.dart';
 import '../../authentication/data/auth_provider.dart';
+import '../../storage/data/google_drive_provider.dart';
+import '../../sync/data/sync_provider.dart';
 import '../services/note_auto_save_coordinator.dart';
 
 /// Filter categories for note lists.
@@ -283,6 +285,219 @@ class NotesNotifier extends Notifier<List<Note>> {
     final uid = ref.read(authProvider).user?.id ?? 'local_user';
     await _repo.emptyTrash(ownerId: uid);
     state = state.where((n) => !n.isDeleted).toList();
+  }
+
+  Future<void> bulkDelete(Iterable<String> noteIds) async {
+    final idSet = noteIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repo.bulkDelete(idSet);
+    final now = DateTime.now();
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id))
+          n.copyWith(isDeleted: true, deletedAt: now)
+        else
+          n,
+    ];
+
+    if (idSet.contains(ref.read(selectedNoteProvider)?.id)) {
+      ref.read(selectedNoteProvider.notifier).selectNote(null);
+    }
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .deleteNotesBatch(currentUserId, idSet.toList());
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notes_bulk_deleted');
+  }
+
+  Future<void> bulkRestore(Iterable<String> noteIds) async {
+    final idSet = noteIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repo.bulkRestore(idSet);
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id))
+          n.copyWith(isDeleted: false, clearDeletedAt: true)
+        else
+          n,
+    ];
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final restored = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotesBatch(currentUserId, restored);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notes_bulk_restored');
+  }
+
+  Future<void> bulkPermanentDelete(Iterable<String> noteIds) async {
+    final idSet = noteIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repo.bulkPermanentDelete(idSet);
+    state = state.where((n) => !idSet.contains(n.id)).toList();
+
+    if (idSet.contains(ref.read(selectedNoteProvider)?.id)) {
+      ref.read(selectedNoteProvider.notifier).selectNote(null);
+    }
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .permanentlyDeleteNotesBatch(currentUserId, idSet.toList());
+      } catch (_) {}
+    }
+  }
+
+  Future<void> bulkTogglePin(Iterable<String> noteIds, bool pin) async {
+    final idSet = noteIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repo.bulkTogglePin(idSet, pin);
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id)) n.copyWith(isPinned: pin) else n,
+    ];
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updated = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotesBatch(currentUserId, updated);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notes_bulk_pinned');
+  }
+
+  Future<void> bulkToggleFavorite(Iterable<String> noteIds, bool favorite) async {
+    final idSet = noteIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repo.bulkToggleFavorite(idSet, favorite);
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id)) n.copyWith(isFavorite: favorite) else n,
+    ];
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updated = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotesBatch(currentUserId, updated);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notes_bulk_favorited');
+  }
+
+  Future<void> bulkArchive(Iterable<String> noteIds, bool archive) async {
+    final idSet = noteIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repo.bulkArchive(idSet, archive);
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id)) n.copyWith(isArchived: archive) else n,
+    ];
+
+    if (archive && idSet.contains(ref.read(selectedNoteProvider)?.id)) {
+      ref.read(selectedNoteProvider.notifier).selectNote(null);
+    }
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updated = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotesBatch(currentUserId, updated);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notes_bulk_archived');
+  }
+
+  Future<void> bulkMoveToNotebook(Iterable<String> noteIds, String targetNotebookId) async {
+    final idSet = noteIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repo.bulkMoveToNotebook(idSet, targetNotebookId);
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id)) n.copyWith(notebookId: targetNotebookId) else n,
+    ];
+
+    final selected = ref.read(selectedNoteProvider);
+    if (selected != null && idSet.contains(selected.id)) {
+      ref.read(selectedNoteProvider.notifier).selectNote(
+            selected.copyWith(notebookId: targetNotebookId),
+          );
+    }
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updated = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotesBatch(currentUserId, updated);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notes_bulk_moved');
+  }
+
+  Future<void> bulkAddTag(Iterable<String> noteIds, String tag) async {
+    final idSet = noteIds.toSet();
+    final clean = tag.trim();
+    if (idSet.isEmpty || clean.isEmpty) return;
+
+    await _repo.bulkAddTag(idSet, clean);
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id) && !n.tags.contains(clean))
+          n.copyWith(tags: [...n.tags, clean])
+        else
+          n,
+    ];
+  }
+
+  Future<void> bulkRemoveTag(Iterable<String> noteIds, String tag) async {
+    final idSet = noteIds.toSet();
+    final clean = tag.trim();
+    if (idSet.isEmpty || clean.isEmpty) return;
+
+    await _repo.bulkRemoveTag(idSet, clean);
+    state = [
+      for (final n in state)
+        if (idSet.contains(n.id))
+          n.copyWith(tags: n.tags.where((t) => t != clean).toList())
+        else
+          n,
+    ];
+  }
+
+  void _triggerDriveAutoSync({String reason = 'note_bulk_change'}) {
+    try {
+      ref.read(googleDriveProvider.notifier).scheduleAutoSync(
+            delay: const Duration(seconds: 3),
+            reason: reason,
+          );
+    } catch (_) {}
   }
 }
 

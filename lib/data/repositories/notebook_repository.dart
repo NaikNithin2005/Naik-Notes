@@ -30,6 +30,14 @@ abstract class NotebookRepository {
   Future<void> archiveNotebook(String id);
   Future<void> unarchiveNotebook(String id);
   Future<void> deleteNotebook(String id);
+  Future<void> restoreNotebook(String id);
+  Future<void> bulkDelete(Iterable<String> notebookIds);
+  Future<void> bulkRestore(Iterable<String> notebookIds);
+  Future<void> bulkPermanentDelete(Iterable<String> notebookIds);
+  Future<void> bulkArchive(Iterable<String> notebookIds, bool archive);
+  Future<void> bulkToggleFavorite(Iterable<String> notebookIds, bool favorite);
+  Future<void> bulkMoveToFolder(Iterable<String> notebookIds, String? folderId);
+  Future<void> bulkUpdateCoverColor(Iterable<String> notebookIds, String colorHex);
   Future<List<Notebook>> getDeletedNotebooks({String? ownerId});
   Future<void> purgeNotebook(String id);
   Future<void> toggleFavorite(String id);
@@ -274,6 +282,80 @@ class DriftNotebookRepository implements NotebookRepository {
       );
       await saveNotebook(updated);
     }
+  }
+
+  @override
+  Future<void> restoreNotebook(String id) async {
+    final now = DateTime.now();
+    await (_db.update(_db.notebooksTable)..where((tbl) => tbl.id.equals(id))).write(
+      NotebooksTableCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
+    );
+  }
+
+  @override
+  Future<void> bulkDelete(Iterable<String> notebookIds) async {
+    if (notebookIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notebooksTable)..where((tbl) => tbl.id.isIn(notebookIds))).write(
+      NotebooksTableCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+    );
+  }
+
+  @override
+  Future<void> bulkRestore(Iterable<String> notebookIds) async {
+    if (notebookIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notebooksTable)..where((tbl) => tbl.id.isIn(notebookIds))).write(
+      NotebooksTableCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
+    );
+  }
+
+  @override
+  Future<void> bulkPermanentDelete(Iterable<String> notebookIds) async {
+    if (notebookIds.isEmpty) return;
+    await (_db.delete(_db.notebooksTable)..where((tbl) => tbl.id.isIn(notebookIds))).go();
+  }
+
+  @override
+  Future<void> bulkArchive(Iterable<String> notebookIds, bool archive) async {
+    if (notebookIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notebooksTable)..where((tbl) => tbl.id.isIn(notebookIds))).write(
+      NotebooksTableCompanion(isArchived: Value(archive), updatedAt: Value(now)),
+    );
+  }
+
+  @override
+  Future<void> bulkToggleFavorite(Iterable<String> notebookIds, bool favorite) async {
+    if (notebookIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notebooksTable)..where((tbl) => tbl.id.isIn(notebookIds))).write(
+      NotebooksTableCompanion(isFavorite: Value(favorite), updatedAt: Value(now)),
+    );
+  }
+
+  @override
+  Future<void> bulkMoveToFolder(Iterable<String> notebookIds, String? folderId) async {
+    if (notebookIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notebooksTable)..where((tbl) => tbl.id.isIn(notebookIds))).write(
+      NotebooksTableCompanion(
+        folderId: Value(folderId),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> bulkUpdateCoverColor(Iterable<String> notebookIds, String colorHex) async {
+    if (notebookIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notebooksTable)..where((tbl) => tbl.id.isIn(notebookIds))).write(
+      NotebooksTableCompanion(
+        coverColorHex: Value(colorHex),
+        updatedAt: Value(now),
+      ),
+    );
   }
 
   @override

@@ -17,6 +17,10 @@ class NotebookCard extends StatelessWidget {
   final VoidCallback? onChangeCover;
   final VoidCallback? onExport;
   final VoidCallback? onDelete;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onSelect;
 
   const NotebookCard({
     super.key,
@@ -30,6 +34,10 @@ class NotebookCard extends StatelessWidget {
     this.onChangeCover,
     this.onExport,
     this.onDelete,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onLongPress,
+    this.onSelect,
   });
 
   Color _parseColor(String hex) {
@@ -58,7 +66,9 @@ class NotebookCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: isSelectionMode ? onSelect : onTap,
+          onLongPress: onLongPress ?? onSelect,
+          onSecondaryTap: onLongPress ?? onSelect,
           borderRadius: BorderRadius.circular(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,6 +84,12 @@ class NotebookCard extends StatelessWidget {
                       topRight: Radius.circular(16),
                       bottomRight: Radius.circular(16),
                     ),
+                    border: isSelected
+                        ? Border.all(
+                            color: theme.colorScheme.primary,
+                            width: 2.5,
+                          )
+                        : null,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.18),
@@ -292,6 +308,57 @@ class NotebookCard extends StatelessWidget {
                           ],
                         ),
                       ),
+
+                      // Selection Overlay & Gallery Checkbox Badge
+                      if (isSelectionMode) ...[
+                        if (isSelected)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.18),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  bottomLeft: Radius.circular(8),
+                                  topRight: Radius.circular(16),
+                                  bottomRight: Radius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : Colors.black.withValues(alpha: 0.45),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected ? Colors.white : Colors.white70,
+                                width: isSelected ? 1.5 : 2.0,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

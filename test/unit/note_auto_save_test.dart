@@ -128,6 +128,73 @@ class _FakeNoteRepository implements NoteRepository {
   Future<void> emptyTrash({String? ownerId}) async {
     _store.removeWhere((k, v) => v.isDeleted);
   }
+
+  @override
+  Future<void> bulkDelete(Iterable<String> ids) async {
+    for (final id in ids) {
+      await deleteNote(id);
+    }
+  }
+
+  @override
+  Future<void> bulkRestore(Iterable<String> ids) async {
+    for (final id in ids) {
+      await restoreNote(id);
+    }
+  }
+
+  @override
+  Future<void> bulkPermanentDelete(Iterable<String> ids) async {
+    for (final id in ids) {
+      _store.remove(id);
+    }
+  }
+
+  @override
+  Future<void> bulkTogglePin(Iterable<String> ids, bool isPinned) async {
+    for (final id in ids) {
+      final n = _store[id];
+      if (n != null) _store[id] = n.copyWith(isPinned: isPinned);
+    }
+  }
+
+  @override
+  Future<void> bulkToggleFavorite(Iterable<String> ids, bool isFavorite) async {
+    for (final id in ids) {
+      final n = _store[id];
+      if (n != null) _store[id] = n.copyWith(isFavorite: isFavorite);
+    }
+  }
+
+  @override
+  Future<void> bulkArchive(Iterable<String> ids, bool isArchived) async {
+    for (final id in ids) {
+      final n = _store[id];
+      if (n != null) _store[id] = n.copyWith(isArchived: isArchived);
+    }
+  }
+
+  @override
+  Future<void> bulkMoveToNotebook(Iterable<String> ids, String targetNotebookId) async {
+    for (final id in ids) {
+      final n = _store[id];
+      if (n != null) _store[id] = n.copyWith(notebookId: targetNotebookId);
+    }
+  }
+
+  @override
+  Future<void> bulkAddTag(Iterable<String> ids, String tag) async {
+    for (final id in ids) {
+      await addTag(id, tag);
+    }
+  }
+
+  @override
+  Future<void> bulkRemoveTag(Iterable<String> ids, String tag) async {
+    for (final id in ids) {
+      await removeTag(id, tag);
+    }
+  }
 }
 
 void main() {

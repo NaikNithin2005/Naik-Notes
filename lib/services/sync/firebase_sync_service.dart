@@ -121,6 +121,76 @@ class FirebaseSyncService {
     }
   }
 
+  /// Batches pushing multiple notebooks to `/users/{uid}/notebooks/{notebookId}`
+  /// using Firestore WriteBatch with chunking (max 100 per batch).
+  Future<bool> pushNotebooksBatch(String uid, List<Notebook> notebooks) async {
+    final ref = _userNotebooksRef(uid);
+    if (ref == null || _firestore == null || notebooks.isEmpty) return false;
+    try {
+      const chunkSize = 100;
+      for (var i = 0; i < notebooks.length; i += chunkSize) {
+        final end = (i + chunkSize < notebooks.length) ? i + chunkSize : notebooks.length;
+        final chunk = notebooks.sublist(i, end);
+        final batch = _firestore!.batch();
+        for (final nb in chunk) {
+          batch.set(ref.doc(nb.id), {
+            'id': nb.id,
+            'ownerId': uid,
+            'folderId': nb.folderId,
+            'title': nb.title,
+            'description': nb.description,
+            'coverId': nb.coverId,
+            'coverColorHex': nb.coverColorHex,
+            'coverImageUrl': nb.coverImageUrl,
+            'paperTemplateId': nb.paperTemplateId,
+            'orientation': nb.orientation,
+            'pageSize': nb.pageSize,
+            'pageCount': nb.pageCount,
+            'isFavorite': nb.isFavorite,
+            'isArchived': nb.isArchived,
+            'isPdf': nb.isPdf,
+            'pdfPath': nb.pdfPath,
+            'revision': nb.revision,
+            'createdAt': nb.createdAt.toIso8601String(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            'deletedAt': nb.deletedAt?.toIso8601String(),
+          }, SetOptions(merge: true));
+        }
+        await batch.commit();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] pushNotebooksBatch failed: $e');
+      return false;
+    }
+  }
+
+  /// Batches soft deleting multiple notebooks from Firestore.
+  Future<bool> deleteNotebooksBatch(String uid, List<String> notebookIds) async {
+    final ref = _userNotebooksRef(uid);
+    if (ref == null || _firestore == null || notebookIds.isEmpty) return false;
+    try {
+      const chunkSize = 100;
+      final nowIso = DateTime.now().toIso8601String();
+      for (var i = 0; i < notebookIds.length; i += chunkSize) {
+        final end = (i + chunkSize < notebookIds.length) ? i + chunkSize : notebookIds.length;
+        final chunk = notebookIds.sublist(i, end);
+        final batch = _firestore!.batch();
+        for (final id in chunk) {
+          batch.set(ref.doc(id), {
+            'deletedAt': nowIso,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        await batch.commit();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] deleteNotebooksBatch failed: $e');
+      return false;
+    }
+  }
+
   /// Fetches all remote notebooks for [uid].
   Future<List<Notebook>> fetchNotebooks(String uid) async {
     final ref = _userNotebooksRef(uid);
@@ -548,6 +618,94 @@ class FirebaseSyncService {
       return true;
     } catch (e) {
       debugPrint('[FirebaseSyncService] permanentlyDeleteNote failed for $noteId: $e');
+      return false;
+    }
+  }
+
+  /// Batches pushing multiple notes to `/users/{uid}/notes/{noteId}`.
+  Future<bool> pushNotesBatch(String uid, List<Note> notes) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null || _firestore == null || notes.isEmpty) return false;
+    try {
+      const chunkSize = 100;
+      for (var i = 0; i < notes.length; i += chunkSize) {
+        final end = (i + chunkSize < notes.length) ? i + chunkSize : notes.length;
+        final chunk = notes.sublist(i, end);
+        final batch = _firestore!.batch();
+        for (final note in chunk) {
+          batch.set(ref.doc(note.id), {
+            'id': note.id,
+            'ownerId': uid,
+            'notebookId': note.notebookId,
+            'title': note.title,
+            'contentDelta': note.contentDelta,
+            'plainText': note.plainText,
+            'preview': note.preview,
+            'tags': note.tags,
+            'isPinned': note.isPinned,
+            'isFavorite': note.isFavorite,
+            'isArchived': note.isArchived,
+            'isDeleted': note.isDeleted,
+            'createdAt': note.createdAt.toIso8601String(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            'deletedAt': note.deletedAt?.toIso8601String(),
+            'lastSyncedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        await batch.commit();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] pushNotesBatch failed: $e');
+      return false;
+    }
+  }
+
+  /// Batches soft deleting multiple notes from Firestore.
+  Future<bool> deleteNotesBatch(String uid, List<String> noteIds) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null || _firestore == null || noteIds.isEmpty) return false;
+    try {
+      const chunkSize = 100;
+      final nowIso = DateTime.now().toIso8601String();
+      for (var i = 0; i < noteIds.length; i += chunkSize) {
+        final end = (i + chunkSize < noteIds.length) ? i + chunkSize : noteIds.length;
+        final chunk = noteIds.sublist(i, end);
+        final batch = _firestore!.batch();
+        for (final id in chunk) {
+          batch.set(ref.doc(id), {
+            'isDeleted': true,
+            'deletedAt': nowIso,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        await batch.commit();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] deleteNotesBatch failed: $e');
+      return false;
+    }
+  }
+
+  /// Batches permanently deleting multiple notes from Firestore.
+  Future<bool> permanentlyDeleteNotesBatch(String uid, List<String> noteIds) async {
+    final ref = _userNotesRef(uid);
+    if (ref == null || _firestore == null || noteIds.isEmpty) return false;
+    try {
+      const chunkSize = 100;
+      for (var i = 0; i < noteIds.length; i += chunkSize) {
+        final end = (i + chunkSize < noteIds.length) ? i + chunkSize : noteIds.length;
+        final chunk = noteIds.sublist(i, end);
+        final batch = _firestore!.batch();
+        for (final id in chunk) {
+          batch.delete(ref.doc(id));
+        }
+        await batch.commit();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] permanentlyDeleteNotesBatch failed: $e');
       return false;
     }
   }

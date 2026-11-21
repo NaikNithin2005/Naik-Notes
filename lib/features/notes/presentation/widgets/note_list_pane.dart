@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -6,6 +7,8 @@ import '../../../../core/widgets/naik_empty_state.dart';
 import '../../../../data/models/note_model.dart';
 import '../../../notebooks/data/notebook_provider.dart';
 import '../../data/note_provider.dart';
+import '../../data/note_selection_provider.dart';
+import 'note_selection_toolbar.dart';
 
 /// Middle pane displaying the searchable, sortable list of notes.
 class NoteListPane extends ConsumerStatefulWidget {
@@ -376,119 +379,149 @@ class _NoteListPaneState extends ConsumerState<NoteListPane> {
     final searchQuery = ref.watch(noteSearchProvider);
     final filteredNotes = ref.watch(filteredNotesProvider);
     final selectedNote = ref.watch(selectedNoteProvider);
+    final noteSelection = ref.watch(noteSelectionProvider);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(
-          right: BorderSide(
-            color: theme.dividerColor.withValues(alpha: 0.15),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (ref.read(noteSelectionProvider).isSelectionMode) {
+            ref.read(noteSelectionProvider.notifier).exitSelectionMode();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.keyA, control: true): () {
+          ref
+              .read(noteSelectionProvider.notifier)
+              .selectAll(filteredNotes.map((n) => n.id));
+        },
+        const SingleActivator(LogicalKeyboardKey.keyA, meta: true): () {
+          ref
+              .read(noteSelectionProvider.notifier)
+              .selectAll(filteredNotes.map((n) => n.id));
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            border: Border(
+              right: BorderSide(
+                color: theme.dividerColor.withValues(alpha: 0.15),
+              ),
+            ),
           ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Top Bar: Search and Actions
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Row(
-              children: [
-                if (widget.showSidebarToggle)
-                  IconButton(
-                    icon: const Icon(Icons.menu_rounded),
-                    tooltip: 'Toggle Sidebar',
-                    onPressed: widget.onToggleSidebar,
-                  ),
-                Expanded(
-                  child: SearchBar(
-                    controller: _searchController,
-                    hintText: 'Search notes, tags...',
-                    elevation: const WidgetStatePropertyAll(0),
-                    backgroundColor: WidgetStatePropertyAll(
-                      theme.colorScheme.surfaceContainerHighest.withValues(
-                        alpha: 0.45,
-                      ),
-                    ),
-                    leading: const Icon(Icons.search_rounded, size: 20),
-                    trailing: [
-                      if (searchQuery.isNotEmpty)
+          child: Column(
+            children: [
+              if (noteSelection.isSelectionMode)
+                NoteSelectionToolbar(visibleNotes: filteredNotes)
+              else ...[
+                // Top Bar: Search and Actions
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  child: Row(
+                    children: [
+                      if (widget.showSidebarToggle)
                         IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          onPressed: () {
-                            _searchController.clear();
-                            ref.read(noteSearchProvider.notifier).clear();
+                          icon: const Icon(Icons.menu_rounded),
+                          tooltip: 'Toggle Sidebar',
+                          onPressed: widget.onToggleSidebar,
+                        ),
+                      Expanded(
+                        child: SearchBar(
+                          controller: _searchController,
+                          hintText: 'Search notes, tags...',
+                          elevation: const WidgetStatePropertyAll(0),
+                          backgroundColor: WidgetStatePropertyAll(
+                            theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.45),
+                          ),
+                          leading: const Icon(Icons.search_rounded, size: 20),
+                          trailing: [
+                            if (searchQuery.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  ref.read(noteSearchProvider.notifier).clear();
+                                },
+                              ),
+                          ],
+                          onChanged: (val) {
+                            ref.read(noteSearchProvider.notifier).setQuery(val);
                           },
                         ),
-                    ],
-                    onChanged: (val) {
-                      ref.read(noteSearchProvider.notifier).setQuery(val);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.sort_rounded),
-                  tooltip: 'Sort notes',
-                  onPressed: () => _showSortMenu(context),
-                ),
-                if (filter.type != NoteFilterType.trash)
-                  IconButton.filled(
-                    icon: const Icon(Icons.add_rounded),
-                    tooltip: 'New note (Ctrl/Cmd+N)',
-                    onPressed: _createNewNote,
-                  ),
-              ],
-            ),
-          ),
-
-          // Header summary info
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(
-              children: [
-                Text(
-                  _getHeaderTitle(filter),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${filteredNotes.length}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (filter.type == NoteFilterType.trash && filteredNotes.isNotEmpty)
-                  TextButton.icon(
-                    icon: Icon(
-                      Icons.delete_sweep_rounded,
-                      size: 16,
-                      color: theme.colorScheme.error,
-                    ),
-                    label: Text(
-                      'Empty Trash',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.error,
                       ),
-                    ),
-                    onPressed: () => _confirmEmptyTrash(context),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.sort_rounded),
+                        tooltip: 'Sort notes',
+                        onPressed: () => _showSortMenu(context),
+                      ),
+                      if (filter.type != NoteFilterType.trash)
+                        IconButton.filled(
+                          icon: const Icon(Icons.add_rounded),
+                          tooltip: 'New note (Ctrl/Cmd+N)',
+                          onPressed: _createNewNote,
+                        ),
+                    ],
                   ),
+                ),
+
+                // Header summary info
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        _getHeaderTitle(filter),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer
+                              .withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${filteredNotes.length}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (filter.type == NoteFilterType.trash &&
+                          filteredNotes.isNotEmpty)
+                        TextButton.icon(
+                          icon: Icon(
+                            Icons.delete_sweep_rounded,
+                            size: 16,
+                            color: theme.colorScheme.error,
+                          ),
+                          label: Text(
+                            'Empty Trash',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                          onPressed: () => _confirmEmptyTrash(context),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
               ],
-            ),
-          ),
-          const Divider(height: 1),
 
           // Note List Canvas
           Expanded(
@@ -500,20 +533,66 @@ class _NoteListPaneState extends ConsumerState<NoteListPane> {
                     itemBuilder: (context, index) {
                       final note = filteredNotes[index];
                       final isSelected = selectedNote?.id == note.id;
+                      final isMultiSelected = noteSelection.isSelected(note.id);
 
                       return _NoteCard(
                         note: note,
                         isSelected: isSelected,
+                        isSelectionMode: noteSelection.isSelectionMode,
+                        isMultiSelected: isMultiSelected,
                         formattedDate: _formatDate(note.updatedAt),
                         onTap: () {
-                          ref
-                              .read(selectedNoteProvider.notifier)
-                              .selectNote(note);
-                          if (widget.onNoteSelected != null) {
-                            widget.onNoteSelected!(note);
+                          if (noteSelection.isSelectionMode) {
+                            if (HardwareKeyboard.instance.isShiftPressed) {
+                              ref
+                                  .read(noteSelectionProvider.notifier)
+                                  .rangeSelect(
+                                    note.id,
+                                    filteredNotes.map((n) => n.id).toList(),
+                                  );
+                            } else {
+                              ref
+                                  .read(noteSelectionProvider.notifier)
+                                  .toggle(note.id);
+                            }
+                          } else {
+                            if (HardwareKeyboard.instance.isControlPressed ||
+                                HardwareKeyboard.instance.isMetaPressed) {
+                              ref
+                                  .read(noteSelectionProvider.notifier)
+                                  .enterSelectionMode(note.id);
+                            } else {
+                              ref
+                                  .read(selectedNoteProvider.notifier)
+                                  .selectNote(note);
+                              if (widget.onNoteSelected != null) {
+                                widget.onNoteSelected!(note);
+                              }
+                            }
                           }
                         },
-                        onLongPress: () => _showNoteOptions(context, note),
+                        onLongPress: () {
+                          if (noteSelection.isSelectionMode) {
+                            ref
+                                .read(noteSelectionProvider.notifier)
+                                .toggle(note.id);
+                          } else {
+                            ref
+                                .read(noteSelectionProvider.notifier)
+                                .enterSelectionMode(note.id);
+                          }
+                        },
+                        onSecondaryTap: () {
+                          if (noteSelection.isSelectionMode) {
+                            ref
+                                .read(noteSelectionProvider.notifier)
+                                .toggle(note.id);
+                          } else {
+                            ref
+                                .read(noteSelectionProvider.notifier)
+                                .enterSelectionMode(note.id);
+                          }
+                        },
                         onMorePressed: () => _showNoteOptions(context, note),
                       );
                     },
@@ -521,8 +600,10 @@ class _NoteListPaneState extends ConsumerState<NoteListPane> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildEmptyState(NoteFilterState filter, String query) {
     if (query.isNotEmpty) {
@@ -583,17 +664,23 @@ class _NoteListPaneState extends ConsumerState<NoteListPane> {
 class _NoteCard extends StatelessWidget {
   final Note note;
   final bool isSelected;
+  final bool isSelectionMode;
+  final bool isMultiSelected;
   final String formattedDate;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback? onSecondaryTap;
   final VoidCallback onMorePressed;
 
   const _NoteCard({
     required this.note,
     required this.isSelected,
+    this.isSelectionMode = false,
+    this.isMultiSelected = false,
     required this.formattedDate,
     required this.onTap,
     required this.onLongPress,
+    this.onSecondaryTap,
     required this.onMorePressed,
   });
 
@@ -606,18 +693,28 @@ class _NoteCard extends StatelessWidget {
         ? theme.colorScheme.primary.withValues(alpha: 0.16)
         : theme.colorScheme.primary.withValues(alpha: 0.10);
 
-    final borderColor = isSelected
+    final cardBg = isMultiSelected
+        ? (isDark
+            ? theme.colorScheme.primary.withValues(alpha: 0.22)
+            : theme.colorScheme.primary.withValues(alpha: 0.14))
+        : (isSelected ? selectedBg : theme.cardColor);
+
+    final cardBorder = isMultiSelected
         ? theme.colorScheme.primary
-        : theme.dividerColor.withValues(alpha: 0.12);
+        : (isSelected
+            ? theme.colorScheme.primary
+            : theme.dividerColor.withValues(alpha: 0.12));
+
+    final borderWidth = (isMultiSelected || isSelected) ? 1.8 : 1.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: isSelected ? selectedBg : theme.cardColor,
+        color: cardBg,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: borderColor,
-          width: isSelected ? 1.5 : 1.0,
+          color: cardBorder,
+          width: borderWidth,
         ),
       ),
       child: Material(
@@ -627,6 +724,7 @@ class _NoteCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
           onLongPress: onLongPress,
+          onSecondaryTap: onSecondaryTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -636,6 +734,35 @@ class _NoteCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Gallery Selection Checkbox
+                    if (isSelectionMode) ...[
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: 22,
+                        height: 22,
+                        margin: const EdgeInsets.only(right: 10, top: 1),
+                        decoration: BoxDecoration(
+                          color: isMultiSelected
+                              ? theme.colorScheme.primary
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isMultiSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.4),
+                            width: 2,
+                          ),
+                        ),
+                        child: isMultiSelected
+                            ? const Icon(
+                                Icons.check,
+                                size: 14,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                    ],
                     if (note.isPinned) ...[
                       Icon(
                         Icons.push_pin_rounded,
@@ -657,26 +784,29 @@ class _NoteCard extends StatelessWidget {
                         note.title.trim().isEmpty ? 'Untitled Note' : note.title,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.w600,
+                          fontWeight: (isSelected || isMultiSelected)
+                              ? FontWeight.bold
+                              : FontWeight.w600,
                           fontStyle: note.title.trim().isEmpty
                               ? FontStyle.italic
                               : FontStyle.normal,
                           color: note.title.trim().isEmpty
-                              ? theme.colorScheme.onSurface.withValues(alpha: 0.6)
+                              ? theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6)
                               : theme.colorScheme.onSurface,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.more_horiz_rounded, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      splashRadius: 16,
-                      onPressed: onMorePressed,
-                    ),
+                    if (!isSelectionMode)
+                      IconButton(
+                        icon: const Icon(Icons.more_horiz_rounded, size: 18),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        splashRadius: 16,
+                        onPressed: onMorePressed,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 4),

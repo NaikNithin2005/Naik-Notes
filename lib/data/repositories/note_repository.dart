@@ -31,6 +31,24 @@ abstract class NoteRepository {
 
   Future<void> permanentlyDeleteNote(String id);
 
+  Future<void> bulkDelete(Iterable<String> noteIds);
+
+  Future<void> bulkRestore(Iterable<String> noteIds);
+
+  Future<void> bulkPermanentDelete(Iterable<String> noteIds);
+
+  Future<void> bulkTogglePin(Iterable<String> noteIds, bool pin);
+
+  Future<void> bulkToggleFavorite(Iterable<String> noteIds, bool favorite);
+
+  Future<void> bulkArchive(Iterable<String> noteIds, bool archive);
+
+  Future<void> bulkMoveToNotebook(Iterable<String> noteIds, String targetNotebookId);
+
+  Future<void> bulkAddTag(Iterable<String> noteIds, String tag);
+
+  Future<void> bulkRemoveTag(Iterable<String> noteIds, String tag);
+
   Future<void> togglePin(String id);
 
   Future<void> toggleFavorite(String id);
@@ -371,6 +389,104 @@ class DriftNoteRepository implements NoteRepository {
       query.where((t) => t.ownerId.equals(ownerId));
     }
     await query.go();
+  }
+
+  @override
+  Future<void> bulkDelete(Iterable<String> noteIds) async {
+    if (noteIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notesTable)..where((t) => t.id.isIn(noteIds))).write(
+      NotesTableCompanion(
+        isDeleted: const Value(true),
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> bulkRestore(Iterable<String> noteIds) async {
+    if (noteIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notesTable)..where((t) => t.id.isIn(noteIds))).write(
+      NotesTableCompanion(
+        isDeleted: const Value(false),
+        deletedAt: const Value(null),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> bulkPermanentDelete(Iterable<String> noteIds) async {
+    if (noteIds.isEmpty) return;
+    await (_db.delete(_db.notesTable)..where((t) => t.id.isIn(noteIds))).go();
+  }
+
+  @override
+  Future<void> bulkTogglePin(Iterable<String> noteIds, bool pin) async {
+    if (noteIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notesTable)..where((t) => t.id.isIn(noteIds))).write(
+      NotesTableCompanion(
+        isPinned: Value(pin),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> bulkToggleFavorite(Iterable<String> noteIds, bool favorite) async {
+    if (noteIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notesTable)..where((t) => t.id.isIn(noteIds))).write(
+      NotesTableCompanion(
+        isFavorite: Value(favorite),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> bulkArchive(Iterable<String> noteIds, bool archive) async {
+    if (noteIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notesTable)..where((t) => t.id.isIn(noteIds))).write(
+      NotesTableCompanion(
+        isArchived: Value(archive),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> bulkMoveToNotebook(Iterable<String> noteIds, String targetNotebookId) async {
+    if (noteIds.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.notesTable)..where((t) => t.id.isIn(noteIds))).write(
+      NotesTableCompanion(
+        notebookId: Value(targetNotebookId),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> bulkAddTag(Iterable<String> noteIds, String tag) async {
+    final cleanTag = tag.trim();
+    if (cleanTag.isEmpty || noteIds.isEmpty) return;
+    for (final id in noteIds) {
+      await addTag(id, cleanTag);
+    }
+  }
+
+  @override
+  Future<void> bulkRemoveTag(Iterable<String> noteIds, String tag) async {
+    final cleanTag = tag.trim();
+    if (cleanTag.isEmpty || noteIds.isEmpty) return;
+    for (final id in noteIds) {
+      await removeTag(id, cleanTag);
+    }
   }
 }
 

@@ -451,6 +451,145 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     );
   }
 
+  Future<void> bulkDelete(Iterable<String> notebookIds) async {
+    final idSet = notebookIds.toSet();
+    if (idSet.isEmpty) return;
+
+    state = state.where((nb) => !idSet.contains(nb.id)).toList();
+    await _repository.bulkDelete(idSet);
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .deleteNotebooksBatch(currentUserId, idSet.toList());
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(
+      delay: const Duration(seconds: 1),
+      reason: 'notebooks_bulk_deleted',
+    );
+  }
+
+  Future<void> bulkRestore(Iterable<String> notebookIds) async {
+    final idSet = notebookIds.toSet();
+    if (idSet.isEmpty) return;
+
+    await _repository.bulkRestore(idSet);
+    final user = ref.read(authProvider).user;
+    await loadForUser(user?.id);
+    _triggerDriveAutoSync(reason: 'notebooks_bulk_restored');
+  }
+
+  Future<void> bulkArchive(Iterable<String> notebookIds, bool archive) async {
+    final idSet = notebookIds.toSet();
+    if (idSet.isEmpty) return;
+
+    state = [
+      for (final nb in state)
+        if (idSet.contains(nb.id))
+          nb.copyWith(isArchived: archive, updatedAt: DateTime.now())
+        else
+          nb,
+    ];
+    await _repository.bulkArchive(idSet, archive);
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updatedList = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebooksBatch(currentUserId, updatedList);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notebooks_bulk_archived');
+  }
+
+  Future<void> bulkFavorite(Iterable<String> notebookIds, bool favorite) async {
+    final idSet = notebookIds.toSet();
+    if (idSet.isEmpty) return;
+
+    state = [
+      for (final nb in state)
+        if (idSet.contains(nb.id))
+          nb.copyWith(isFavorite: favorite, updatedAt: DateTime.now())
+        else
+          nb,
+    ];
+    await _repository.bulkToggleFavorite(idSet, favorite);
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updatedList = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebooksBatch(currentUserId, updatedList);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notebooks_bulk_favorited');
+  }
+
+  Future<void> bulkMoveToFolder(Iterable<String> notebookIds, String? folderId) async {
+    final idSet = notebookIds.toSet();
+    if (idSet.isEmpty) return;
+
+    state = [
+      for (final nb in state)
+        if (idSet.contains(nb.id))
+          nb.copyWith(
+            folderId: folderId,
+            clearFolderId: folderId == null,
+            updatedAt: DateTime.now(),
+          )
+        else
+          nb,
+    ];
+    await _repository.bulkMoveToFolder(idSet, folderId);
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updatedList = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebooksBatch(currentUserId, updatedList);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notebooks_bulk_moved');
+  }
+
+  Future<void> bulkUpdateCoverColor(Iterable<String> notebookIds, String colorHex) async {
+    final idSet = notebookIds.toSet();
+    if (idSet.isEmpty) return;
+
+    state = [
+      for (final nb in state)
+        if (idSet.contains(nb.id))
+          nb.copyWith(
+            coverColorHex: colorHex,
+            updatedAt: DateTime.now(),
+            revision: nb.revision + 1,
+          )
+        else
+          nb,
+    ];
+    await _repository.bulkUpdateCoverColor(idSet, colorHex);
+
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    if (currentUserId != 'local_user') {
+      final updatedList = state.where((n) => idSet.contains(n.id)).toList();
+      try {
+        await ref
+            .read(firebaseSyncServiceProvider)
+            .pushNotebooksBatch(currentUserId, updatedList);
+      } catch (_) {}
+    }
+    _triggerDriveAutoSync(reason: 'notebooks_bulk_cover_color');
+  }
+
   void _triggerDriveAutoSync({
     Duration delay = const Duration(seconds: 3),
     String reason = 'notebook_change',
