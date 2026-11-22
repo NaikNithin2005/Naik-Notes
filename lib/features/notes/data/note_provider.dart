@@ -169,6 +169,11 @@ class NotesNotifier extends Notifier<List<Note>> {
 
   Future<void> permanentlyDeleteNote(String noteId) async {
     final uid = ref.read(authProvider).user?.id ?? 'local_user';
+    try {
+      await ref
+          .read(attachmentSyncCoordinatorProvider)
+          .onNotePermanentlyDeleted(uid, noteId);
+    } catch (_) {}
     await _repo.permanentlyDeleteNote(noteId, ownerId: uid);
     state = state.where((n) => n.id != noteId).toList();
     if (ref.read(selectedNoteProvider)?.id == noteId) {
@@ -357,6 +362,15 @@ class NotesNotifier extends Notifier<List<Note>> {
     final idSet = noteIds.toSet();
     if (idSet.isEmpty) return;
 
+    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
+    for (final id in idSet) {
+      try {
+        await ref
+            .read(attachmentSyncCoordinatorProvider)
+            .onNotePermanentlyDeleted(currentUserId, id);
+      } catch (_) {}
+    }
+
     await _repo.bulkPermanentDelete(idSet);
     state = state.where((n) => !idSet.contains(n.id)).toList();
 
@@ -364,7 +378,6 @@ class NotesNotifier extends Notifier<List<Note>> {
       ref.read(selectedNoteProvider.notifier).selectNote(null);
     }
 
-    final currentUserId = ref.read(authProvider).user?.id ?? 'local_user';
     if (currentUserId != 'local_user') {
       try {
         await ref

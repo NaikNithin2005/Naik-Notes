@@ -219,6 +219,15 @@ class _HandwritingToolbarState extends ConsumerState<HandwritingToolbar> {
                   tooltip: 'Selection Tool (Lasso, Move, Rotate, Scale)',
                   isCompact: isCompact,
                 ),
+              if (toolbarPrefs.isToolVisible('pan'))
+                _buildToolButton(
+                  context: context,
+                  tool: ToolType.pan,
+                  activeTool: activeTool,
+                  icon: Icons.pan_tool_outlined,
+                  tooltip: 'Pan & Zoom (Hand Tool)',
+                  isCompact: isCompact,
+                ),
 
               const SizedBox(width: 2),
               const SizedBox(

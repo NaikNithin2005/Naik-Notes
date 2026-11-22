@@ -17,6 +17,7 @@ class AttachmentUploadStatus {
   static const String downloadFailed = 'download_failed';
   static const String driveDisconnected = 'drive_disconnected';
   static const String fileUnavailable = 'file_unavailable';
+  static const String pendingDeletion = 'pending_deletion';
 }
 
 /// Domain model representing a note attachment stored in Google Drive's hidden `appDataFolder`

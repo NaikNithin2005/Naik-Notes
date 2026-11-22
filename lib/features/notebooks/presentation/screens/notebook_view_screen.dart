@@ -56,12 +56,15 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   late final TransformationController _transformationController =
       TransformationController();
   final ScrollController _continuousScrollController = ScrollController();
+  bool _hasAutoFitted = false;
+  double _lastAvailableWidth = 0.0;
+  double _lastAvailableHeight = 0.0;
 
   @override
   void initState() {
     super.initState();
-    ref.read(currentPageIndexProvider.notifier).setPage(1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(currentPageIndexProvider.notifier).setPage(1);
       _loadNotebookData();
     });
   }
@@ -127,21 +130,78 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   void _zoomIn() {
     final currentScale = _transformationController.value.getMaxScaleOnAxis();
     if (currentScale < 3.5) {
-      _transformationController.value = _transformationController.value
-        ..scale(1.2, 1.2, 1.0);
+      _transformationController.value =
+          Matrix4.copy(_transformationController.value)..scale(1.2, 1.2, 1.0);
     }
   }
 
   void _zoomOut() {
     final currentScale = _transformationController.value.getMaxScaleOnAxis();
     if (currentScale > 0.4) {
-      _transformationController.value = _transformationController.value
-        ..scale(0.8, 0.8, 1.0);
+      _transformationController.value =
+          Matrix4.copy(_transformationController.value)..scale(0.8, 0.8, 1.0);
     }
   }
 
   void _resetZoom() {
     _transformationController.value = Matrix4.identity();
+  }
+
+  void _fitToWidth({
+    double? availableWidth,
+    double? availableHeight,
+    double? pageWidth,
+    double? pageHeight,
+  }) {
+    final pagesMap = ref.read(notebookPagesProvider);
+    final pages = pagesMap[widget.notebookId] ?? [];
+    final currentPageIndex = ref.read(currentPageIndexProvider);
+    final clampedIndex = currentPageIndex.clamp(
+      1,
+      pages.isEmpty ? 1 : pages.length,
+    );
+    final activePage = pages.isNotEmpty && clampedIndex <= pages.length
+        ? pages[clampedIndex - 1]
+        : null;
+
+    final pWidth = pageWidth ?? activePage?.width ?? 841.89;
+    final pHeight = pageHeight ?? activePage?.height ?? 595.28;
+    if (pWidth <= 0) return;
+
+    final screenW = availableWidth != null && availableWidth > 0
+        ? availableWidth
+        : (_lastAvailableWidth > 0
+            ? _lastAvailableWidth
+            : MediaQuery.of(context).size.width);
+    final screenH = availableHeight != null && availableHeight > 0
+        ? availableHeight
+        : (_lastAvailableHeight > 0
+            ? _lastAvailableHeight
+            : MediaQuery.of(context).size.height);
+
+    // Fit viewport width with comfortable 48px padding (24px each side)
+    final targetScale = ((screenW - 48) / pWidth).clamp(0.4, 2.5);
+
+    // Center horizontally in viewport
+    final tx = screenW * (1.0 - targetScale) / 2.0;
+
+    // For vertical: center if it fits vertically, otherwise align near top
+    final scaledHeight = pHeight * targetScale;
+    final double ty;
+    if (scaledHeight + 48 <= screenH) {
+      ty = screenH * (1.0 - targetScale) / 2.0;
+    } else {
+      final yTop = (screenH - pHeight) / 2.0;
+      ty = 24.0 - (targetScale * yTop);
+    }
+
+    final matrix = Matrix4.identity()
+      ..translate(tx, ty)
+      ..scale(targetScale, targetScale, 1.0);
+
+    setState(() {
+      _transformationController.value = matrix;
+    });
   }
 
   void _openTemplateSettings(
@@ -1476,8 +1536,26 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                               },
                             ),
                           )
-                        : InteractiveViewer(
-                            transformationController: _transformationController,
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              _lastAvailableWidth = constraints.maxWidth;
+                              _lastAvailableHeight = constraints.maxHeight;
+                              if (!_hasAutoFitted && constraints.maxWidth > 0) {
+                                _hasAutoFitted = true;
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (mounted) {
+                                    _fitToWidth(
+                                      availableWidth: constraints.maxWidth,
+                                      availableHeight: constraints.maxHeight,
+                                      pageWidth: activePage.width,
+                                      pageHeight: activePage.height,
+                                    );
+                                  }
+                                });
+                              }
+
+                              return InteractiveViewer(
+                                transformationController: _transformationController,
                             minScale: 0.4,
                             maxScale: 3.5,
                             boundaryMargin: const EdgeInsets.all(80),
@@ -1537,7 +1615,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                                 ),
                               ),
                             ),
-                          ),
+                          );
+                        },
+                      ),
                   ),
 
                   // Dynamic Vector Handwriting & Inking Toolbar (Bottom Dock Placement)
@@ -1678,7 +1758,73 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                                       }
                                     : null,
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8),
+
+                              // Zoom & View Scale Controls Group
+                              const SizedBox(
+                                height: 24,
+                                child: VerticalDivider(width: 12, thickness: 1),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.zoom_out_rounded, size: 18),
+                                tooltip: 'Zoom Out (Ctrl -)',
+                                onPressed: _zoomOut,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.fit_screen_rounded, size: 18),
+                                tooltip: 'Fit Page to Width',
+                                onPressed: () => _fitToWidth(
+                                  availableWidth: _lastAvailableWidth,
+                                  availableHeight: _lastAvailableHeight,
+                                  pageWidth: activePage?.width,
+                                  pageHeight: activePage?.height,
+                                ),
+                              ),
+                              Tooltip(
+                                message: 'Reset Zoom (100%) (Ctrl 0)',
+                                child: InkWell(
+                                  onTap: _resetZoom,
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest
+                                          .withValues(alpha: 0.5),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: ValueListenableBuilder<Matrix4>(
+                                      valueListenable: _transformationController,
+                                      builder: (context, matrix, _) {
+                                        final scale =
+                                            (matrix.getMaxScaleOnAxis() * 100).round();
+                                        return Text(
+                                          '$scale%',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: theme.colorScheme.onSurfaceVariant,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.zoom_in_rounded, size: 18),
+                                tooltip: 'Zoom In (Ctrl +)',
+                                onPressed: _zoomIn,
+                              ),
+                              const SizedBox(
+                                height: 24,
+                                child: VerticalDivider(width: 12, thickness: 1),
+                              ),
+                              const SizedBox(width: 8),
 
                               // Duplicate Current Page
                               if (activePage != null)

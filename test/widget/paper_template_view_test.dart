@@ -164,9 +164,11 @@ void main() {
           count: 2,
         );
 
-        await tester.binding.setSurfaceSize(const Size(1200, 800));
+        tester.view.physicalSize = const Size(1400, 900);
+        tester.view.devicePixelRatio = 1.0;
         addTearDown(() {
-          tester.binding.setSurfaceSize(null);
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
           db.close();
         });
 

@@ -4,14 +4,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/models/attachment_model.dart';
 import '../../data/repositories/attachment_repository.dart';
+import 'attachment_storage_service.dart';
 import 'google_drive_auth_service.dart';
 import 'google_drive_storage_service.dart';
 
@@ -25,74 +26,86 @@ class AttachmentSyncCoordinator {
   final GoogleDriveAuthService _authService;
   final GoogleDriveStorageService _storageService;
   final AttachmentRepository _attachmentRepo;
-  final FirebaseFirestore _firestore;
-  final Uuid _uuid;
+  final AttachmentStorageService _storageHelper;
+  final FirebaseFirestore? _firestore;
+
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  String? _listeningUid;
 
   AttachmentSyncCoordinator({
     required GoogleDriveAuthService authService,
     required GoogleDriveStorageService storageService,
     required AttachmentRepository attachmentRepo,
+    AttachmentStorageService? storageHelper,
     FirebaseFirestore? firestore,
     Uuid? uuid,
   })  : _authService = authService,
         _storageService = storageService,
         _attachmentRepo = attachmentRepo,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _uuid = uuid ?? const Uuid();
+        _storageHelper = storageHelper ?? AttachmentStorageService(),
+        _firestore = firestore ?? (Firebase.apps.isNotEmpty ? FirebaseFirestore.instance : null);
+
+  /// Starts listening to network connectivity changes to automatically retry
+  /// pending uploads when the device returns online.
+  void startConnectivityListener(String uid) {
+    if (_listeningUid == uid && _connectivitySub != null) return;
+    _listeningUid = uid;
+    _connectivitySub?.cancel();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
+      final isConnected = results.any((r) => r != ConnectivityResult.none);
+      if (isConnected) {
+        debugPrint('[AttachmentSyncCoordinator] Network reconnected; syncing pending uploads...');
+        syncPendingUploads(uid);
+      }
+    });
+  }
+
+  void dispose() {
+    _connectivitySub?.cancel();
+    _connectivitySub = null;
+  }
 
   /// Returns the user-partitioned local directory for cached attachments.
   Future<Directory> getLocalAttachmentDirectory(String uid) async {
-    final baseDir = await getApplicationDocumentsDirectory();
-    final sanitizedUid = uid.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-    final dir = Directory(p.join(baseDir.path, 'users', sanitizedUid, 'attachments'));
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    return dir;
+    return _storageHelper.getBaseAttachmentsDirectory(uid);
   }
 
   /// Adds a new attachment to [noteId] from a local [sourceFile].
   ///
-  /// 1. Copies file to the local user-partitioned cache directory.
-  /// 2. Computes the SHA-256 integrity checksum.
+  /// 1. Copies/compresses file into the application-managed category directory.
+  /// 2. Generates thumbnail for images and computes SHA-256 integrity checksum.
   /// 3. Records attachment in SQLite `AttachmentsTable` with status `pending`.
-  /// 4. If Google Drive is authorized, immediately uploads to `appDataFolder`
-  ///    and records metadata in Firestore.
-  /// 5. If Google Drive is disconnected, preserves file locally with status
-  ///    `available_offline` without blocking user note-taking.
+  /// 4. Immediately returns the attachment domain model so it displays in the editor.
+  /// 5. Asynchronously triggers Google Drive upload if connected; otherwise marks
+  ///    as `drive_disconnected` or `available_offline` without blocking user.
   Future<NoteAttachment> addAttachment({
     required String uid,
     required String noteId,
     required File sourceFile,
     required String fileName,
     String? mimeType,
+    bool isSketch = false,
     void Function(double progress)? onProgress,
   }) async {
-    final attachmentId = _uuid.v4();
-    final resolvedMime = mimeType ??
-        lookupMimeType(fileName) ??
-        'application/octet-stream';
+    // 1. Import, compress, and store locally
+    final processed = await _storageHelper.importFile(
+      uid: uid,
+      sourceFile: sourceFile,
+      fileName: fileName,
+      mimeType: mimeType,
+      isSketch: isSketch,
+    );
 
-    // 1. Copy to user cache directory
-    final userDir = await getLocalAttachmentDirectory(uid);
-    final ext = p.extension(fileName);
-    final localCachedFile = File(p.join(userDir.path, '$attachmentId$ext'));
-    await sourceFile.copy(localCachedFile.path);
-
-    // 2. Compute checksum and file size
-    final checksum = await GoogleDriveStorageService.calculateSha256(localCachedFile);
-    final fileSize = await localCachedFile.length();
-
-    // 3. Create domain attachment record
+    // 2. Create domain attachment record
     var attachment = NoteAttachment(
-      attachmentId: attachmentId,
+      attachmentId: processed.localId,
       ownerId: uid,
       noteId: noteId,
-      fileName: fileName,
-      mimeType: resolvedMime,
-      fileSize: fileSize,
-      localPath: localCachedFile.path,
-      checksum: checksum,
+      fileName: processed.fileName,
+      mimeType: processed.mimeType,
+      fileSize: processed.fileSize,
+      localPath: processed.file.path,
+      checksum: processed.checksum,
       storageProvider: AttachmentStorageProvider.googleDriveAppData,
       uploadStatus: AttachmentUploadStatus.pending,
       createdAt: DateTime.now(),
@@ -100,78 +113,125 @@ class AttachmentSyncCoordinator {
 
     await _attachmentRepo.saveAttachment(attachment);
 
-    // 4. Check if Google Drive is authorized
-    final driveMeta = await _authService.getConnectionMetadata(uid);
-    final isDriveConnected = driveMeta != null && driveMeta.connected;
+    // 3. Check Google Drive connection and upload asynchronously
+    _triggerAsyncUpload(
+      uid: uid,
+      attachment: attachment,
+      file: processed.file,
+      onProgress: onProgress,
+    );
 
-    if (!isDriveConnected) {
-      // Offline / Local-only mode: mark available locally
-      await _attachmentRepo.updateAttachmentStatus(
-        attachmentId,
-        AttachmentUploadStatus.driveDisconnected,
-        localPath: localCachedFile.path,
-      );
-      return attachment.copyWith(
-        uploadStatus: AttachmentUploadStatus.driveDisconnected,
-      );
-    }
+    return attachment;
+  }
 
-    // 5. Upload to Google Drive appDataFolder
-    try {
-      await _attachmentRepo.updateAttachmentStatus(
-        attachmentId,
-        AttachmentUploadStatus.uploading,
-      );
+  /// Adds an attachment directly from in-memory bytes (e.g. sketching canvas or camera).
+  Future<NoteAttachment> addAttachmentFromBytes({
+    required String uid,
+    required String noteId,
+    required Uint8List bytes,
+    required String fileName,
+    String? mimeType,
+    bool isSketch = false,
+    void Function(double progress)? onProgress,
+  }) async {
+    final processed = await _storageHelper.importBytes(
+      uid: uid,
+      bytes: bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+      isSketch: isSketch,
+    );
 
-      final driveFileId = await _storageService.uploadAttachment(
-        uid: uid,
-        noteId: noteId,
-        attachmentId: attachmentId,
-        file: localCachedFile,
-        fileName: fileName,
-        mimeType: resolvedMime,
-        knownChecksum: checksum,
-        onProgress: onProgress,
-      );
+    var attachment = NoteAttachment(
+      attachmentId: processed.localId,
+      ownerId: uid,
+      noteId: noteId,
+      fileName: processed.fileName,
+      mimeType: processed.mimeType,
+      fileSize: processed.fileSize,
+      localPath: processed.file.path,
+      checksum: processed.checksum,
+      storageProvider: AttachmentStorageProvider.googleDriveAppData,
+      uploadStatus: AttachmentUploadStatus.pending,
+      createdAt: DateTime.now(),
+    );
 
-      final uploadedAt = DateTime.now();
+    await _attachmentRepo.saveAttachment(attachment);
 
-      // 6. Update Firestore note document attachment references
-      await _saveAttachmentToFirestore(
-        uid: uid,
-        noteId: noteId,
-        attachment: attachment.copyWith(
+    _triggerAsyncUpload(
+      uid: uid,
+      attachment: attachment,
+      file: processed.file,
+      onProgress: onProgress,
+    );
+
+    return attachment;
+  }
+
+  /// Helper to trigger asynchronous Drive upload in background.
+  void _triggerAsyncUpload({
+    required String uid,
+    required NoteAttachment attachment,
+    required File file,
+    void Function(double progress)? onProgress,
+  }) {
+    unawaited(() async {
+      try {
+        final driveMeta = await _authService.getConnectionMetadata(uid);
+        final isDriveConnected = driveMeta != null && driveMeta.connected;
+
+        if (!isDriveConnected) {
+          await _attachmentRepo.updateAttachmentStatus(
+            attachment.attachmentId,
+            AttachmentUploadStatus.driveDisconnected,
+            localPath: file.path,
+          );
+          return;
+        }
+
+        await _attachmentRepo.updateAttachmentStatus(
+          attachment.attachmentId,
+          AttachmentUploadStatus.uploading,
+        );
+
+        final driveFileId = await _storageService.uploadAttachment(
+          uid: uid,
+          noteId: attachment.noteId,
+          attachmentId: attachment.attachmentId,
+          file: file,
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          knownChecksum: attachment.checksum,
+          onProgress: onProgress,
+        );
+
+        final uploadedAt = DateTime.now();
+
+        await _saveAttachmentToFirestore(
+          uid: uid,
+          noteId: attachment.noteId,
+          attachment: attachment.copyWith(
+            driveFileId: driveFileId,
+            uploadStatus: AttachmentUploadStatus.uploaded,
+            uploadedAt: uploadedAt,
+          ),
+        );
+
+        await _attachmentRepo.updateAttachmentStatus(
+          attachment.attachmentId,
+          AttachmentUploadStatus.uploaded,
           driveFileId: driveFileId,
-          uploadStatus: AttachmentUploadStatus.uploaded,
           uploadedAt: uploadedAt,
-        ),
-      );
-
-      // 7. Update local SQLite database
-      await _attachmentRepo.updateAttachmentStatus(
-        attachmentId,
-        AttachmentUploadStatus.uploaded,
-        driveFileId: driveFileId,
-        uploadedAt: uploadedAt,
-      );
-
-      return attachment.copyWith(
-        driveFileId: driveFileId,
-        uploadStatus: AttachmentUploadStatus.uploaded,
-        uploadedAt: uploadedAt,
-      );
-    } catch (e) {
-      debugPrint('[AttachmentSyncCoordinator] Upload failed: $e');
-      await _attachmentRepo.updateAttachmentStatus(
-        attachmentId,
-        AttachmentUploadStatus.failed,
-        error: e.toString(),
-      );
-      return attachment.copyWith(
-        uploadStatus: AttachmentUploadStatus.failed,
-        lastError: e.toString(),
-      );
-    }
+        );
+      } catch (e) {
+        debugPrint('[AttachmentSyncCoordinator] Async upload failed for ${attachment.attachmentId}: $e');
+        await _attachmentRepo.updateAttachmentStatus(
+          attachment.attachmentId,
+          AttachmentUploadStatus.failed,
+          error: e.toString(),
+        );
+      }
+    }());
   }
 
   /// Downloads an attachment on-demand if not already present in the local cache.
@@ -191,10 +251,14 @@ class AttachmentSyncCoordinator {
       }
     }
 
-    // 2. Prepare destination path in user directory
-    final userDir = await getLocalAttachmentDirectory(uid);
+    // 2. Prepare destination path in user directory category
+    final category = _storageHelper.resolveCategory(
+      fileName: attachment.fileName,
+      mimeType: attachment.mimeType,
+    );
+    final targetDir = await _storageHelper.getCategoryDirectory(uid, category);
     final ext = p.extension(attachment.fileName);
-    final destinationFile = File(p.join(userDir.path, '${attachment.attachmentId}$ext'));
+    final destinationFile = File(p.join(targetDir.path, '${attachment.attachmentId}$ext'));
 
     if (await destinationFile.exists()) {
       final hash = await GoogleDriveStorageService.calculateSha256(destinationFile);
@@ -252,6 +316,10 @@ class AttachmentSyncCoordinator {
   }
 
   /// Deletes an attachment from local storage, SQLite, Firestore, and Google Drive.
+  ///
+  /// Safe Deletion Guarantee:
+  /// Verifies reference count before deleting the remote file on Google Drive.
+  /// If another note or page references the same `driveFileId`, the remote file is preserved.
   Future<void> deleteAttachment({
     required String uid,
     required String noteId,
@@ -263,15 +331,21 @@ class AttachmentSyncCoordinator {
     // 1. Mark deleted in SQLite
     await _attachmentRepo.markAttachmentDeleted(attachmentId);
 
-    // 2. Delete from Google Drive appDataFolder if uploaded
+    // 2. Safe remote deletion with reference count check
     if (attachment.driveFileId != null && attachment.driveFileId!.isNotEmpty) {
-      try {
-        await _storageService.deleteAttachment(
-          uid: uid,
-          driveFileId: attachment.driveFileId!,
-        );
-      } catch (e) {
-        debugPrint('[AttachmentSyncCoordinator] Drive delete error: $e');
+      final activeReferences =
+          await _attachmentRepo.countAttachmentsWithDriveFileId(attachment.driveFileId!);
+
+      // Only delete from Drive if no other active notes/pages reference this file
+      if (activeReferences <= 0) {
+        try {
+          await _storageService.deleteAttachment(
+            uid: uid,
+            driveFileId: attachment.driveFileId!,
+          );
+        } catch (e) {
+          debugPrint('[AttachmentSyncCoordinator] Drive delete error: $e');
+        }
       }
     }
 
@@ -288,14 +362,29 @@ class AttachmentSyncCoordinator {
 
     // 4. Delete local file from cache
     if (attachment.localPath != null) {
-      try {
-        final file = File(attachment.localPath!);
-        if (await file.exists()) await file.delete();
-      } catch (_) {}
+      await _storageHelper.deleteLocalFile(attachment.localPath);
     }
 
     // 5. Remove permanently from SQLite
     await _attachmentRepo.deleteAttachmentPermanently(attachmentId);
+  }
+
+  /// Cleans up all attachments belonging to a note when permanently deleted.
+  Future<void> onNotePermanentlyDeleted(String uid, String noteId) async {
+    final attachments = await _attachmentRepo.getAttachmentsForNote(noteId);
+    for (final att in attachments) {
+      await deleteAttachment(
+        uid: uid,
+        noteId: noteId,
+        attachmentId: att.attachmentId,
+      );
+    }
+  }
+
+  /// Resets any interrupted uploads (e.g. from app termination) back to pending.
+  Future<void> recoverInterruptedUploads(String uid) async {
+    await _attachmentRepo.resetUploadingToPending(uid);
+    await syncPendingUploads(uid);
   }
 
   /// Retries uploading any pending or failed attachments when online and Drive is authorized.
@@ -365,13 +454,16 @@ class AttachmentSyncCoordinator {
     required String noteId,
     required NoteAttachment attachment,
   }) async {
-    final docRef = _firestore
+    final firestore = _firestore;
+    if (firestore == null) return;
+
+    final docRef = firestore
         .collection('users')
         .doc(uid)
         .collection('notebooks')
         .doc(noteId);
 
-    await _firestore.runTransaction((transaction) async {
+    await firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
       if (!snapshot.exists) return;
 
@@ -404,13 +496,16 @@ class AttachmentSyncCoordinator {
     required String noteId,
     required String attachmentId,
   }) async {
-    final docRef = _firestore
+    final firestore = _firestore;
+    if (firestore == null) return;
+
+    final docRef = firestore
         .collection('users')
         .doc(uid)
         .collection('notebooks')
         .doc(noteId);
 
-    await _firestore.runTransaction((transaction) async {
+    await firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
       if (!snapshot.exists) return;
 

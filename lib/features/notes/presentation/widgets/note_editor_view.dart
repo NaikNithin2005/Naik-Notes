@@ -1,12 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../data/models/attachment_model.dart';
 import '../../../../data/models/note_model.dart';
+import '../../../../services/storage/attachment_picker_service.dart';
+import '../../../authentication/data/auth_provider.dart';
 import '../../../notebooks/data/notebook_provider.dart';
+import '../../../pdf/presentation/widgets/pdf_attachment_card.dart';
+import '../../../sketch/presentation/widgets/sketch_canvas_dialog.dart';
+import '../../../storage/data/google_drive_provider.dart';
 import '../../data/note_provider.dart';
 import '../../services/note_auto_save_coordinator.dart';
 import 'note_shortcuts.dart';
@@ -74,8 +82,11 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
   void didUpdateWidget(covariant NoteEditorView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.note.id != widget.note.id) {
-      // Flush previous note saves
-      _coordinator.flushPendingSave(noteId: oldWidget.note.id);
+      // Flush previous note saves safely outside the build/update phase
+      final oldNoteId = oldWidget.note.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _coordinator.flushPendingSave(noteId: oldNoteId);
+      });
 
       _titleController.removeListener(_onTitleChanged);
       _titleController.text = widget.note.title;
@@ -182,6 +193,420 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
     );
   }
 
+  Future<void> _pickAndInsertImage() async {
+    final picker = ref.read(attachmentPickerServiceProvider);
+    final picked = await picker.pickSingleAttachment(
+      allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
+    );
+    if (picked == null) return;
+
+    final auth = ref.read(authProvider);
+    final uid = auth.user?.id ?? 'local_user';
+    final coordinator = ref.read(attachmentSyncCoordinatorProvider);
+
+    try {
+      final attachment = await coordinator.addAttachment(
+        uid: uid,
+        noteId: widget.note.id,
+        sourceFile: picked.file,
+        fileName: picked.fileName,
+        mimeType: picked.mimeType,
+      );
+
+      final offset = _controller.selection.baseOffset >= 0
+          ? _controller.selection.baseOffset
+          : _controller.document.length - 1;
+      _controller.document.insert(
+        offset,
+        BlockEmbed.image(attachment.localPath ?? picked.file.path),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to insert image: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickFiles() async {
+    final picker = ref.read(attachmentPickerServiceProvider);
+    final pickedList = await picker.pickAttachments(allowMultiple: true);
+    if (pickedList.isEmpty) return;
+
+    final auth = ref.read(authProvider);
+    final uid = auth.user?.id ?? 'local_user';
+    final coordinator = ref.read(attachmentSyncCoordinatorProvider);
+
+    for (final picked in pickedList) {
+      try {
+        await coordinator.addAttachment(
+          uid: uid,
+          noteId: widget.note.id,
+          sourceFile: picked.file,
+          fileName: picked.fileName,
+          mimeType: picked.mimeType,
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to attach ${picked.fileName}: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    final picker = ref.read(attachmentPickerServiceProvider);
+    final picked = await picker.capturePhotoFromCamera();
+    if (picked == null) return;
+
+    final auth = ref.read(authProvider);
+    final uid = auth.user?.id ?? 'local_user';
+    final coordinator = ref.read(attachmentSyncCoordinatorProvider);
+
+    try {
+      final attachment = await coordinator.addAttachment(
+        uid: uid,
+        noteId: widget.note.id,
+        sourceFile: picked.file,
+        fileName: picked.fileName,
+        mimeType: picked.mimeType,
+      );
+
+      final offset = _controller.selection.baseOffset >= 0
+          ? _controller.selection.baseOffset
+          : _controller.document.length - 1;
+      _controller.document.insert(
+        offset,
+        BlockEmbed.image(attachment.localPath ?? picked.file.path),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera capture failed: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openSketchCanvas(BuildContext context) async {
+    final sketchAttachment = await SketchCanvasDialog.show(context, widget.note.id);
+    if (sketchAttachment != null && sketchAttachment.localPath != null) {
+      final offset = _controller.selection.baseOffset >= 0
+          ? _controller.selection.baseOffset
+          : _controller.document.length - 1;
+      _controller.document.insert(
+        offset,
+        BlockEmbed.image(sketchAttachment.localPath!),
+      );
+    }
+  }
+
+  void _showAttachmentOptions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEFF6FF),
+                  child: Icon(Icons.upload_file_rounded, color: Colors.blueAccent),
+                ),
+                title: const Text('Attach File / PDF / Document'),
+                subtitle: const Text('PDF, DOC, DOCX, TXT, images'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickFiles();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFDF2F8),
+                  child: Icon(Icons.image_outlined, color: Colors.pinkAccent),
+                ),
+                title: const Text('Insert Image into Note'),
+                subtitle: const Text('Pick and embed inline at cursor'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickAndInsertImage();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFF0FDF4),
+                  child: Icon(Icons.camera_alt_outlined, color: Colors.green),
+                ),
+                title: const Text('Take Photo (Camera)'),
+                subtitle: const Text('Capture with device camera'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _takePhoto();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFFBEB),
+                  child: Icon(Icons.draw_rounded, color: Colors.amber),
+                ),
+                title: const Text('Draw Sketch (Apple Pencil)'),
+                subtitle: const Text('Draw handwritten diagrams and sketches'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _openSketchCanvas(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteAttachment(BuildContext context, NoteAttachment attachment, String uid) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Attachment?'),
+        content: Text(
+          'Are you sure you want to remove "${attachment.fileName}"? '
+          'It will be deleted from this note and local storage.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(attachmentSyncCoordinatorProvider).deleteAttachment(
+                    uid: uid,
+                    noteId: widget.note.id,
+                    attachmentId: attachment.attachmentId,
+                  );
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _previewImage(BuildContext context, NoteAttachment attachment) {
+    if (attachment.localPath == null) return;
+    final file = File(attachment.localPath!);
+    if (!file.existsSync()) return;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.file(file),
+            ),
+            IconButton(
+              icon: const CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: Icon(Icons.close_rounded, color: Colors.white),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentsStrip(
+    BuildContext context,
+    List<NoteAttachment> attachments,
+    String uid,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    if (attachments.isEmpty) return const SizedBox.shrink();
+
+    final pdfs = attachments.where((a) => a.isPdf).toList();
+    final imagesAndSketches = attachments.where((a) => !a.isPdf).toList();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+            : Colors.brown.shade50.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.attachment_rounded, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'Attachments (${attachments.length})',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                ),
+                onPressed: () => _showAttachmentOptions(context),
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text('Add', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // Render PDFs
+          for (final pdf in pdfs)
+            PdfAttachmentCard(
+              attachment: pdf,
+              onDelete: () => _confirmDeleteAttachment(context, pdf, uid),
+            ),
+
+          // Render Images and Sketches
+          if (imagesAndSketches.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final item in imagesAndSketches)
+                    _buildImageAttachmentCard(context, item, uid, theme, isDark),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageAttachmentCard(
+    BuildContext context,
+    NoteAttachment attachment,
+    String uid,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    final localExists = attachment.localPath != null && File(attachment.localPath!).existsSync();
+    final isUploaded = attachment.uploadStatus == AttachmentUploadStatus.uploaded;
+    final isFailed = attachment.uploadStatus == AttachmentUploadStatus.failed;
+
+    return Container(
+      width: 130,
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isFailed ? Colors.redAccent : theme.dividerColor.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            children: [
+              GestureDetector(
+                onTap: localExists ? () => _previewImage(context, attachment) : null,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: double.infinity,
+                    height: 70,
+                    color: isDark ? Colors.black26 : Colors.grey.shade200,
+                    child: localExists
+                        ? Image.file(
+                            File(attachment.localPath!),
+                            fit: BoxFit.cover,
+                          )
+                        : const Icon(Icons.image_outlined, color: Colors.grey),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 2,
+                right: 2,
+                child: InkWell(
+                  onTap: () => _confirmDeleteAttachment(context, attachment, uid),
+                  child: const CircleAvatar(
+                    radius: 10,
+                    backgroundColor: Colors.black54,
+                    child: Icon(Icons.close, size: 12, color: Colors.white),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 2,
+                left: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: isUploaded
+                        ? Colors.green.shade700
+                        : (isFailed ? Colors.redAccent : Colors.blueGrey),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isUploaded ? 'Synced' : (isFailed ? 'Failed' : 'Pending'),
+                    style: const TextStyle(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            attachment.fileName,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            attachment.humanReadableSize,
+            style: TextStyle(fontSize: 9.5, color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSaveStatusIndicator(NoteSaveState saveState, ThemeData theme) {
     switch (saveState.status) {
       case SaveStatus.saving:
@@ -249,9 +674,13 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
     final isDark = theme.brightness == Brightness.dark;
     final saveState = ref.watch(noteAutoSaveCoordinatorProvider);
     final notebooks = ref.watch(notebooksProvider);
+    final auth = ref.watch(authProvider);
+    final uid = auth.user?.id ?? 'local_user';
+    final attachmentsAsync = ref.watch(attachmentsForNoteProvider(widget.note.id));
+    final attachments = attachmentsAsync.value ?? const [];
 
     // Toolbar config
-    const toolbarConfig = QuillSimpleToolbarConfig(
+    final toolbarConfig = QuillSimpleToolbarConfig(
       showFontFamily: false,
       showFontSize: true,
       showBoldButton: true,
@@ -276,6 +705,23 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
       showCodeBlock: true,
       showQuote: true,
       showSearchButton: false,
+      customButtons: [
+        QuillToolbarCustomButtonOptions(
+          icon: const Icon(Icons.image_outlined, size: 20),
+          tooltip: 'Insert Image',
+          onPressed: _pickAndInsertImage,
+        ),
+        QuillToolbarCustomButtonOptions(
+          icon: const Icon(Icons.attach_file_rounded, size: 20),
+          tooltip: 'Attach File / PDF',
+          onPressed: () => _showAttachmentOptions(context),
+        ),
+        QuillToolbarCustomButtonOptions(
+          icon: const Icon(Icons.draw_outlined, size: 20),
+          tooltip: 'Apple Pencil Sketch',
+          onPressed: () => _openSketchCanvas(context),
+        ),
+      ],
     );
 
     return NoteShortcuts(
@@ -336,6 +782,11 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
                     onPressed: () => ref
                         .read(notesProvider.notifier)
                         .toggleFavorite(widget.note.id),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.attach_file_rounded),
+                    tooltip: 'Add Attachment',
+                    onPressed: () => _showAttachmentOptions(context),
                   ),
                   PopupMenuButton<String>(
                     onSelected: (val) {
@@ -511,6 +962,20 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
                                 .read(notesProvider.notifier)
                                 .toggleFavorite(widget.note.id),
                           ),
+                          // Attach
+                          IconButton(
+                            iconSize: 20,
+                            icon: const Icon(Icons.attach_file_rounded),
+                            tooltip: 'Add Attachment',
+                            onPressed: () => _showAttachmentOptions(context),
+                          ),
+                          // Sketch
+                          IconButton(
+                            iconSize: 20,
+                            icon: const Icon(Icons.draw_rounded),
+                            tooltip: 'Apple Pencil Sketch',
+                            onPressed: () => _openSketchCanvas(context),
+                          ),
                           // Duplicate
                           IconButton(
                             iconSize: 20,
@@ -669,17 +1134,41 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
                     const Divider(height: 1),
                     const SizedBox(height: 16),
 
+                    // Attachments Strip (PDFs, Images, Sketches)
+                    _buildAttachmentsStrip(
+                      context,
+                      attachments,
+                      uid,
+                      theme,
+                      isDark,
+                    ),
+
                     // Quill Editor
                     QuillEditor.basic(
                       controller: _controller,
                       focusNode: _editorFocusNode,
                       scrollController: _editorScrollController,
-                      config: const QuillEditorConfig(
+                      config: QuillEditorConfig(
                         placeholder: 'Start writing your notes here...',
                         autoFocus: false,
                         expands: false,
                         padding: EdgeInsets.zero,
                         scrollable: false,
+                        embedBuilders: FlutterQuillEmbeds.editorBuilders(
+                          imageEmbedConfig: QuillEditorImageEmbedConfig(
+                            imageProviderBuilder: (context, imageUrl) {
+                              final file = File(imageUrl);
+                              if (file.existsSync()) {
+                                return FileImage(file);
+                              }
+                              if (imageUrl.startsWith('http://') ||
+                                  imageUrl.startsWith('https://')) {
+                                return NetworkImage(imageUrl);
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ],
