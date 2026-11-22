@@ -6,6 +6,7 @@ import '../../../data/repositories/firebase_auth_repository.dart';
 import '../../folders/data/folder_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
 import '../../notes/data/note_provider.dart';
+import '../../storage/data/google_drive_provider.dart';
 import '../../sync/data/sync_provider.dart';
 import 'auth_error_handler.dart';
 
@@ -474,6 +475,17 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       await _repository.deleteAccount();
       state = const AuthState();
+      try {
+        ref.invalidate(notebooksProvider);
+        ref.invalidate(foldersProvider);
+        ref.invalidate(notesProvider);
+        ref.invalidate(selectedNoteProvider);
+        ref.invalidate(trashNotesProvider);
+        ref.read(selectedFolderProvider.notifier).clearSelection();
+        ref.invalidate(syncProvider);
+        ref.invalidate(googleDriveProvider);
+        ref.read(firebaseSyncServiceProvider).dispose();
+      } catch (_) {}
       return true;
     } catch (e) {
       state = state.copyWith(
@@ -503,6 +515,7 @@ class AuthNotifier extends Notifier<AuthState> {
         ref.invalidate(trashNotesProvider);
         ref.read(selectedFolderProvider.notifier).clearSelection();
         ref.invalidate(syncProvider);
+        ref.invalidate(googleDriveProvider);
         ref.read(firebaseSyncServiceProvider).dispose();
       } catch (_) {}
     }

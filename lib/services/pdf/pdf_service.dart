@@ -40,6 +40,7 @@ class PdfService {
     required Uint8List bytes,
     required String filename,
     String? folderId,
+    String ownerId = 'local_user',
   }) async {
     final pageCount = estimatePageCount(bytes);
     final title = filename.replaceAll(
@@ -51,7 +52,7 @@ class PdfService {
 
     final notebook = Notebook(
       id: notebookId,
-      ownerId: 'local_user',
+      ownerId: ownerId,
       folderId: folderId,
       title: title,
       description: 'Imported PDF document ($pageCount pages)',

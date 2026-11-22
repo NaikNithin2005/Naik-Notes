@@ -104,14 +104,14 @@ class NoteHistoryService {
       if (Platform.environment.containsKey('FLUTTER_TEST') ||
           name.contains('TestWidgetsFlutterBinding') ||
           name.contains('AutomatedTestWidgetsFlutterBinding')) {
-        // In tests, avoid platform channel
-        _cachedFile = File(_fileName);
+        // In tests, avoid platform channel and write to system temp
+        _cachedFile = File('${Directory.systemTemp.path}/$_fileName');
         return _cachedFile!;
       }
       final dir = await getApplicationDocumentsDirectory();
       _cachedFile = File('${dir.path}/$_fileName');
     } catch (_) {
-      _cachedFile = File(_fileName);
+      _cachedFile = File('${Directory.systemTemp.path}/$_fileName');
     }
     return _cachedFile!;
   }

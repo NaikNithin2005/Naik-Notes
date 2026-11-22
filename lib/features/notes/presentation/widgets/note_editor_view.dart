@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -34,6 +35,7 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
   final FocusNode _editorFocusNode = FocusNode();
   final FocusNode _titleFocusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
+  StreamSubscription? _docSub;
   bool _isDisposed = false;
 
   @override
@@ -60,7 +62,8 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
       selection: const TextSelection.collapsed(offset: 0),
     );
 
-    _controller.document.changes.listen((_) {
+    _docSub?.cancel();
+    _docSub = _controller.document.changes.listen((_) {
       if (!_isDisposed) {
         _onContentChanged();
       }
@@ -78,6 +81,8 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
       _titleController.text = widget.note.title;
       _titleController.addListener(_onTitleChanged);
 
+      _docSub?.cancel();
+      _docSub = null;
       _controller.dispose();
       _initQuillController(widget.note.contentDelta);
     } else if (oldWidget.note.title != widget.note.title &&
@@ -89,6 +94,8 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
   @override
   void dispose() {
     _isDisposed = true;
+    _docSub?.cancel();
+    _docSub = null;
     _titleController.removeListener(_onTitleChanged);
     _titleController.dispose();
     _editorFocusNode.dispose();

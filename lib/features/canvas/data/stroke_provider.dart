@@ -595,6 +595,14 @@ class StrokesState {
 /// Notifier managing handwriting strokes, lasso manipulation, erasing, and undo/redo.
 class StrokesNotifier extends Notifier<StrokesState> {
   final _uuid = const Uuid();
+  static const int maxUndoHistory = 50;
+
+  void _pushAction(List<StrokeAction> stack, StrokeAction action) {
+    stack.add(action);
+    if (stack.length > maxUndoHistory) {
+      stack.removeAt(0);
+    }
+  }
 
   @override
   StrokesState build() {
@@ -621,7 +629,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedMap[pageId] = currentList;
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(AddStrokeAction(stroke));
+    _pushAction(currentUndo, AddStrokeAction(stroke));
 
     final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
     updatedUndo[pageId] = currentUndo;
@@ -753,7 +761,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
       final currentUndo = List<StrokeAction>.from(
         state.undoStacks[pageId] ?? [],
       );
-      currentUndo.add(DeleteStrokesAction(erasedStrokes));
+      _pushAction(currentUndo, DeleteStrokesAction(erasedStrokes));
 
       final updatedUndo = Map<String, List<StrokeAction>>.from(
         state.undoStacks,
@@ -818,7 +826,8 @@ class StrokesNotifier extends Notifier<StrokesState> {
       final currentUndo = List<StrokeAction>.from(
         state.undoStacks[pageId] ?? [],
       );
-      currentUndo.add(
+      _pushAction(
+        currentUndo,
         TransformStrokesAction(before: beforeList, after: afterList),
       );
 
@@ -901,7 +910,8 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedMap[pageId] = updatedList;
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(
+    _pushAction(
+      currentUndo,
       TransformStrokesAction(before: beforeStrokes, after: afterStrokes),
     );
 
@@ -929,7 +939,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedMap[pageId] = remaining;
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(DeleteStrokesAction(toDelete));
+    _pushAction(currentUndo, DeleteStrokesAction(toDelete));
 
     final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
     updatedUndo[pageId] = currentUndo;
@@ -1002,7 +1012,8 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedMap[pageId] = updatedList;
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(
+    _pushAction(
+      currentUndo,
       TransformStrokesAction(before: beforeStrokes, after: afterStrokes),
     );
 
@@ -1046,7 +1057,8 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedMap[pageId] = updatedList;
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(
+    _pushAction(
+      currentUndo,
       TransformStrokesAction(before: beforeStrokes, after: afterStrokes),
     );
 
@@ -1089,7 +1101,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
     for (final d in duplicates) {
-      currentUndo.add(AddStrokeAction(d));
+      _pushAction(currentUndo, AddStrokeAction(d));
     }
     final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
     updatedUndo[pageId] = currentUndo;
@@ -1156,7 +1168,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedSelections[pageId] = newSelectedIds;
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(DeleteStrokesAction(newStrokes));
+    _pushAction(currentUndo, DeleteStrokesAction(newStrokes));
 
     final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
     updatedUndo[pageId] = currentUndo;
@@ -1177,7 +1189,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
 
     final lastAction = currentUndo.removeLast();
     final currentRedo = List<StrokeAction>.from(state.redoStacks[pageId] ?? []);
-    currentRedo.add(lastAction);
+    _pushAction(currentRedo, lastAction);
 
     final currentStrokes = List<Stroke>.from(state.pageStrokes[pageId] ?? []);
 
@@ -1221,7 +1233,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
 
     final action = currentRedo.removeLast();
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(action);
+    _pushAction(currentUndo, action);
 
     final currentStrokes = List<Stroke>.from(state.pageStrokes[pageId] ?? []);
 
@@ -1268,7 +1280,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
     updatedMap[pageId] = [];
 
     final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
-    currentUndo.add(ClearPageAction(currentStrokes));
+    _pushAction(currentUndo, ClearPageAction(currentStrokes));
 
     final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
     updatedUndo[pageId] = currentUndo;

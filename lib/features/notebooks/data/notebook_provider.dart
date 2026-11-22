@@ -23,7 +23,11 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
     final userId = ref.watch(authProvider.select((s) => s.user?.id));
 
     if (userId != null) {
-      Future.microtask(() => loadForUser(userId));
+      Future.microtask(() {
+        if (ref.mounted) {
+          loadForUser(userId);
+        }
+      });
     } else {
       state = const [];
     }
@@ -31,11 +35,12 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
   }
 
   Future<void> loadForUser(String? userId) async {
-    if (userId == null) {
+    if (userId == null || !ref.mounted) {
       if (ref.mounted) state = const [];
       return;
     }
     await AppPerformanceMonitor.trace('notebook_load_metadata', () async {
+      if (!ref.mounted) return;
       var dbNotebooks = await _repository.getAllNotebooks(
         ownerId: userId,
         includeArchived: true,
@@ -74,17 +79,18 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
         final list = entry.value;
 
         // Sort candidates to select the BEST canonical notebook:
-        // 1. Clean title preferred over copy suffix
-        // 2. Highest page count (preserves content)
+        // 1. Highest page count (preserves content with zero data loss)
+        // 2. Clean title preferred over copy suffix
         // 3. Highest revision
         // 4. Newest updatedAt
         list.sort((a, b) {
+          if (a.pageCount != b.pageCount) return b.pageCount.compareTo(a.pageCount);
+
           final aIsCopy = copyPattern.hasMatch(a.title);
           final bIsCopy = copyPattern.hasMatch(b.title);
           if (!aIsCopy && bIsCopy) return -1;
           if (aIsCopy && !bIsCopy) return 1;
 
-          if (a.pageCount != b.pageCount) return b.pageCount.compareTo(a.pageCount);
           if (a.revision != b.revision) return b.revision.compareTo(a.revision);
           return b.updatedAt.compareTo(a.updatedAt);
         });
