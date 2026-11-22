@@ -858,6 +858,29 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AppUser> updateDisplayName(String newDisplayName) async {
+    final fbUser = _firebaseAuth?.currentUser;
+    if (fbUser != null) {
+      await fbUser.updateDisplayName(newDisplayName);
+      try {
+        await _firestore?.collection('users').doc(fbUser.uid).set({
+          'displayName': newDisplayName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (_) {}
+      final updated = _mapFirebaseUser(fbUser).copyWith(displayName: newDisplayName);
+      _currentUser = updated;
+      return updated;
+    }
+    if (_currentUser != null) {
+      final updated = _currentUser!.copyWith(displayName: newDisplayName);
+      _currentUser = updated;
+      return updated;
+    }
+    throw Exception('No active authenticated session.');
+  }
+
+  @override
   Future<void> deleteAccount() async {
     final auth = _firebaseAuth;
     final fbUser = auth?.currentUser;

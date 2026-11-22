@@ -17,6 +17,7 @@ class RouteNames {
   static const String pdfEditor = '/pdf';
   static const String audioNotes = '/audio';
   static const String aiAssistant = '/ai';
+  static const String feedback = '/feedback';
 
   static String notebookPath(String id) => '/notebook/$id';
 }

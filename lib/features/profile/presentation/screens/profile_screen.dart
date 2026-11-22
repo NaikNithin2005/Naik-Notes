@@ -10,6 +10,54 @@ import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  void _showEditProfileDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String currentName,
+  ) {
+    final controller = TextEditingController(text: currentName);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Display Name'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Full Name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                Navigator.of(ctx).pop();
+                final success = await ref
+                    .read(authProvider.notifier)
+                    .updateDisplayName(newName);
+                if (context.mounted && success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Display name updated successfully!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showDeleteAccountConfirmation(BuildContext context, WidgetRef ref) {
     showDialog<void>(
       context: context,
@@ -133,11 +181,30 @@ class ProfileScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                displayName,
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      displayName,
+                                      style:
+                                          theme.textTheme.titleLarge?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 20,
+                                    ),
+                                    tooltip: 'Edit Profile Name',
+                                    onPressed: () => _showEditProfileDialog(
+                                      context,
+                                      ref,
+                                      displayName,
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 4),
                               Text(

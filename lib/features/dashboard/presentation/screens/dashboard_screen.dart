@@ -266,7 +266,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 behavior: SnackBarBehavior.floating,
               ),
             );
-            context.go('${RouteNames.notebookView}?id=${newNotebook.id}');
+            context.go(RouteNames.notebookPath(newNotebook.id));
           }
         }
       }
@@ -1128,7 +1128,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                         .read(currentPageIndexProvider.notifier)
                                         .setPage(match.pageNumber!);
                                   }
-                                  context.push('/notebook/${match.notebookId}');
+                                  context.go(
+                                    RouteNames.notebookPath(match.notebookId),
+                                  );
                                 },
                               );
                             }),

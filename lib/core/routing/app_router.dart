@@ -7,6 +7,7 @@ import 'package:naik_notes/features/authentication/presentation/screens/register
 import 'package:naik_notes/features/authentication/presentation/screens/reset_password_screen.dart';
 import 'package:naik_notes/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:naik_notes/features/dashboard/presentation/widgets/app_shell.dart';
+import 'package:naik_notes/features/feedback/presentation/screens/feedback_screen.dart';
 import 'package:naik_notes/features/landing/presentation/screens/landing_screen.dart';
 import 'package:naik_notes/features/notebooks/presentation/screens/notebook_view_screen.dart';
 import 'package:naik_notes/features/notes/presentation/screens/notes_screen.dart';
@@ -141,6 +142,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.settings,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: SettingsScreen()),
+          ),
+          GoRoute(
+            path: RouteNames.feedback,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: FeedbackScreen()),
           ),
         ],
       ),

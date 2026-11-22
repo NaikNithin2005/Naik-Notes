@@ -468,6 +468,35 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Updates user profile display name.
+  Future<bool> updateDisplayName(String newDisplayName) async {
+    final clean = newDisplayName.trim();
+    if (clean.isEmpty) {
+      state = state.copyWith(errorMessage: 'Display name cannot be empty.');
+      return false;
+    }
+    state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
+    try {
+      final updated = await _repository.updateDisplayName(clean);
+      state = state.copyWith(
+        user: updated,
+        isLoading: false,
+        successMessage: 'Display name updated successfully.',
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
+    } finally {
+      if (state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
+    }
+  }
+
   /// Account deletion with confirmation.
   Future<bool> deleteAccount() async {
     if (state.isLoading) return false;

@@ -11,6 +11,19 @@ class MockAuthRepository implements AuthRepository {
   AppUser? get currentUser => _user;
 
   @override
+  Future<AppUser> updateDisplayName(String newDisplayName) async {
+    _user = _user?.copyWith(displayName: newDisplayName) ??
+        AppUser(
+          id: 'mock_uid_1',
+          email: 'test@naiknotes.com',
+          displayName: newDisplayName,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+    return _user!;
+  }
+
+  @override
   Future<AppUser> login(String email, String password) async {
     if (password == 'wrong') {
       throw Exception('Invalid credentials.');

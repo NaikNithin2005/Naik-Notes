@@ -31,6 +31,8 @@ class _MockAuthRepo implements AuthRepository {
   @override
   Stream<AppUser?> get authStateChanges => Stream.value(_user);
   @override
+  Future<AppUser> updateDisplayName(String newDisplayName) async => _user.copyWith(displayName: newDisplayName);
+  @override
   Future<AppUser> login(String email, String password) async => _user;
   @override
   Future<AppUser> register(String email, String password, String displayName, {String? confirmPassword}) async => _user;

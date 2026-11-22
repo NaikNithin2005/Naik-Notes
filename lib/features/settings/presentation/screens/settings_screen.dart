@@ -15,6 +15,7 @@ import 'package:naik_notes/core/theme/theme_controller.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 import 'package:naik_notes/features/canvas/data/toolbar_preferences.dart';
 import 'package:naik_notes/features/canvas/presentation/widgets/toolbar_customizer_dialog.dart';
+import 'package:naik_notes/features/feedback/presentation/screens/feedback_screen.dart';
 import 'package:naik_notes/features/folders/data/folder_provider.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/sync/data/sync_provider.dart';
@@ -1129,6 +1130,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
 
           // Section: About
+          const SizedBox(height: 24),
+          Text(
+            'Help & Feedback',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.rate_review_outlined),
+              title: const Text('Send Feedback & Bug Reports'),
+              subtitle: const Text(
+                'Help us improve iPadOS, Android, and Windows features',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () => FeedbackScreen.show(context),
+            ),
+          ),
+
+          const SizedBox(height: 24),
           Text(
             'About',
             style: theme.textTheme.titleMedium?.copyWith(
