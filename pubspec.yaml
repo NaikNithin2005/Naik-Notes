@@ -46,7 +46,7 @@ dependencies:
   drift_flutter: ^0.3.1
   sqlite3_flutter_libs: ^0.6.0+eol
   pdf: ^3.13.1
-  file_picker: ^13.3.3
+  file_picker: ^13.4.1
   firebase_core: ^5.1.0
   firebase_auth: ^7.0.1
   cloud_firestore: ^7.1.0
@@ -59,6 +59,11 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   mime: ^2.1.0
   flutter_quill: 11.6.0
+  flutter_quill_extensions: ^11.0.0
+  syncfusion_flutter_pdfviewer: ^35.2.12
+  connectivity_plus: ^7.3.2
+  image: ^4.13.1
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:

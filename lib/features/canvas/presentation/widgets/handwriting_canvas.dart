@@ -89,46 +89,49 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
 
   void _onStylusEvent(StylusEvent event) {
     if (widget.readOnly || !mounted) return;
-    switch (event.type) {
-      case StylusEventType.doubleTap:
-        if (event.preferredAction == 'switchPrevious') {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      switch (event.type) {
+        case StylusEventType.doubleTap:
+          if (event.preferredAction == 'switchPrevious') {
+            ref.read(activeToolProvider.notifier).togglePreviousTool();
+          } else {
+            ref.read(activeToolProvider.notifier).toggleEraser();
+          }
+          break;
+        case StylusEventType.squeeze:
           ref.read(activeToolProvider.notifier).togglePreviousTool();
-        } else {
-          ref.read(activeToolProvider.notifier).toggleEraser();
-        }
-        break;
-      case StylusEventType.squeeze:
-        ref.read(activeToolProvider.notifier).togglePreviousTool();
-        break;
-      case StylusEventType.buttonDown:
-        _toolBeforeBarrelButton = ref.read(activeToolProvider);
-        ref.read(activeToolProvider.notifier).setTool(ToolType.eraser);
-        break;
-      case StylusEventType.buttonUp:
-        if (_toolBeforeBarrelButton != null) {
-          ref
-              .read(activeToolProvider.notifier)
-              .setTool(_toolBeforeBarrelButton!);
-          _toolBeforeBarrelButton = null;
-        }
-        break;
-      case StylusEventType.hoverMove:
-        if (event.position != null) {
-          ref
-              .read(stylusHoverProvider.notifier)
-              .updateHover(
-                position: event.position!,
-                distance: event.distance,
-                tilt: event.tilt,
-              );
-        }
-        break;
-      case StylusEventType.hoverExit:
-        ref.read(stylusHoverProvider.notifier).clearHover();
-        break;
-      default:
-        break;
-    }
+          break;
+        case StylusEventType.buttonDown:
+          _toolBeforeBarrelButton = ref.read(activeToolProvider);
+          ref.read(activeToolProvider.notifier).setTool(ToolType.eraser);
+          break;
+        case StylusEventType.buttonUp:
+          if (_toolBeforeBarrelButton != null) {
+            ref
+                .read(activeToolProvider.notifier)
+                .setTool(_toolBeforeBarrelButton!);
+            _toolBeforeBarrelButton = null;
+          }
+          break;
+        case StylusEventType.hoverMove:
+          if (event.position != null) {
+            ref
+                .read(stylusHoverProvider.notifier)
+                .updateHover(
+                  position: event.position!,
+                  distance: event.distance,
+                  tilt: event.tilt,
+                );
+          }
+          break;
+        case StylusEventType.hoverExit:
+          ref.read(stylusHoverProvider.notifier).clearHover();
+          break;
+        default:
+          break;
+      }
+    });
   }
 
   @override
@@ -137,9 +140,13 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
     if (oldWidget.pageId != widget.pageId) {
       _activeStroke = null;
       _lassoPoints = [];
-      ref
-          .read(strokesNotifierProvider.notifier)
-          .loadStrokesForPage(widget.pageId);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref
+              .read(strokesNotifierProvider.notifier)
+              .loadStrokesForPage(widget.pageId);
+        }
+      });
     }
   }
 

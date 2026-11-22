@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/local/database_provider.dart';
+import '../../../data/models/attachment_model.dart';
 import '../../../data/repositories/attachment_repository.dart';
+import '../../../services/storage/attachment_storage_service.dart';
 import '../../../services/storage/attachment_sync_coordinator.dart';
 import '../../../services/storage/google_drive_auth_service.dart';
 import '../../../services/storage/google_drive_storage_service.dart';
@@ -129,12 +131,21 @@ final attachmentSyncCoordinatorProvider =
   final authService = ref.watch(googleDriveAuthServiceProvider);
   final storageService = ref.watch(googleDriveStorageServiceProvider);
   final attachmentRepo = ref.watch(attachmentRepositoryProvider);
+  final storageHelper = ref.watch(attachmentStorageServiceProvider);
 
   return AttachmentSyncCoordinator(
     authService: authService,
     storageService: storageService,
     attachmentRepo: attachmentRepo,
+    storageHelper: storageHelper,
   );
+});
+
+/// Reactive stream of attachments associated with a specific note.
+final attachmentsForNoteProvider =
+    StreamProvider.family<List<NoteAttachment>, String>((ref, noteId) {
+  final repo = ref.watch(attachmentRepositoryProvider);
+  return repo.watchAttachmentsForNote(noteId);
 });
 
 final googleDriveSyncCoordinatorProvider =

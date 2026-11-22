@@ -139,6 +139,36 @@ class AttachmentRepository {
     await query.go();
   }
 
+  /// Counts active attachments referencing [driveFileId] to prevent deleting
+  /// files in Google Drive that are still linked to other notes or pages.
+  Future<int> countAttachmentsWithDriveFileId(String driveFileId) async {
+    final count = countAll();
+    final query = _db.selectOnly(_db.attachmentsTable)
+      ..addColumns([count])
+      ..where(
+        _db.attachmentsTable.driveFileId.equals(driveFileId) &
+            _db.attachmentsTable.isDeleted.equals(false),
+      );
+    final row = await query.getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  /// Resets any attachments stuck in 'uploading' status back to 'pending'
+  /// to recover cleanly from app crashes or network interruptions.
+  Future<int> resetUploadingToPending(String ownerId) async {
+    final query = _db.update(_db.attachmentsTable)
+      ..where(
+        (tbl) =>
+            tbl.ownerId.equals(ownerId) &
+            tbl.uploadStatus.equals(AttachmentUploadStatus.uploading),
+      );
+    return await query.write(
+      const AttachmentsTableCompanion(
+        uploadStatus: Value(AttachmentUploadStatus.pending),
+      ),
+    );
+  }
+
   /// Returns the total number of pending uploads for [ownerId].
   Future<int> getPendingUploadsCount(String ownerId) async {
     final count = countAll();

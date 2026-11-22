@@ -154,6 +154,9 @@ void main() {
       expect(find.textContaining('Last modified'), findsOneWidget);
 
       expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('Changing title updates text and triggers reactive update',
@@ -171,6 +174,9 @@ void main() {
 
       expect(find.text('Updated Sprint Goals'), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
   });
 }
