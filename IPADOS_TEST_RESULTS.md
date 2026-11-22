@@ -200,3 +200,4 @@ test('Test L: CurrentPageIndexNotifier clamps index within page count bounds', (
 });
 ```
 *Result:* **PASSED**. Starting or switching notebooks resets the active page index to 1.
+
