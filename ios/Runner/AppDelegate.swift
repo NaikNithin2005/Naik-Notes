@@ -4,6 +4,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, UIPencilInteractionDelegate, FlutterStreamHandler {
   private var eventSink: FlutterEventSink?
+  private var isPencilChannelsSetup = false
 
   override func application(
     _ application: UIApplication,
@@ -21,7 +22,10 @@ import UIKit
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
-  private func setupApplePencilChannels(controller: FlutterViewController) {
+  func setupApplePencilChannels(controller: FlutterViewController) {
+    guard !isPencilChannelsSetup else { return }
+    isPencilChannelsSetup = true
+
     let methodChannel = FlutterMethodChannel(
       name: "naik_notes/apple_pencil",
       binaryMessenger: controller.binaryMessenger
@@ -72,20 +76,41 @@ import UIKit
   // MARK: - UIPencilInteractionDelegate
   @available(iOS 12.1, *)
   func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
+    emitTapAction()
+  }
+
+  @available(iOS 17.5, *)
+  func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveTap tap: UIPencilInteraction.Tap) {
+    emitTapAction()
+  }
+
+  @available(iOS 17.5, *)
+  func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveSqueeze squeeze: UIPencilInteraction.Squeeze) {
+    guard let sink = eventSink else { return }
+    let payload: [String: Any] = [
+      "type": "squeeze",
+      "action": "switchPrevious"
+    ]
+    sink(payload)
+  }
+
+  private func emitTapAction() {
     guard let sink = eventSink else { return }
 
     var actionStr = "switchEraser"
-    switch UIPencilInteraction.preferredTapAction {
-    case .switchEraser:
-      actionStr = "switchEraser"
-    case .switchPrevious:
-      actionStr = "switchPrevious"
-    case .showColorPalette:
-      actionStr = "showColorPalette"
-    case .ignore:
-      actionStr = "ignore"
-    default:
-      actionStr = "switchEraser"
+    if #available(iOS 12.1, *) {
+      switch UIPencilInteraction.preferredTapAction {
+      case .switchEraser:
+        actionStr = "switchEraser"
+      case .switchPrevious:
+        actionStr = "switchPrevious"
+      case .showColorPalette:
+        actionStr = "showColorPalette"
+      case .ignore:
+        actionStr = "ignore"
+      default:
+        actionStr = "switchEraser"
+      }
     }
 
     let payload: [String: Any] = [

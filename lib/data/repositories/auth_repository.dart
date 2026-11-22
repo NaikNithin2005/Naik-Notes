@@ -40,6 +40,22 @@ abstract class AuthRepository {
     required String newPassword,
   }) async {}
   Future<void> sendEmailVerification() async {}
+  Future<AppUser> updateDisplayName(String newDisplayName) async {
+    if (currentUser != null) {
+      return currentUser!.copyWith(
+        displayName: newDisplayName,
+        updatedAt: DateTime.now(),
+      );
+    }
+    final now = DateTime.now();
+    return AppUser(
+      id: 'local_user',
+      email: 'user@naiknotes.app',
+      displayName: newDisplayName,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
   Future<void> deleteAccount();
   Future<void> logout();
   Future<AppUser?> restoreSession();
@@ -263,6 +279,27 @@ class RemoteAuthRepository implements AuthRepository {
 
   @override
   Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<AppUser> updateDisplayName(String newDisplayName) async {
+    final now = DateTime.now();
+    if (_currentUser != null) {
+      _currentUser = _currentUser!.copyWith(
+        displayName: newDisplayName,
+        updatedAt: now,
+      );
+      return _currentUser!;
+    }
+    final fallback = AppUser(
+      id: 'local_user',
+      email: 'user@naiknotes.app',
+      displayName: newDisplayName,
+      createdAt: now,
+      updatedAt: now,
+    );
+    _currentUser = fallback;
+    return fallback;
+  }
 
   @override
   Future<void> deleteAccount() async {

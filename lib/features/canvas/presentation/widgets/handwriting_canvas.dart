@@ -146,26 +146,6 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   void _onPointerDown(PointerDownEvent event) {
     if (widget.readOnly) return;
 
-    _activePointerIds.add(event.pointer);
-
-    // Multi-touch isolation (Anti-Zigzag): if two or more touches are detected,
-    // this is a two-finger pinch-zoom/pan gesture. Cancel active drawing stroke
-    // immediately so no zigzag lines connect the two fingers!
-    if (_activePointerIds.length > 1) {
-      _isMultiTouchActive = true;
-      if (_activeStroke != null || _lassoPoints.isNotEmpty) {
-        setState(() {
-          _activeStroke = null;
-          _shapeStartPoint = null;
-          _lassoPoints = [];
-        });
-      }
-      return;
-    }
-
-    _isMultiTouchActive = false;
-    _activeInkingPointerId = event.pointer;
-
     final isStylus =
         event.kind == PointerDeviceKind.stylus ||
         event.kind == PointerDeviceKind.invertedStylus;
@@ -188,6 +168,27 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
         event.kind == PointerDeviceKind.touch) {
       return;
     }
+
+    _activePointerIds.add(event.pointer);
+
+    // Multi-touch isolation (Anti-Zigzag): if two or more touches are detected,
+    // this is a two-finger pinch-zoom/pan gesture. Cancel active drawing stroke
+    // immediately so no zigzag lines connect the two fingers!
+    // Do not abort drawing if the active pointer is a hardware stylus!
+    if (_activePointerIds.length > 1 && !isStylus) {
+      _isMultiTouchActive = true;
+      if (_activeStroke != null || _lassoPoints.isNotEmpty) {
+        setState(() {
+          _activeStroke = null;
+          _shapeStartPoint = null;
+          _lassoPoints = [];
+        });
+      }
+      return;
+    }
+
+    _isMultiTouchActive = false;
+    _activeInkingPointerId = event.pointer;
 
     final isBarrelButtonPressed = (event.buttons & kSecondaryMouseButton) != 0;
     final tool =
@@ -351,8 +352,8 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
   void _onPointerMove(PointerMoveEvent event) {
     if (widget.readOnly) return;
 
-    // Multi-touch isolation: do not append points if more than 1 pointer is down
-    if (_isMultiTouchActive || _activePointerIds.length > 1) return;
+    // Multi-touch isolation: do not append points if multi-touch gesture is active
+    if (_isMultiTouchActive) return;
     if (_activeInkingPointerId != null &&
         event.pointer != _activeInkingPointerId) {
       return;
@@ -491,11 +492,13 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
     _shapeStartPoint = null;
 
     _activePointerIds.remove(event.pointer);
+    if (_activeInkingPointerId == event.pointer) {
+      _activeInkingPointerId = null;
+    }
+    if (_activePointerIds.isEmpty) {
+      _isMultiTouchActive = false;
+    }
     if (_isMultiTouchActive) {
-      if (_activePointerIds.isEmpty) {
-        _isMultiTouchActive = false;
-        _activeInkingPointerId = null;
-      }
       return;
     }
 
@@ -554,9 +557,11 @@ class _HandwritingCanvasState extends ConsumerState<HandwritingCanvas> {
 
   void _onPointerCancel(PointerCancelEvent event) {
     _activePointerIds.remove(event.pointer);
+    if (_activeInkingPointerId == event.pointer) {
+      _activeInkingPointerId = null;
+    }
     if (_activePointerIds.isEmpty) {
       _isMultiTouchActive = false;
-      _activeInkingPointerId = null;
     }
     setState(() {
       _activeStroke = null;

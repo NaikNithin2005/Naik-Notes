@@ -22,6 +22,19 @@ class _FakeAuthRepository implements AuthRepository {
   Stream<AppUser?> get authStateChanges => Stream.value(_user);
 
   @override
+  Future<AppUser> updateDisplayName(String newDisplayName) async {
+    _user = _user?.copyWith(displayName: newDisplayName) ??
+        AppUser(
+          id: 'uid_test',
+          email: 'test@naiknotes.com',
+          displayName: newDisplayName,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+    return _user!;
+  }
+
+  @override
   Future<AppUser> login(String email, String password) async {
     _user = AppUser(
       id: 'uid_${email.split('@').first}',

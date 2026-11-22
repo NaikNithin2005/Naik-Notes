@@ -202,6 +202,15 @@ class NotebooksNotifier extends Notifier<List<Notebook>> {
 
     state = [newNotebook, ...state];
     await _repository.saveNotebook(newNotebook);
+    try {
+      await ref.read(pageRepositoryProvider).ensurePagesExist(
+        newNotebook.id,
+        templateId: paperTemplateId,
+        pageSize: pageSize,
+        orientation: orientation,
+        count: 1,
+      );
+    } catch (_) {}
     if (currentUserId != 'local_user') {
       try {
         await ref

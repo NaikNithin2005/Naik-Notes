@@ -33,6 +33,8 @@ class _MockFolderAuthRepo implements AuthRepository {
   @override
   Stream<AppUser?> get authStateChanges => Stream.value(_user);
   @override
+  Future<AppUser> updateDisplayName(String newDisplayName) async => _user.copyWith(displayName: newDisplayName);
+  @override
   Future<AppUser> login(String email, String password) async => _user;
   @override
   Future<AppUser> register(

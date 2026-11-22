@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import 'package:naik_notes/core/presentation/responsive_layout.dart';
 import 'package:naik_notes/core/routing/route_names.dart';
+import 'package:naik_notes/data/local/database_provider.dart';
+import 'package:naik_notes/data/models/notebook_model.dart';
 import 'package:naik_notes/data/models/page_model.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/data/models/search_index_model.dart';
@@ -48,6 +50,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   bool _isReadingMode = false;
   String _searchQuery = '';
   int _activeMatchIndex = 0;
+  bool _isLoading = true;
+  String? _errorMessage;
+  Notebook? _fallbackNotebook;
   late final TransformationController _transformationController =
       TransformationController();
   final ScrollController _continuousScrollController = ScrollController();
@@ -55,11 +60,30 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   @override
   void initState() {
     super.initState();
+    ref.read(currentPageIndexProvider.notifier).setPage(1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadNotebookData();
+    });
+  }
+
+  Future<void> _loadNotebookData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
       final notebooks = ref.read(notebooksProvider);
-      final nb = notebooks.where((n) => n.id == widget.notebookId).firstOrNull;
+      var nb = notebooks.where((n) => n.id == widget.notebookId).firstOrNull;
+      if (nb == null) {
+        nb = await ref
+            .read(notebookRepositoryProvider)
+            .getNotebookById(widget.notebookId);
+        if (mounted && nb != null) {
+          setState(() => _fallbackNotebook = nb);
+        }
+      }
       if (nb != null) {
-        ref
+        await ref
             .read(notebookPagesProvider.notifier)
             .loadPages(
               widget.notebookId,
@@ -67,27 +91,30 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
               pageSize: nb.pageSize,
               orientation: nb.orientation,
               count: nb.pageCount,
-            )
-            .then((_) {
-              final loaded =
-                  ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
-              for (final p in loaded) {
-                ref.read(stickyNotesProvider.notifier).loadStickyNotes(p.id);
-              }
-            });
+            );
       } else {
-        ref
+        await ref
             .read(notebookPagesProvider.notifier)
-            .loadPages(widget.notebookId, count: 1)
-            .then((_) {
-              final loaded =
-                  ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
-              for (final p in loaded) {
-                ref.read(stickyNotesProvider.notifier).loadStickyNotes(p.id);
-              }
-            });
+            .loadPages(widget.notebookId, count: 1);
       }
-    });
+      final loaded =
+          ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+      for (final p in loaded) {
+        ref.read(stickyNotesProvider.notifier).loadStickyNotes(p.id);
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Could not load notebook: $e';
+        });
+      }
+    }
   }
 
   @override
@@ -446,7 +473,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
     final notebooks = ref.watch(notebooksProvider);
     final notebook = notebooks
         .where((nb) => nb.id == widget.notebookId)
-        .firstOrNull;
+        .firstOrNull ?? _fallbackNotebook;
 
     if (notebook == null) {
       return Scaffold(
@@ -461,15 +488,49 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              const Text('Loading notebook...'),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Library'),
-                onPressed: () => context.go(RouteNames.dashboard),
-              ),
+              if (_isLoading) ...[
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                const Text('Loading notebook...'),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to Library'),
+                  onPressed: () => context.go(RouteNames.dashboard),
+                ),
+              ] else ...[
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: Colors.redAccent,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage ?? 'Notebook not found in local library.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton.icon(
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Retry'),
+                      onPressed: _loadNotebookData,
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Back to Library'),
+                      onPressed: () => context.go(RouteNames.dashboard),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -529,33 +590,40 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
         ? activeBoxesOnCurrentPage.indexOf(allMatches[_activeMatchIndex].box)
         : -1;
 
-    return Scaffold(
-      backgroundColor: _isReadingMode
-          ? const Color(0xFFF3EEDC)
-          : const Color(0xFFE8E4DF),
-      appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Return to Library',
-          onPressed: () => context.go(RouteNames.dashboard),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _searchQuery.isNotEmpty
-                  ? '${notebook.title} (Search: "$_searchQuery")'
-                  : notebook.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-            Text(
-              'Page $clampedIndex of ${pages.isEmpty ? 1 : pages.length} • ${activeType.displayName}',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: context.isCompact
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          context.go(RouteNames.dashboard);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: _isReadingMode
+            ? const Color(0xFFF3EEDC)
+            : const Color(0xFFE8E4DF),
+        appBar: AppBar(
+          backgroundColor: theme.colorScheme.surface,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Return to Library',
+            onPressed: () => context.go(RouteNames.dashboard),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _searchQuery.isNotEmpty
+                    ? '${notebook.title} (Search: "$_searchQuery")'
+                    : notebook.title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              Text(
+                'Page $clampedIndex of ${pages.isEmpty ? 1 : pages.length} • ${activeType.displayName}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+          actions: context.screenWidth < 1100
             ? [
                 // Thumbnail Sidebar Toggle
                 IconButton(
@@ -1285,7 +1353,48 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                   // Workspace: Reading Mode 3D Flip vs. Continuous Scroll vs. Interactive Single Page
                   Expanded(
                     child: activePage == null
-                        ? const Center(child: CircularProgressIndicator())
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_isLoading) ...[
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  const Text('Loading notebook pages...'),
+                                ] else ...[
+                                  const Icon(
+                                    Icons.note_add_outlined,
+                                    size: 48,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'No pages found for this notebook.',
+                                  ),
+                                  const SizedBox(height: 12),
+                                  FilledButton.icon(
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Add Initial Page'),
+                                    onPressed: () async {
+                                      await ref
+                                          .read(notebookPagesProvider.notifier)
+                                          .addPage(
+                                            widget.notebookId,
+                                            templateId:
+                                                notebook.paperTemplateId,
+                                          );
+                                    },
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton.icon(
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text('Retry'),
+                                    onPressed: _loadNotebookData,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
                         : _isReadingMode
                         ? ReadingModePageFlipView(
                             notebookId: widget.notebookId,
@@ -1624,6 +1733,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
