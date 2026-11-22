@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:flutter/foundation.dart';
 
 /// Centralized, production-grade Authentication Error Handler for Naik Notes.
 ///
@@ -161,15 +160,11 @@ class AuthErrorHandler {
 
   /// Determines whether Apple Sign-In is supported natively on the current operating system.
   static bool isAppleSupported() {
-    if (kIsWeb) return false;
-    return defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS;
+    return false; // Disabled across all platforms
   }
 
   /// Determines whether Phone SMS OTP is supported natively on the current operating system.
   static bool isPhoneSupported() {
-    if (kIsWeb) return true;
-    return defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
+    return false; // Disabled across all platforms
   }
 }

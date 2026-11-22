@@ -11,73 +11,15 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // User namespace: complete isolation under /users/{userId}
+    // User namespace: complete recursive isolation under /users/{userId}
     match /users/{userId} {
-      // User profile document
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isOwner(userId);
-      
-      // User registered devices
-      match /devices/{deviceId} {
-        allow read, write: if isOwner(userId);
-      }
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && request.resource.data.keys().size() <= 30;
 
-      // User sync metadata & configs
-      match /syncMetadata/{recordId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Connected storage & cloud integrations (e.g. Google Drive)
-      match /integrations/{integrationId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Folders
-      match /folders/{folderId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
-        allow update: if isOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
-        allow delete: if isOwner(userId);
-      }
-
-      // Notebooks
-      match /notebooks/{notebookId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
-        allow update: if isOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
-        allow delete: if isOwner(userId);
-
-        // Sections
-        match /sections/{sectionId} {
-          allow read, write: if isOwner(userId);
-        }
-
-        // Pages
-        match /pages/{pageId} {
-          allow read, write: if isOwner(userId);
-
-          // Strokes (vector handwriting)
-          match /strokes/{strokeId} {
-            allow read, write: if isOwner(userId);
-          }
-
-          // Sticky notes & text annotations
-          match /sticky_notes/{noteId} {
-            allow read, write: if isOwner(userId);
-          }
-
-          // Annotations & PDF marks
-          match /annotations/{annotationId} {
-            allow read, write: if isOwner(userId);
-          }
-
-          // Historical page snapshots
-          match /snapshots/{snapshotId} {
-            allow read, write: if isOwner(userId);
-          }
-        }
+      // Recursive wildcard for all subcollections under the user's namespace
+      match /{allChildren=**} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && request.resource.data.keys().size() <= 30;
       }
     }
 

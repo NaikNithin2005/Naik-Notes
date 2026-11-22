@@ -110,6 +110,18 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> removeRegisteredDevice(String uid, String deviceId) async {}
+
+  @override
+  Future<String> verifyPasswordResetCode(String code) async => 'user@example.com';
+
+  @override
+  Future<void> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {}
+
+  @override
+  Future<void> sendEmailVerification() async {}
 }
 
 void main() {

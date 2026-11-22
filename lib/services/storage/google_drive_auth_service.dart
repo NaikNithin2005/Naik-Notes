@@ -67,6 +67,8 @@ class GoogleDriveAuthService {
   final FirebaseFirestore _firestore;
   final http.Client _httpClient;
 
+  FlutterSecureStorage get secureStorage => _secureStorage;
+
   GoogleDriveAuthService({
     FlutterSecureStorage? secureStorage,
     FirebaseFirestore? firestore,
@@ -75,24 +77,53 @@ class GoogleDriveAuthService {
         _firestore = firestore ?? FirebaseFirestore.instance,
         _httpClient = httpClient ?? http.Client();
 
-  /// Retrieves the current Google Drive connection metadata stored in Firestore.
+  /// Retrieves the current Google Drive connection metadata stored locally or in Firestore.
+  /// Follows Local-First architecture: local secure storage is checked first.
   Future<GoogleDriveConnectionModel?> getConnectionMetadata(String uid) async {
+    // 1. Check local secure storage first for instant zero-latency offline availability
+    try {
+      final localCreds = await _loadSecureCredentials(uid);
+      if (localCreds != null && localCreds.accessToken.isNotEmpty) {
+        final connectedAtStr =
+            await _secureStorage.read(key: '${uid}_drive_connected_at');
+        final lastVerifiedStr =
+            await _secureStorage.read(key: '${uid}_drive_last_verified_at');
+        return GoogleDriveConnectionModel(
+          provider: 'google_drive',
+          connected: true,
+          googleAccountEmail: localCreds.accountEmail,
+          googleAccountSubjectId: localCreds.subjectId,
+          connectedAt: connectedAtStr != null
+              ? DateTime.tryParse(connectedAtStr)
+              : DateTime.now(),
+          lastVerifiedAt: lastVerifiedStr != null
+              ? DateTime.tryParse(lastVerifiedStr)
+              : DateTime.now(),
+          storageProvider: 'google_drive_appdata',
+          schemaVersion: 1,
+        );
+      }
+    } catch (e) {
+      debugPrint('[GoogleDriveAuthService] Local secure storage read note: $e');
+    }
+
+    // 2. Fall back to Cloud Firestore if local credentials are not found
     try {
       final doc = await _firestore
           .collection('users')
           .doc(uid)
           .collection('integrations')
           .doc('googleDrive')
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 4));
 
-      if (!doc.exists || doc.data() == null) {
-        return null;
+      if (doc.exists && doc.data() != null) {
+        return GoogleDriveConnectionModel.fromFirestore(doc.data()!);
       }
-      return GoogleDriveConnectionModel.fromFirestore(doc.data()!);
     } catch (e) {
-      debugPrint('[GoogleDriveAuthService] Failed to load connection doc: $e');
-      return null;
+      debugPrint('[GoogleDriveAuthService] Failed to load connection doc from Firestore: $e');
     }
+    return null;
   }
 
   /// Authorizes Google Drive for the given [uid].
@@ -150,14 +181,92 @@ class GoogleDriveAuthService {
       schemaVersion: 1,
     );
 
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('integrations')
-        .doc('googleDrive')
-        .set(updatedMeta.toFirestore(), SetOptions(merge: true));
+    // Update Firestore connection metadata with a safe timeout
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('integrations')
+          .doc('googleDrive')
+          .set(updatedMeta.toFirestore(), SetOptions(merge: true))
+          .timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('[GoogleDriveAuthService] Non-critical warning: Firestore metadata sync deferred/timed out: $e');
+    }
 
     return credentials;
+  }
+
+  /// Actively validates that Google Drive API is reachable and authorized with the required scope.
+  /// Returns null if access is verified, or a descriptive error message if access failed.
+  Future<String?> validateDriveAccess(String uid, {String? accessToken}) async {
+    try {
+      final token = accessToken ?? await getValidAccessToken(uid);
+      if (token == null || token.isEmpty) {
+        return 'No Google access token found. Please connect your Google Drive account.';
+      }
+
+      // 1. Primary check: list files in the application's private appDataFolder
+      final res = await _httpClient.get(
+        Uri.parse(
+          'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1&fields=files(id)',
+        ),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 10));
+
+      debugPrint('[GoogleDriveAuthService] validateDriveAccess (files.list): HTTP ${res.statusCode}');
+
+      if (res.statusCode == 200) {
+        await _secureStorage.write(
+          key: '${uid}_drive_last_verified_at',
+          value: DateTime.now().toIso8601String(),
+        );
+        return null; // Valid
+      }
+
+      debugPrint('[GoogleDriveAuthService] validateDriveAccess failed body: ${res.body}');
+
+      // 2. Secondary fallback check: inspect appDataFolder container metadata
+      final folderRes = await _httpClient.get(
+        Uri.parse('https://www.googleapis.com/drive/v3/files/appDataFolder?fields=id,name'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 8));
+
+      debugPrint('[GoogleDriveAuthService] validateDriveAccess (files.get appDataFolder): HTTP ${folderRes.statusCode}');
+
+      if (folderRes.statusCode == 200) {
+        await _secureStorage.write(
+          key: '${uid}_drive_last_verified_at',
+          value: DateTime.now().toIso8601String(),
+        );
+        return null; // Valid
+      }
+
+      // Analyze specific Google API error causes
+      final bodyLower = res.body.toLowerCase();
+      if (res.statusCode == 403) {
+        if (bodyLower.contains('service_disabled') ||
+            bodyLower.contains('has not been used in project') ||
+            bodyLower.contains('disabled')) {
+          return 'Google Drive API is disabled in Google Cloud Project #437907946486.\n'
+              'Enable it at: https://console.cloud.google.com/apis/library/drive.googleapis.com?project=437907946486';
+        }
+        if (bodyLower.contains('insufficient') ||
+            bodyLower.contains('appdatafolderaccessdenied') ||
+            bodyLower.contains('access_token_scope_insufficient') ||
+            bodyLower.contains('not granted')) {
+          return 'Google Drive permission was not granted by your Google Account.\n'
+              'When the browser sign-in screen opens, please make sure to check the box next to Google Drive before continuing.';
+        }
+      } else if (res.statusCode == 401) {
+        return 'Google authorization expired or was revoked. Please reconnect.';
+      }
+
+      return 'Google Drive access could not be verified (HTTP ${res.statusCode}). Please check permissions.';
+    } catch (e) {
+      debugPrint('[GoogleDriveAuthService] validateDriveAccess exception: $e');
+      return 'Could not connect to Google Drive: $e';
+    }
   }
 
   /// Returns a valid, non-expired access token for calling Google Drive API v3.
@@ -206,6 +315,18 @@ class GoogleDriveAuthService {
   Future<void> disconnectDrive(String uid) async {
     await _clearSecureCredentials(uid);
 
+    // On mobile platforms, sign out from native Google Sign-In instance
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          scopes: ['email', appDataScope],
+        );
+        await googleSignIn.signOut();
+      } catch (e) {
+        debugPrint('[GoogleDriveAuthService] Native Google sign out note: $e');
+      }
+    }
+
     try {
       await _firestore
           .collection('users')
@@ -250,6 +371,7 @@ class GoogleDriveAuthService {
         'code_challenge_method': 'S256',
         'state': stateToken,
         'access_type': 'offline', // Requests refresh_token
+        'include_granted_scopes': 'true',
         'prompt': forceAccountSelection ? 'consent select_account' : 'consent',
       });
 
@@ -370,6 +492,16 @@ class GoogleDriveAuthService {
     final refreshToken = data['refresh_token'] as String?;
     final expiresIn = (data['expires_in'] as num?)?.toInt() ?? 3600;
     final idToken = data['id_token'] as String?;
+    final grantedScope = data['scope'] as String?;
+
+    debugPrint('[GoogleDriveAuthService] Granted OAuth scopes: $grantedScope');
+
+    if (grantedScope != null && !grantedScope.contains('drive.appdata')) {
+      throw Exception(
+        'Google Drive permission was not granted by your Google Account.\n'
+        'When the sign-in window opens, please make sure the Google Drive checkbox is checked.',
+      );
+    }
 
     final parsedIdentity = _parseIdToken(idToken);
     final expiry = DateTime.now().add(Duration(seconds: expiresIn));
@@ -447,12 +579,22 @@ class GoogleDriveAuthService {
       } catch (_) {}
     }
 
-    final GoogleSignInAccount? account = await googleSignIn.signIn();
+    final GoogleSignInAccount? account = await googleSignIn.signIn().timeout(
+      const Duration(seconds: 90),
+      onTimeout: () => throw TimeoutException(
+        'Google Sign-In timed out. Please try again.',
+      ),
+    );
     if (account == null) {
-      throw Exception('Google Drive authorization cancelled by user.');
+      throw Exception('Google Drive authorization was cancelled.');
     }
 
-    final GoogleSignInAuthentication auth = await account.authentication;
+    final GoogleSignInAuthentication auth = await account.authentication.timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => throw TimeoutException(
+        'Failed to retrieve authentication tokens from Google.',
+      ),
+    );
     final accessToken = auth.accessToken;
 
     if (accessToken == null || accessToken.isEmpty) {
@@ -504,6 +646,18 @@ class GoogleDriveAuthService {
         value: credentials.subjectId,
       );
     }
+    await _secureStorage.write(
+      key: '${uid}_drive_connected',
+      value: 'true',
+    );
+    await _secureStorage.write(
+      key: '${uid}_drive_connected_at',
+      value: DateTime.now().toIso8601String(),
+    );
+    await _secureStorage.write(
+      key: '${uid}_drive_last_verified_at',
+      value: DateTime.now().toIso8601String(),
+    );
   }
 
   Future<GoogleDriveCredentials?> _loadSecureCredentials(String uid) async {
@@ -532,6 +686,9 @@ class GoogleDriveAuthService {
     await _secureStorage.delete(key: '${uid}_drive_token_expiry');
     await _secureStorage.delete(key: '${uid}_drive_account_email');
     await _secureStorage.delete(key: '${uid}_drive_account_sub');
+    await _secureStorage.delete(key: '${uid}_drive_connected');
+    await _secureStorage.delete(key: '${uid}_drive_connected_at');
+    await _secureStorage.delete(key: '${uid}_drive_last_verified_at');
   }
 
   // ===========================================================================

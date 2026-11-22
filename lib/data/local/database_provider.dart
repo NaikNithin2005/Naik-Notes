@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/authentication/data/auth_provider.dart';
 import '../repositories/audio_repository.dart';
 import '../repositories/folder_repository.dart';
+import '../repositories/note_repository.dart';
 import '../repositories/notebook_repository.dart';
 import '../repositories/page_repository.dart';
 import '../repositories/page_search_repository.dart';
@@ -15,8 +16,7 @@ import 'app_database.dart';
 
 /// Global provider for the Drift AppDatabase instance strictly partitioned by user identity.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final authState = ref.watch(authProvider);
-  final uid = authState.user?.id ?? 'local_user';
+  final uid = ref.watch(authProvider.select((s) => s.user?.id ?? 'local_user'));
   final db = AppDatabase.forUser(uid);
   ref.onDispose(() => db.close());
   return db;
@@ -26,6 +26,12 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 final notebookRepositoryProvider = Provider<NotebookRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   return DriftNotebookRepository(db);
+});
+
+/// Global provider for NoteRepository.
+final noteRepositoryProvider = Provider<NoteRepository>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return DriftNoteRepository(db);
 });
 
 /// Global provider for FolderRepository.

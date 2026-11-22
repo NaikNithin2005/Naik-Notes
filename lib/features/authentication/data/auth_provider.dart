@@ -5,6 +5,8 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/firebase_auth_repository.dart';
 import '../../folders/data/folder_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
+import '../../notes/data/note_provider.dart';
+import '../../storage/data/google_drive_provider.dart';
 import '../../sync/data/sync_provider.dart';
 import 'auth_error_handler.dart';
 
@@ -85,6 +87,20 @@ class AuthNotifier extends Notifier<AuthState> {
   AuthState build() {
     ref.watch(authRepositoryProvider);
     final initial = _repository.currentUser;
+
+    // Listen to reactive auth state changes to auto-restore active sessions with zero latency
+    final sub = _repository.authStateChanges.listen((user) {
+      if (user != state.user) {
+        state = state.copyWith(
+          user: user,
+          clearUser: user == null,
+          isLoading: false,
+          authStatus: user != null ? AuthStatus.success : AuthStatus.idle,
+        );
+      }
+    });
+    ref.onDispose(() => sub.cancel());
+
     return AuthState(user: initial);
   }
 
@@ -404,6 +420,54 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Validates password reset code.
+  Future<String?> verifyPasswordResetCode(String code) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final email = await _repository.verifyPasswordResetCode(code);
+      state = state.copyWith(isLoading: false);
+      return email;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AuthErrorHandler.handle(e),
+      );
+      return null;
+    }
+  }
+
+  /// Confirms password reset with new password.
+  Future<bool> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {
+    if (state.isLoading) return false;
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _repository.confirmPasswordReset(
+        code: code,
+        newPassword: newPassword,
+      );
+      state = state.copyWith(
+        isLoading: false,
+        successMessage:
+            'Your password has been successfully reset. Please sign in.',
+        clearError: true,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AuthErrorHandler.handle(e),
+      );
+      return false;
+    } finally {
+      if (state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
+    }
+  }
+
   /// Account deletion with confirmation.
   Future<bool> deleteAccount() async {
     if (state.isLoading) return false;
@@ -411,6 +475,17 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       await _repository.deleteAccount();
       state = const AuthState();
+      try {
+        ref.invalidate(notebooksProvider);
+        ref.invalidate(foldersProvider);
+        ref.invalidate(notesProvider);
+        ref.invalidate(selectedNoteProvider);
+        ref.invalidate(trashNotesProvider);
+        ref.read(selectedFolderProvider.notifier).clearSelection();
+        ref.invalidate(syncProvider);
+        ref.invalidate(googleDriveProvider);
+        ref.read(firebaseSyncServiceProvider).dispose();
+      } catch (_) {}
       return true;
     } catch (e) {
       state = state.copyWith(
@@ -435,8 +510,12 @@ class AuthNotifier extends Notifier<AuthState> {
       try {
         ref.invalidate(notebooksProvider);
         ref.invalidate(foldersProvider);
+        ref.invalidate(notesProvider);
+        ref.invalidate(selectedNoteProvider);
+        ref.invalidate(trashNotesProvider);
         ref.read(selectedFolderProvider.notifier).clearSelection();
         ref.invalidate(syncProvider);
+        ref.invalidate(googleDriveProvider);
         ref.read(firebaseSyncServiceProvider).dispose();
       } catch (_) {}
     }

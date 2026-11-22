@@ -13,9 +13,11 @@ class AppShell extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith(RouteNames.templateGallery)) return 1;
-    if (location.startsWith(RouteNames.profile)) return 2;
-    if (location.startsWith(RouteNames.settings)) return 3;
+    if (location.startsWith(RouteNames.notes)) return 1;
+    if (location.startsWith(RouteNames.templateGallery)) return 2;
+    if (location.startsWith(RouteNames.trash)) return 3;
+    if (location.startsWith(RouteNames.profile)) return 4;
+    if (location.startsWith(RouteNames.settings)) return 5;
     return 0; // Dashboard
   }
 
@@ -25,12 +27,18 @@ class AppShell extends StatelessWidget {
         context.go(RouteNames.dashboard);
         break;
       case 1:
-        context.go(RouteNames.templateGallery);
+        context.go(RouteNames.notes);
         break;
       case 2:
-        context.go(RouteNames.profile);
+        context.go(RouteNames.templateGallery);
         break;
       case 3:
+        context.go(RouteNames.trash);
+        break;
+      case 4:
+        context.go(RouteNames.profile);
+        break;
+      case 5:
         context.go(RouteNames.settings);
         break;
     }
@@ -77,9 +85,19 @@ class AppShell extends StatelessWidget {
                   label: Text('Notebooks'),
                 ),
                 NavigationRailDestination(
+                  icon: Icon(Icons.edit_note_outlined),
+                  selectedIcon: Icon(Icons.edit_note_rounded),
+                  label: Text('Notes'),
+                ),
+                NavigationRailDestination(
                   icon: Icon(Icons.dashboard_customize_outlined),
                   selectedIcon: Icon(Icons.dashboard_customize_rounded),
                   label: Text('Templates'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.delete_outline_rounded),
+                  selectedIcon: Icon(Icons.delete_rounded),
+                  label: Text('Trash'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.person_outline_rounded),
@@ -113,9 +131,19 @@ class AppShell extends StatelessWidget {
             label: 'Notebooks',
           ),
           NavigationDestination(
+            icon: Icon(Icons.edit_note_outlined),
+            selectedIcon: Icon(Icons.edit_note_rounded),
+            label: 'Notes',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.dashboard_customize_outlined),
             selectedIcon: Icon(Icons.dashboard_customize_rounded),
             label: 'Templates',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.delete_outline_rounded),
+            selectedIcon: Icon(Icons.delete_rounded),
+            label: 'Trash',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),

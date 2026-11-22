@@ -34,6 +34,12 @@ abstract class AuthRepository {
 
   Future<AppUser> verifyPhoneOtp(String verificationId, String smsCode);
   Future<void> sendPasswordReset(String email);
+  Future<String> verifyPasswordResetCode(String code) async => '';
+  Future<void> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {}
+  Future<void> sendEmailVerification() async {}
   Future<void> deleteAccount();
   Future<void> logout();
   Future<AppUser?> restoreSession();
@@ -243,6 +249,20 @@ class RemoteAuthRepository implements AuthRepository {
     _currentUser = user;
     return user;
   }
+
+  @override
+  Future<String> verifyPasswordResetCode(String code) async {
+    return 'user@example.com';
+  }
+
+  @override
+  Future<void> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {}
+
+  @override
+  Future<void> sendEmailVerification() async {}
 
   @override
   Future<void> deleteAccount() async {

@@ -20,6 +20,11 @@ class Notebook {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
+  final String? deletionId;
+  final String syncStatus;
+  final DateTime? lastSyncedAt;
+
+  bool get isDeleted => deletedAt != null;
 
   const Notebook({
     required this.id,
@@ -42,6 +47,9 @@ class Notebook {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
+    this.deletionId,
+    this.syncStatus = 'synced',
+    this.lastSyncedAt,
   });
 
   Notebook copyWith({
@@ -65,8 +73,13 @@ class Notebook {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    String? deletionId,
+    String? syncStatus,
+    DateTime? lastSyncedAt,
     bool clearFolderId = false,
     bool clearCoverImageUrl = false,
+    bool clearDeletedAt = false,
+    bool clearDeletionId = false,
   }) {
     return Notebook(
       id: id ?? this.id,
@@ -90,7 +103,10 @@ class Notebook {
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      deletedAt: deletedAt ?? this.deletedAt,
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
+      deletionId: clearDeletionId ? null : (deletionId ?? this.deletionId),
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     );
   }
 
@@ -116,6 +132,9 @@ class Notebook {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'deletedAt': deletedAt?.toIso8601String(),
+      'deletionId': deletionId,
+      'syncStatus': syncStatus,
+      'lastSyncedAt': lastSyncedAt?.toIso8601String(),
     };
   }
 
@@ -142,6 +161,11 @@ class Notebook {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       deletedAt: json['deletedAt'] != null
           ? DateTime.parse(json['deletedAt'] as String)
+          : null,
+      deletionId: json['deletionId'] as String?,
+      syncStatus: json['syncStatus'] as String? ?? 'synced',
+      lastSyncedAt: json['lastSyncedAt'] != null
+          ? DateTime.tryParse(json['lastSyncedAt'] as String)
           : null,
     );
   }

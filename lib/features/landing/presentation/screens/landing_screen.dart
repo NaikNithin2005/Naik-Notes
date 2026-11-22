@@ -31,14 +31,14 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 350),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _animController,
       curve: Curves.easeOutCubic,
     );
     _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero).animate(
+        Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero).animate(
           CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
         );
     _animController.forward();
@@ -52,13 +52,6 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
 
   Future<void> _signInWithGoogle() async {
     final success = await ref.read(authProvider.notifier).signInWithGoogle();
-    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
-      context.go(RouteNames.dashboard);
-    }
-  }
-
-  Future<void> _signInWithApple() async {
-    final success = await ref.read(authProvider.notifier).signInWithApple();
     if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
       context.go(RouteNames.dashboard);
     }
@@ -249,52 +242,67 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
     required String subtitle,
     required ThemeData theme,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 20, color: theme.colorScheme.primary),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.25),
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: theme.colorScheme.primary),
           ),
-        ),
-      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildAuthCard(ThemeData theme, AuthState authState) {
     final isGoogleAvailable = AuthErrorHandler.isGoogleSupported();
-    final isAppleAvailable = AuthErrorHandler.isAppleSupported();
     final isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 6,
+      shadowColor: Colors.black.withValues(alpha: 0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
         child: Column(
@@ -359,9 +367,9 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
               ),
             ),
 
-            // Fast Connect Section (Only displayed when OAuth providers are supported)
-            if (isGoogleAvailable || isAppleAvailable) ...[
-              const SizedBox(height: 16),
+            // Fast Connect Section (Google Sign-In)
+            if (isGoogleAvailable) ...[
+              const SizedBox(height: 18),
               Row(
                 children: [
                   const Expanded(child: Divider()),
@@ -382,86 +390,66 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
               ),
               const SizedBox(height: 14),
 
-              // Google Sign-In (Android, iPadOS, Windows)
-              if (isGoogleAvailable) ...[
-                OutlinedButton.icon(
-                  onPressed: authState.isLoading ? null : _signInWithGoogle,
-                  icon: authState.isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const GoogleLogo(size: 20),
-                  label: Text(
-                    authState.isLoading
-                        ? 'Connecting to Google...'
-                        : 'Continue with Google',
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+              OutlinedButton.icon(
+                onPressed: authState.isLoading ? null : _signInWithGoogle,
+                icon: authState.isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const GoogleLogo(size: 20),
+                label: Text(
+                  authState.isLoading
+                      ? 'Connecting to Google...'
+                      : 'Continue with Google',
                 ),
-                const SizedBox(height: 8),
-              ],
-
-              // Apple Sign-In (iPadOS / iOS / macOS only)
-              if (isAppleAvailable) ...[
-                OutlinedButton.icon(
-                  onPressed: authState.isLoading ? null : _signInWithApple,
-                  icon: const AppleLogo(size: 20),
-                  label: const Text('Continue with Apple'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ],
-
-            // Windows Desktop Edition subtle footer badge
-            if (isWindows) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.cloud_sync_outlined,
-                      size: 16,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'Windows Edition • Cloud Sync Enabled',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
+
+            // Universal Cross-Platform sync badge
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.cloud_sync_outlined,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      isWindows
+                          ? 'Windows Edition • Cloud Sync Enabled'
+                          : 'Cloud Sync Enabled • iPad • Android',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -482,20 +470,25 @@ class _LandingBackgroundPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final isDark = brightness == Brightness.dark;
     final gridColor = isDark
-        ? Colors.white.withValues(alpha: 0.03)
+        ? Colors.white.withValues(alpha: 0.035)
         : Colors.black.withValues(alpha: 0.04);
 
     final gridPaint = Paint()
       ..color = gridColor
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
 
+    final path = Path();
     const double step = 32.0;
     for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+      path.moveTo(x, 0);
+      path.lineTo(x, size.height);
     }
     for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+      path.moveTo(0, y);
+      path.lineTo(size.width, y);
     }
+    canvas.drawPath(path, gridPaint);
   }
 
   @override

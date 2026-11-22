@@ -153,15 +153,17 @@ class AiStudyAssistantService {
     final uri = Uri.parse('$_baseUrl/ai/study/summarize');
 
     try {
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'notebook_id': notebookId,
-          'context_text': context,
-          'format': 'structured',
-        }),
-      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'notebook_id': notebookId,
+              'context_text': context,
+              'format': 'structured',
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -198,15 +200,17 @@ class AiStudyAssistantService {
     final uri = Uri.parse('$_baseUrl/ai/study/flashcards');
 
     try {
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'notebook_id': notebookId,
-          'context_text': context,
-          'count': count,
-        }),
-      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'notebook_id': notebookId,
+              'context_text': context,
+              'count': count,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -249,15 +253,17 @@ class AiStudyAssistantService {
     final uri = Uri.parse('$_baseUrl/ai/study/quiz');
 
     try {
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'notebook_id': notebookId,
-          'context_text': context,
-          'count': count,
-        }),
-      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'notebook_id': notebookId,
+              'context_text': context,
+              'count': count,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -296,11 +302,13 @@ class AiStudyAssistantService {
     final uri = Uri.parse('$_baseUrl/ai/study/explain-formula');
 
     try {
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'formula_text': formulaText, 'context': context}),
-      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'formula_text': formulaText, 'context': context}),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -336,23 +344,25 @@ class AiStudyAssistantService {
     final uri = Uri.parse('$_baseUrl/ai/study/chat');
 
     try {
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'notebook_id': notebookId,
-          'message': message,
-          'conversation_history': history
-              .map(
-                (h) => {
-                  'role': h['role'] ?? 'user',
-                  'content': h['content'] ?? '',
-                },
-              )
-              .toList(),
-          'context_text': pageContext,
-        }),
-      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'notebook_id': notebookId,
+              'message': message,
+              'conversation_history': history
+                  .map(
+                    (h) => {
+                      'role': h['role'] ?? 'user',
+                      'content': h['content'] ?? '',
+                    },
+                  )
+                  .toList(),
+              'context_text': pageContext,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;

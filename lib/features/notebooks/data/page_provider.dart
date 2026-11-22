@@ -6,6 +6,7 @@ import '../../../data/models/page_model.dart';
 import '../../../data/models/paper_template_model.dart';
 import '../../../data/repositories/page_repository.dart';
 import '../../authentication/data/auth_provider.dart';
+import '../../storage/data/google_drive_provider.dart';
 import '../../sync/data/sync_provider.dart';
 import 'notebook_provider.dart';
 
@@ -95,6 +96,13 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
       );
     }
 
+    try {
+      ref.read(googleDriveProvider.notifier).scheduleAutoSync(
+        delay: const Duration(seconds: 3),
+        reason: 'page_added',
+      );
+    } catch (_) {}
+
     return newPage;
   }
 
@@ -119,6 +127,12 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
 
     state = {...state, notebookId: updatedList};
     await _repository.updatePageTemplate(pageId, templateId, properties);
+    try {
+      ref.read(googleDriveProvider.notifier).scheduleAutoSync(
+        delay: const Duration(seconds: 3),
+        reason: 'template_changed',
+      );
+    } catch (_) {}
   }
 
   /// Updates paper properties for a specific page across notebooks.

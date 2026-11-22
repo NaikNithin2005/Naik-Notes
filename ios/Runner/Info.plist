@@ -77,5 +77,15 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Naik Notes requires microphone access to record audio notes synchronized with your handwritten lectures.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Naik Notes requires photo library access to import custom notebook covers and attach images to your notes.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Naik Notes requires camera access to capture document photos and scans for note attachments.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>

@@ -45,6 +45,8 @@ class NotebooksTable extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
   TextColumn get syncStatus => text().withDefault(const Constant('synced'))();
+  TextColumn get deletionId => text().nullable()();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -273,6 +275,63 @@ class AttachmentsTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Table representing rich-text notes with Quill Delta JSON persistence.
+class NotesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get ownerId => text().withDefault(const Constant('local_user'))();
+  TextColumn get notebookId => text()();
+  TextColumn get title => text().withDefault(const Constant('Untitled Note'))();
+  TextColumn get contentDelta =>
+      text().withDefault(const Constant('[{"insert":"\\n"}]'))();
+  TextColumn get plainText => text().withDefault(const Constant(''))();
+  TextColumn get preview => text().withDefault(const Constant(''))();
+  TextColumn get tagsJson => text().withDefault(const Constant('[]'))();
+  BoolColumn get isPinned => boolean().withDefault(const Constant(false))();
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  TextColumn get deletionId => text().nullable()();
+  TextColumn get syncStatus => text().withDefault(const Constant('synced'))();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+  IntColumn get localVersion => integer().withDefault(const Constant(1))();
+  IntColumn get serverVersion => integer().withDefault(const Constant(1))();
+  TextColumn get deviceId => text().nullable()();
+  TextColumn get lastModifiedBy => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table representing permanent deletion tombstones.
+/// Prevents permanently deleted notebooks and notes from resurrecting through cloud sync.
+class TombstonesTable extends Table {
+  TextColumn get id => text()(); // Original notebookId or noteId
+  TextColumn get ownerId => text().withDefault(const Constant('local_user'))();
+  TextColumn get entityType => text()(); // 'notebook' | 'note'
+  TextColumn get deletionId => text()();
+  DateTimeColumn get deletedAt => dateTime()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Table mapping local entity IDs to Google Drive file/folder IDs.
+/// Guarantees that sync updates existing Drive files/folders instead of creating duplicates.
+class DriveFileMappingsTable extends Table {
+  TextColumn get entityId => text()(); // notebookId, noteId, pageId, folderId
+  TextColumn get ownerId => text().withDefault(const Constant('local_user'))();
+  TextColumn get entityType => text()();
+  TextColumn get driveFileId => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {entityId};
+}
+
 @DriftDatabase(
   tables: [
     FoldersTable,
@@ -288,16 +347,42 @@ class AttachmentsTable extends Table {
     PageSnapshotsTable,
     CustomTemplatesTable,
     AttachmentsTable,
+    NotesTable,
+    TombstonesTable,
+    DriveFileMappingsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnectionForUser('local_user'));
 
-  AppDatabase.forUser(String userId, [QueryExecutor? e])
-      : super(e ?? _openConnectionForUser(userId));
+  static final Map<String, AppDatabase> _userDatabases = {};
+
+  factory AppDatabase.forUser(String userId, [QueryExecutor? e]) {
+    if (e != null) {
+      return AppDatabase(e);
+    }
+    final sanitized = sanitizeUid(userId);
+    final existing = _userDatabases[sanitized];
+    if (existing != null) {
+      return existing;
+    }
+    final instance = AppDatabase(_openConnectionForUser(userId));
+    _userDatabases[sanitized] = instance;
+    return instance;
+  }
 
   @override
-  int get schemaVersion => 12;
+  Future<void> close() async {
+    _userDatabases.removeWhere((key, value) => identical(value, this));
+    await super.close();
+  }
+
+  static void resetInstances() {
+    _userDatabases.clear();
+  }
+
+  @override
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -315,6 +400,23 @@ class AppDatabase extends _$AppDatabase {
       if (from < 12) {
         await m.createTable(attachmentsTable);
       }
+      if (from < 13) {
+        await m.createTable(notesTable);
+      }
+      if (from < 14) {
+        await m.addColumn(notebooksTable, notebooksTable.deletionId);
+        await m.addColumn(notebooksTable, notebooksTable.lastSyncedAt);
+        await m.addColumn(notesTable, notesTable.deletionId);
+        await m.addColumn(notesTable, notesTable.syncStatus);
+        await m.createTable(tombstonesTable);
+        await m.createTable(driveFileMappingsTable);
+      }
+      if (from < 15) {
+        await m.addColumn(notesTable, notesTable.localVersion);
+        await m.addColumn(notesTable, notesTable.serverVersion);
+        await m.addColumn(notesTable, notesTable.deviceId);
+        await m.addColumn(notesTable, notesTable.lastModifiedBy);
+      }
     },
   );
 
@@ -325,6 +427,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   static QueryExecutor _openConnectionForUser(String userId) {
+    driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final sanitized = sanitizeUid(userId);
     return driftDatabase(name: 'naik_notes_user_$sanitized');
   }

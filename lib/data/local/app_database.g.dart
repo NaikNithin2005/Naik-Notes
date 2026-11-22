@@ -765,6 +765,28 @@ class $NotebooksTableTable extends NotebooksTable
     requiredDuringInsert: false,
     defaultValue: const Constant('synced'),
   );
+  static const VerificationMeta _deletionIdMeta = const VerificationMeta(
+    'deletionId',
+  );
+  @override
+  late final GeneratedColumn<String> deletionId = GeneratedColumn<String>(
+    'deletion_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -788,6 +810,8 @@ class $NotebooksTableTable extends NotebooksTable
     updatedAt,
     deletedAt,
     syncStatus,
+    deletionId,
+    lastSyncedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -947,6 +971,21 @@ class $NotebooksTableTable extends NotebooksTable
         syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
       );
     }
+    if (data.containsKey('deletion_id')) {
+      context.handle(
+        _deletionIdMeta,
+        deletionId.isAcceptableOrUnknown(data['deletion_id']!, _deletionIdMeta),
+      );
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1040,6 +1079,14 @@ class $NotebooksTableTable extends NotebooksTable
         DriftSqlType.string,
         data['${effectivePrefix}sync_status'],
       )!,
+      deletionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deletion_id'],
+      ),
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      ),
     );
   }
 
@@ -1072,6 +1119,8 @@ class NotebooksTableData extends DataClass
   final DateTime updatedAt;
   final DateTime? deletedAt;
   final String syncStatus;
+  final String? deletionId;
+  final DateTime? lastSyncedAt;
   const NotebooksTableData({
     required this.id,
     required this.ownerId,
@@ -1094,6 +1143,8 @@ class NotebooksTableData extends DataClass
     required this.updatedAt,
     this.deletedAt,
     required this.syncStatus,
+    this.deletionId,
+    this.lastSyncedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1127,6 +1178,12 @@ class NotebooksTableData extends DataClass
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
     map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || deletionId != null) {
+      map['deletion_id'] = Variable<String>(deletionId);
+    }
+    if (!nullToAbsent || lastSyncedAt != null) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    }
     return map;
   }
 
@@ -1161,6 +1218,12 @@ class NotebooksTableData extends DataClass
           ? const Value.absent()
           : Value(deletedAt),
       syncStatus: Value(syncStatus),
+      deletionId: deletionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletionId),
+      lastSyncedAt: lastSyncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncedAt),
     );
   }
 
@@ -1191,6 +1254,8 @@ class NotebooksTableData extends DataClass
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      deletionId: serializer.fromJson<String?>(json['deletionId']),
+      lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
     );
   }
   @override
@@ -1218,6 +1283,8 @@ class NotebooksTableData extends DataClass
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'syncStatus': serializer.toJson<String>(syncStatus),
+      'deletionId': serializer.toJson<String?>(deletionId),
+      'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
     };
   }
 
@@ -1243,6 +1310,8 @@ class NotebooksTableData extends DataClass
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
     String? syncStatus,
+    Value<String?> deletionId = const Value.absent(),
+    Value<DateTime?> lastSyncedAt = const Value.absent(),
   }) => NotebooksTableData(
     id: id ?? this.id,
     ownerId: ownerId ?? this.ownerId,
@@ -1267,6 +1336,8 @@ class NotebooksTableData extends DataClass
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     syncStatus: syncStatus ?? this.syncStatus,
+    deletionId: deletionId.present ? deletionId.value : this.deletionId,
+    lastSyncedAt: lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
   );
   NotebooksTableData copyWithCompanion(NotebooksTableCompanion data) {
     return NotebooksTableData(
@@ -1307,6 +1378,12 @@ class NotebooksTableData extends DataClass
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
           : this.syncStatus,
+      deletionId: data.deletionId.present
+          ? data.deletionId.value
+          : this.deletionId,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
     );
   }
 
@@ -1333,7 +1410,9 @@ class NotebooksTableData extends DataClass
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('syncStatus: $syncStatus')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('deletionId: $deletionId, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
           ..write(')'))
         .toString();
   }
@@ -1361,6 +1440,8 @@ class NotebooksTableData extends DataClass
     updatedAt,
     deletedAt,
     syncStatus,
+    deletionId,
+    lastSyncedAt,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1386,7 +1467,9 @@ class NotebooksTableData extends DataClass
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
-          other.syncStatus == this.syncStatus);
+          other.syncStatus == this.syncStatus &&
+          other.deletionId == this.deletionId &&
+          other.lastSyncedAt == this.lastSyncedAt);
 }
 
 class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
@@ -1411,6 +1494,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
   final Value<String> syncStatus;
+  final Value<String?> deletionId;
+  final Value<DateTime?> lastSyncedAt;
   final Value<int> rowid;
   const NotebooksTableCompanion({
     this.id = const Value.absent(),
@@ -1434,6 +1519,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.deletionId = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   NotebooksTableCompanion.insert({
@@ -1458,6 +1545,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.deletionId = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -1485,6 +1574,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
     Expression<String>? syncStatus,
+    Expression<String>? deletionId,
+    Expression<DateTime>? lastSyncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1509,6 +1600,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (syncStatus != null) 'sync_status': syncStatus,
+      if (deletionId != null) 'deletion_id': deletionId,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1535,6 +1628,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
     Value<String>? syncStatus,
+    Value<String?>? deletionId,
+    Value<DateTime?>? lastSyncedAt,
     Value<int>? rowid,
   }) {
     return NotebooksTableCompanion(
@@ -1559,6 +1654,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       syncStatus: syncStatus ?? this.syncStatus,
+      deletionId: deletionId ?? this.deletionId,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1629,6 +1726,12 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
+    if (deletionId.present) {
+      map['deletion_id'] = Variable<String>(deletionId.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1659,6 +1762,8 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('deletionId: $deletionId, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8847,6 +8952,2010 @@ class AttachmentsTableCompanion extends UpdateCompanion<AttachmentsTableData> {
   }
 }
 
+class $NotesTableTable extends NotesTable
+    with TableInfo<$NotesTableTable, NotesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('local_user'),
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Untitled Note'),
+  );
+  static const VerificationMeta _contentDeltaMeta = const VerificationMeta(
+    'contentDelta',
+  );
+  @override
+  late final GeneratedColumn<String> contentDelta = GeneratedColumn<String>(
+    'content_delta',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[{"insert":"\\n"}]'),
+  );
+  static const VerificationMeta _plainTextMeta = const VerificationMeta(
+    'plainText',
+  );
+  @override
+  late final GeneratedColumn<String> plainText = GeneratedColumn<String>(
+    'plain_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _previewMeta = const VerificationMeta(
+    'preview',
+  );
+  @override
+  late final GeneratedColumn<String> preview = GeneratedColumn<String>(
+    'preview',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _tagsJsonMeta = const VerificationMeta(
+    'tagsJson',
+  );
+  @override
+  late final GeneratedColumn<String> tagsJson = GeneratedColumn<String>(
+    'tags_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _isPinnedMeta = const VerificationMeta(
+    'isPinned',
+  );
+  @override
+  late final GeneratedColumn<bool> isPinned = GeneratedColumn<bool>(
+    'is_pinned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_pinned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isArchivedMeta = const VerificationMeta(
+    'isArchived',
+  );
+  @override
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+    'is_archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletionIdMeta = const VerificationMeta(
+    'deletionId',
+  );
+  @override
+  late final GeneratedColumn<String> deletionId = GeneratedColumn<String>(
+    'deletion_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('synced'),
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localVersionMeta = const VerificationMeta(
+    'localVersion',
+  );
+  @override
+  late final GeneratedColumn<int> localVersion = GeneratedColumn<int>(
+    'local_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _serverVersionMeta = const VerificationMeta(
+    'serverVersion',
+  );
+  @override
+  late final GeneratedColumn<int> serverVersion = GeneratedColumn<int>(
+    'server_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastModifiedByMeta = const VerificationMeta(
+    'lastModifiedBy',
+  );
+  @override
+  late final GeneratedColumn<String> lastModifiedBy = GeneratedColumn<String>(
+    'last_modified_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    ownerId,
+    notebookId,
+    title,
+    contentDelta,
+    plainText,
+    preview,
+    tagsJson,
+    isPinned,
+    isFavorite,
+    isArchived,
+    isDeleted,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    deletionId,
+    syncStatus,
+    lastSyncedAt,
+    localVersion,
+    serverVersion,
+    deviceId,
+    lastModifiedBy,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notes_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NotesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('content_delta')) {
+      context.handle(
+        _contentDeltaMeta,
+        contentDelta.isAcceptableOrUnknown(
+          data['content_delta']!,
+          _contentDeltaMeta,
+        ),
+      );
+    }
+    if (data.containsKey('plain_text')) {
+      context.handle(
+        _plainTextMeta,
+        plainText.isAcceptableOrUnknown(data['plain_text']!, _plainTextMeta),
+      );
+    }
+    if (data.containsKey('preview')) {
+      context.handle(
+        _previewMeta,
+        preview.isAcceptableOrUnknown(data['preview']!, _previewMeta),
+      );
+    }
+    if (data.containsKey('tags_json')) {
+      context.handle(
+        _tagsJsonMeta,
+        tagsJson.isAcceptableOrUnknown(data['tags_json']!, _tagsJsonMeta),
+      );
+    }
+    if (data.containsKey('is_pinned')) {
+      context.handle(
+        _isPinnedMeta,
+        isPinned.isAcceptableOrUnknown(data['is_pinned']!, _isPinnedMeta),
+      );
+    }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+        _isArchivedMeta,
+        isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('deletion_id')) {
+      context.handle(
+        _deletionIdMeta,
+        deletionId.isAcceptableOrUnknown(data['deletion_id']!, _deletionIdMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('local_version')) {
+      context.handle(
+        _localVersionMeta,
+        localVersion.isAcceptableOrUnknown(
+          data['local_version']!,
+          _localVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('server_version')) {
+      context.handle(
+        _serverVersionMeta,
+        serverVersion.isAcceptableOrUnknown(
+          data['server_version']!,
+          _serverVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    }
+    if (data.containsKey('last_modified_by')) {
+      context.handle(
+        _lastModifiedByMeta,
+        lastModifiedBy.isAcceptableOrUnknown(
+          data['last_modified_by']!,
+          _lastModifiedByMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NotesTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      contentDelta: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_delta'],
+      )!,
+      plainText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plain_text'],
+      )!,
+      preview: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}preview'],
+      )!,
+      tagsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tags_json'],
+      )!,
+      isPinned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_pinned'],
+      )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
+      isArchived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_archived'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      deletionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deletion_id'],
+      ),
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      ),
+      localVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}local_version'],
+      )!,
+      serverVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_version'],
+      )!,
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      ),
+      lastModifiedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_modified_by'],
+      ),
+    );
+  }
+
+  @override
+  $NotesTableTable createAlias(String alias) {
+    return $NotesTableTable(attachedDatabase, alias);
+  }
+}
+
+class NotesTableData extends DataClass implements Insertable<NotesTableData> {
+  final String id;
+  final String ownerId;
+  final String notebookId;
+  final String title;
+  final String contentDelta;
+  final String plainText;
+  final String preview;
+  final String tagsJson;
+  final bool isPinned;
+  final bool isFavorite;
+  final bool isArchived;
+  final bool isDeleted;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String? deletionId;
+  final String syncStatus;
+  final DateTime? lastSyncedAt;
+  final int localVersion;
+  final int serverVersion;
+  final String? deviceId;
+  final String? lastModifiedBy;
+  const NotesTableData({
+    required this.id,
+    required this.ownerId,
+    required this.notebookId,
+    required this.title,
+    required this.contentDelta,
+    required this.plainText,
+    required this.preview,
+    required this.tagsJson,
+    required this.isPinned,
+    required this.isFavorite,
+    required this.isArchived,
+    required this.isDeleted,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    this.deletionId,
+    required this.syncStatus,
+    this.lastSyncedAt,
+    required this.localVersion,
+    required this.serverVersion,
+    this.deviceId,
+    this.lastModifiedBy,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['owner_id'] = Variable<String>(ownerId);
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['title'] = Variable<String>(title);
+    map['content_delta'] = Variable<String>(contentDelta);
+    map['plain_text'] = Variable<String>(plainText);
+    map['preview'] = Variable<String>(preview);
+    map['tags_json'] = Variable<String>(tagsJson);
+    map['is_pinned'] = Variable<bool>(isPinned);
+    map['is_favorite'] = Variable<bool>(isFavorite);
+    map['is_archived'] = Variable<bool>(isArchived);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    if (!nullToAbsent || deletionId != null) {
+      map['deletion_id'] = Variable<String>(deletionId);
+    }
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || lastSyncedAt != null) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    }
+    map['local_version'] = Variable<int>(localVersion);
+    map['server_version'] = Variable<int>(serverVersion);
+    if (!nullToAbsent || deviceId != null) {
+      map['device_id'] = Variable<String>(deviceId);
+    }
+    if (!nullToAbsent || lastModifiedBy != null) {
+      map['last_modified_by'] = Variable<String>(lastModifiedBy);
+    }
+    return map;
+  }
+
+  NotesTableCompanion toCompanion(bool nullToAbsent) {
+    return NotesTableCompanion(
+      id: Value(id),
+      ownerId: Value(ownerId),
+      notebookId: Value(notebookId),
+      title: Value(title),
+      contentDelta: Value(contentDelta),
+      plainText: Value(plainText),
+      preview: Value(preview),
+      tagsJson: Value(tagsJson),
+      isPinned: Value(isPinned),
+      isFavorite: Value(isFavorite),
+      isArchived: Value(isArchived),
+      isDeleted: Value(isDeleted),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      deletionId: deletionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletionId),
+      syncStatus: Value(syncStatus),
+      lastSyncedAt: lastSyncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncedAt),
+      localVersion: Value(localVersion),
+      serverVersion: Value(serverVersion),
+      deviceId: deviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceId),
+      lastModifiedBy: lastModifiedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastModifiedBy),
+    );
+  }
+
+  factory NotesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotesTableData(
+      id: serializer.fromJson<String>(json['id']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      title: serializer.fromJson<String>(json['title']),
+      contentDelta: serializer.fromJson<String>(json['contentDelta']),
+      plainText: serializer.fromJson<String>(json['plainText']),
+      preview: serializer.fromJson<String>(json['preview']),
+      tagsJson: serializer.fromJson<String>(json['tagsJson']),
+      isPinned: serializer.fromJson<bool>(json['isPinned']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      deletionId: serializer.fromJson<String?>(json['deletionId']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
+      localVersion: serializer.fromJson<int>(json['localVersion']),
+      serverVersion: serializer.fromJson<int>(json['serverVersion']),
+      deviceId: serializer.fromJson<String?>(json['deviceId']),
+      lastModifiedBy: serializer.fromJson<String?>(json['lastModifiedBy']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'ownerId': serializer.toJson<String>(ownerId),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'title': serializer.toJson<String>(title),
+      'contentDelta': serializer.toJson<String>(contentDelta),
+      'plainText': serializer.toJson<String>(plainText),
+      'preview': serializer.toJson<String>(preview),
+      'tagsJson': serializer.toJson<String>(tagsJson),
+      'isPinned': serializer.toJson<bool>(isPinned),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
+      'isArchived': serializer.toJson<bool>(isArchived),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'deletionId': serializer.toJson<String?>(deletionId),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
+      'localVersion': serializer.toJson<int>(localVersion),
+      'serverVersion': serializer.toJson<int>(serverVersion),
+      'deviceId': serializer.toJson<String?>(deviceId),
+      'lastModifiedBy': serializer.toJson<String?>(lastModifiedBy),
+    };
+  }
+
+  NotesTableData copyWith({
+    String? id,
+    String? ownerId,
+    String? notebookId,
+    String? title,
+    String? contentDelta,
+    String? plainText,
+    String? preview,
+    String? tagsJson,
+    bool? isPinned,
+    bool? isFavorite,
+    bool? isArchived,
+    bool? isDeleted,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    Value<String?> deletionId = const Value.absent(),
+    String? syncStatus,
+    Value<DateTime?> lastSyncedAt = const Value.absent(),
+    int? localVersion,
+    int? serverVersion,
+    Value<String?> deviceId = const Value.absent(),
+    Value<String?> lastModifiedBy = const Value.absent(),
+  }) => NotesTableData(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    notebookId: notebookId ?? this.notebookId,
+    title: title ?? this.title,
+    contentDelta: contentDelta ?? this.contentDelta,
+    plainText: plainText ?? this.plainText,
+    preview: preview ?? this.preview,
+    tagsJson: tagsJson ?? this.tagsJson,
+    isPinned: isPinned ?? this.isPinned,
+    isFavorite: isFavorite ?? this.isFavorite,
+    isArchived: isArchived ?? this.isArchived,
+    isDeleted: isDeleted ?? this.isDeleted,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    deletionId: deletionId.present ? deletionId.value : this.deletionId,
+    syncStatus: syncStatus ?? this.syncStatus,
+    lastSyncedAt: lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
+    localVersion: localVersion ?? this.localVersion,
+    serverVersion: serverVersion ?? this.serverVersion,
+    deviceId: deviceId.present ? deviceId.value : this.deviceId,
+    lastModifiedBy: lastModifiedBy.present
+        ? lastModifiedBy.value
+        : this.lastModifiedBy,
+  );
+  NotesTableData copyWithCompanion(NotesTableCompanion data) {
+    return NotesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      title: data.title.present ? data.title.value : this.title,
+      contentDelta: data.contentDelta.present
+          ? data.contentDelta.value
+          : this.contentDelta,
+      plainText: data.plainText.present ? data.plainText.value : this.plainText,
+      preview: data.preview.present ? data.preview.value : this.preview,
+      tagsJson: data.tagsJson.present ? data.tagsJson.value : this.tagsJson,
+      isPinned: data.isPinned.present ? data.isPinned.value : this.isPinned,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
+      isArchived: data.isArchived.present
+          ? data.isArchived.value
+          : this.isArchived,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      deletionId: data.deletionId.present
+          ? data.deletionId.value
+          : this.deletionId,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+      localVersion: data.localVersion.present
+          ? data.localVersion.value
+          : this.localVersion,
+      serverVersion: data.serverVersion.present
+          ? data.serverVersion.value
+          : this.serverVersion,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      lastModifiedBy: data.lastModifiedBy.present
+          ? data.lastModifiedBy.value
+          : this.lastModifiedBy,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotesTableData(')
+          ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('contentDelta: $contentDelta, ')
+          ..write('plainText: $plainText, ')
+          ..write('preview: $preview, ')
+          ..write('tagsJson: $tagsJson, ')
+          ..write('isPinned: $isPinned, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deletionId: $deletionId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('localVersion: $localVersion, ')
+          ..write('serverVersion: $serverVersion, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('lastModifiedBy: $lastModifiedBy')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    ownerId,
+    notebookId,
+    title,
+    contentDelta,
+    plainText,
+    preview,
+    tagsJson,
+    isPinned,
+    isFavorite,
+    isArchived,
+    isDeleted,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    deletionId,
+    syncStatus,
+    lastSyncedAt,
+    localVersion,
+    serverVersion,
+    deviceId,
+    lastModifiedBy,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotesTableData &&
+          other.id == this.id &&
+          other.ownerId == this.ownerId &&
+          other.notebookId == this.notebookId &&
+          other.title == this.title &&
+          other.contentDelta == this.contentDelta &&
+          other.plainText == this.plainText &&
+          other.preview == this.preview &&
+          other.tagsJson == this.tagsJson &&
+          other.isPinned == this.isPinned &&
+          other.isFavorite == this.isFavorite &&
+          other.isArchived == this.isArchived &&
+          other.isDeleted == this.isDeleted &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.deletionId == this.deletionId &&
+          other.syncStatus == this.syncStatus &&
+          other.lastSyncedAt == this.lastSyncedAt &&
+          other.localVersion == this.localVersion &&
+          other.serverVersion == this.serverVersion &&
+          other.deviceId == this.deviceId &&
+          other.lastModifiedBy == this.lastModifiedBy);
+}
+
+class NotesTableCompanion extends UpdateCompanion<NotesTableData> {
+  final Value<String> id;
+  final Value<String> ownerId;
+  final Value<String> notebookId;
+  final Value<String> title;
+  final Value<String> contentDelta;
+  final Value<String> plainText;
+  final Value<String> preview;
+  final Value<String> tagsJson;
+  final Value<bool> isPinned;
+  final Value<bool> isFavorite;
+  final Value<bool> isArchived;
+  final Value<bool> isDeleted;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String?> deletionId;
+  final Value<String> syncStatus;
+  final Value<DateTime?> lastSyncedAt;
+  final Value<int> localVersion;
+  final Value<int> serverVersion;
+  final Value<String?> deviceId;
+  final Value<String?> lastModifiedBy;
+  final Value<int> rowid;
+  const NotesTableCompanion({
+    this.id = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.contentDelta = const Value.absent(),
+    this.plainText = const Value.absent(),
+    this.preview = const Value.absent(),
+    this.tagsJson = const Value.absent(),
+    this.isPinned = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.deletionId = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.localVersion = const Value.absent(),
+    this.serverVersion = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.lastModifiedBy = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotesTableCompanion.insert({
+    required String id,
+    this.ownerId = const Value.absent(),
+    required String notebookId,
+    this.title = const Value.absent(),
+    this.contentDelta = const Value.absent(),
+    this.plainText = const Value.absent(),
+    this.preview = const Value.absent(),
+    this.tagsJson = const Value.absent(),
+    this.isPinned = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.deletionId = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.localVersion = const Value.absent(),
+    this.serverVersion = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.lastModifiedBy = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       notebookId = Value(notebookId),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<NotesTableData> custom({
+    Expression<String>? id,
+    Expression<String>? ownerId,
+    Expression<String>? notebookId,
+    Expression<String>? title,
+    Expression<String>? contentDelta,
+    Expression<String>? plainText,
+    Expression<String>? preview,
+    Expression<String>? tagsJson,
+    Expression<bool>? isPinned,
+    Expression<bool>? isFavorite,
+    Expression<bool>? isArchived,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? deletionId,
+    Expression<String>? syncStatus,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<int>? localVersion,
+    Expression<int>? serverVersion,
+    Expression<String>? deviceId,
+    Expression<String>? lastModifiedBy,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (title != null) 'title': title,
+      if (contentDelta != null) 'content_delta': contentDelta,
+      if (plainText != null) 'plain_text': plainText,
+      if (preview != null) 'preview': preview,
+      if (tagsJson != null) 'tags_json': tagsJson,
+      if (isPinned != null) 'is_pinned': isPinned,
+      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (isArchived != null) 'is_archived': isArchived,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (deletionId != null) 'deletion_id': deletionId,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (localVersion != null) 'local_version': localVersion,
+      if (serverVersion != null) 'server_version': serverVersion,
+      if (deviceId != null) 'device_id': deviceId,
+      if (lastModifiedBy != null) 'last_modified_by': lastModifiedBy,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? ownerId,
+    Value<String>? notebookId,
+    Value<String>? title,
+    Value<String>? contentDelta,
+    Value<String>? plainText,
+    Value<String>? preview,
+    Value<String>? tagsJson,
+    Value<bool>? isPinned,
+    Value<bool>? isFavorite,
+    Value<bool>? isArchived,
+    Value<bool>? isDeleted,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String?>? deletionId,
+    Value<String>? syncStatus,
+    Value<DateTime?>? lastSyncedAt,
+    Value<int>? localVersion,
+    Value<int>? serverVersion,
+    Value<String?>? deviceId,
+    Value<String?>? lastModifiedBy,
+    Value<int>? rowid,
+  }) {
+    return NotesTableCompanion(
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      notebookId: notebookId ?? this.notebookId,
+      title: title ?? this.title,
+      contentDelta: contentDelta ?? this.contentDelta,
+      plainText: plainText ?? this.plainText,
+      preview: preview ?? this.preview,
+      tagsJson: tagsJson ?? this.tagsJson,
+      isPinned: isPinned ?? this.isPinned,
+      isFavorite: isFavorite ?? this.isFavorite,
+      isArchived: isArchived ?? this.isArchived,
+      isDeleted: isDeleted ?? this.isDeleted,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deletionId: deletionId ?? this.deletionId,
+      syncStatus: syncStatus ?? this.syncStatus,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      localVersion: localVersion ?? this.localVersion,
+      serverVersion: serverVersion ?? this.serverVersion,
+      deviceId: deviceId ?? this.deviceId,
+      lastModifiedBy: lastModifiedBy ?? this.lastModifiedBy,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (contentDelta.present) {
+      map['content_delta'] = Variable<String>(contentDelta.value);
+    }
+    if (plainText.present) {
+      map['plain_text'] = Variable<String>(plainText.value);
+    }
+    if (preview.present) {
+      map['preview'] = Variable<String>(preview.value);
+    }
+    if (tagsJson.present) {
+      map['tags_json'] = Variable<String>(tagsJson.value);
+    }
+    if (isPinned.present) {
+      map['is_pinned'] = Variable<bool>(isPinned.value);
+    }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (deletionId.present) {
+      map['deletion_id'] = Variable<String>(deletionId.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (localVersion.present) {
+      map['local_version'] = Variable<int>(localVersion.value);
+    }
+    if (serverVersion.present) {
+      map['server_version'] = Variable<int>(serverVersion.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (lastModifiedBy.present) {
+      map['last_modified_by'] = Variable<String>(lastModifiedBy.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('contentDelta: $contentDelta, ')
+          ..write('plainText: $plainText, ')
+          ..write('preview: $preview, ')
+          ..write('tagsJson: $tagsJson, ')
+          ..write('isPinned: $isPinned, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deletionId: $deletionId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('localVersion: $localVersion, ')
+          ..write('serverVersion: $serverVersion, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('lastModifiedBy: $lastModifiedBy, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TombstonesTableTable extends TombstonesTable
+    with TableInfo<$TombstonesTableTable, TombstonesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TombstonesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('local_user'),
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletionIdMeta = const VerificationMeta(
+    'deletionId',
+  );
+  @override
+  late final GeneratedColumn<String> deletionId = GeneratedColumn<String>(
+    'deletion_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    ownerId,
+    entityType,
+    deletionId,
+    deletedAt,
+    syncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tombstones_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TombstonesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('deletion_id')) {
+      context.handle(
+        _deletionIdMeta,
+        deletionId.isAcceptableOrUnknown(data['deletion_id']!, _deletionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deletionIdMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deletedAtMeta);
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TombstonesTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TombstonesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      deletionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deletion_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+    );
+  }
+
+  @override
+  $TombstonesTableTable createAlias(String alias) {
+    return $TombstonesTableTable(attachedDatabase, alias);
+  }
+}
+
+class TombstonesTableData extends DataClass
+    implements Insertable<TombstonesTableData> {
+  final String id;
+  final String ownerId;
+  final String entityType;
+  final String deletionId;
+  final DateTime deletedAt;
+  final DateTime? syncedAt;
+  const TombstonesTableData({
+    required this.id,
+    required this.ownerId,
+    required this.entityType,
+    required this.deletionId,
+    required this.deletedAt,
+    this.syncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['owner_id'] = Variable<String>(ownerId);
+    map['entity_type'] = Variable<String>(entityType);
+    map['deletion_id'] = Variable<String>(deletionId);
+    map['deleted_at'] = Variable<DateTime>(deletedAt);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    return map;
+  }
+
+  TombstonesTableCompanion toCompanion(bool nullToAbsent) {
+    return TombstonesTableCompanion(
+      id: Value(id),
+      ownerId: Value(ownerId),
+      entityType: Value(entityType),
+      deletionId: Value(deletionId),
+      deletedAt: Value(deletedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+    );
+  }
+
+  factory TombstonesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TombstonesTableData(
+      id: serializer.fromJson<String>(json['id']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
+      entityType: serializer.fromJson<String>(json['entityType']),
+      deletionId: serializer.fromJson<String>(json['deletionId']),
+      deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'ownerId': serializer.toJson<String>(ownerId),
+      'entityType': serializer.toJson<String>(entityType),
+      'deletionId': serializer.toJson<String>(deletionId),
+      'deletedAt': serializer.toJson<DateTime>(deletedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+    };
+  }
+
+  TombstonesTableData copyWith({
+    String? id,
+    String? ownerId,
+    String? entityType,
+    String? deletionId,
+    DateTime? deletedAt,
+    Value<DateTime?> syncedAt = const Value.absent(),
+  }) => TombstonesTableData(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    entityType: entityType ?? this.entityType,
+    deletionId: deletionId ?? this.deletionId,
+    deletedAt: deletedAt ?? this.deletedAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+  );
+  TombstonesTableData copyWithCompanion(TombstonesTableCompanion data) {
+    return TombstonesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      deletionId: data.deletionId.present
+          ? data.deletionId.value
+          : this.deletionId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TombstonesTableData(')
+          ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('entityType: $entityType, ')
+          ..write('deletionId: $deletionId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncedAt: $syncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, ownerId, entityType, deletionId, deletedAt, syncedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TombstonesTableData &&
+          other.id == this.id &&
+          other.ownerId == this.ownerId &&
+          other.entityType == this.entityType &&
+          other.deletionId == this.deletionId &&
+          other.deletedAt == this.deletedAt &&
+          other.syncedAt == this.syncedAt);
+}
+
+class TombstonesTableCompanion extends UpdateCompanion<TombstonesTableData> {
+  final Value<String> id;
+  final Value<String> ownerId;
+  final Value<String> entityType;
+  final Value<String> deletionId;
+  final Value<DateTime> deletedAt;
+  final Value<DateTime?> syncedAt;
+  final Value<int> rowid;
+  const TombstonesTableCompanion({
+    this.id = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.deletionId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TombstonesTableCompanion.insert({
+    required String id,
+    this.ownerId = const Value.absent(),
+    required String entityType,
+    required String deletionId,
+    required DateTime deletedAt,
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       entityType = Value(entityType),
+       deletionId = Value(deletionId),
+       deletedAt = Value(deletedAt);
+  static Insertable<TombstonesTableData> custom({
+    Expression<String>? id,
+    Expression<String>? ownerId,
+    Expression<String>? entityType,
+    Expression<String>? deletionId,
+    Expression<DateTime>? deletedAt,
+    Expression<DateTime>? syncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (entityType != null) 'entity_type': entityType,
+      if (deletionId != null) 'deletion_id': deletionId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TombstonesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? ownerId,
+    Value<String>? entityType,
+    Value<String>? deletionId,
+    Value<DateTime>? deletedAt,
+    Value<DateTime?>? syncedAt,
+    Value<int>? rowid,
+  }) {
+    return TombstonesTableCompanion(
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      entityType: entityType ?? this.entityType,
+      deletionId: deletionId ?? this.deletionId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (deletionId.present) {
+      map['deletion_id'] = Variable<String>(deletionId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TombstonesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('entityType: $entityType, ')
+          ..write('deletionId: $deletionId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DriveFileMappingsTableTable extends DriveFileMappingsTable
+    with TableInfo<$DriveFileMappingsTableTable, DriveFileMappingsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DriveFileMappingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('local_user'),
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driveFileIdMeta = const VerificationMeta(
+    'driveFileId',
+  );
+  @override
+  late final GeneratedColumn<String> driveFileId = GeneratedColumn<String>(
+    'drive_file_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    entityId,
+    ownerId,
+    entityType,
+    driveFileId,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'drive_file_mappings_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DriveFileMappingsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('drive_file_id')) {
+      context.handle(
+        _driveFileIdMeta,
+        driveFileId.isAcceptableOrUnknown(
+          data['drive_file_id']!,
+          _driveFileIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_driveFileIdMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {entityId};
+  @override
+  DriveFileMappingsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DriveFileMappingsTableData(
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      driveFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}drive_file_id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DriveFileMappingsTableTable createAlias(String alias) {
+    return $DriveFileMappingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class DriveFileMappingsTableData extends DataClass
+    implements Insertable<DriveFileMappingsTableData> {
+  final String entityId;
+  final String ownerId;
+  final String entityType;
+  final String driveFileId;
+  final DateTime updatedAt;
+  const DriveFileMappingsTableData({
+    required this.entityId,
+    required this.ownerId,
+    required this.entityType,
+    required this.driveFileId,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['entity_id'] = Variable<String>(entityId);
+    map['owner_id'] = Variable<String>(ownerId);
+    map['entity_type'] = Variable<String>(entityType);
+    map['drive_file_id'] = Variable<String>(driveFileId);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DriveFileMappingsTableCompanion toCompanion(bool nullToAbsent) {
+    return DriveFileMappingsTableCompanion(
+      entityId: Value(entityId),
+      ownerId: Value(ownerId),
+      entityType: Value(entityType),
+      driveFileId: Value(driveFileId),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DriveFileMappingsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DriveFileMappingsTableData(
+      entityId: serializer.fromJson<String>(json['entityId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
+      entityType: serializer.fromJson<String>(json['entityType']),
+      driveFileId: serializer.fromJson<String>(json['driveFileId']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'entityId': serializer.toJson<String>(entityId),
+      'ownerId': serializer.toJson<String>(ownerId),
+      'entityType': serializer.toJson<String>(entityType),
+      'driveFileId': serializer.toJson<String>(driveFileId),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DriveFileMappingsTableData copyWith({
+    String? entityId,
+    String? ownerId,
+    String? entityType,
+    String? driveFileId,
+    DateTime? updatedAt,
+  }) => DriveFileMappingsTableData(
+    entityId: entityId ?? this.entityId,
+    ownerId: ownerId ?? this.ownerId,
+    entityType: entityType ?? this.entityType,
+    driveFileId: driveFileId ?? this.driveFileId,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DriveFileMappingsTableData copyWithCompanion(
+    DriveFileMappingsTableCompanion data,
+  ) {
+    return DriveFileMappingsTableData(
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      driveFileId: data.driveFileId.present
+          ? data.driveFileId.value
+          : this.driveFileId,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DriveFileMappingsTableData(')
+          ..write('entityId: $entityId, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('entityType: $entityType, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(entityId, ownerId, entityType, driveFileId, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DriveFileMappingsTableData &&
+          other.entityId == this.entityId &&
+          other.ownerId == this.ownerId &&
+          other.entityType == this.entityType &&
+          other.driveFileId == this.driveFileId &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DriveFileMappingsTableCompanion
+    extends UpdateCompanion<DriveFileMappingsTableData> {
+  final Value<String> entityId;
+  final Value<String> ownerId;
+  final Value<String> entityType;
+  final Value<String> driveFileId;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const DriveFileMappingsTableCompanion({
+    this.entityId = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.driveFileId = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DriveFileMappingsTableCompanion.insert({
+    required String entityId,
+    this.ownerId = const Value.absent(),
+    required String entityType,
+    required String driveFileId,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : entityId = Value(entityId),
+       entityType = Value(entityType),
+       driveFileId = Value(driveFileId),
+       updatedAt = Value(updatedAt);
+  static Insertable<DriveFileMappingsTableData> custom({
+    Expression<String>? entityId,
+    Expression<String>? ownerId,
+    Expression<String>? entityType,
+    Expression<String>? driveFileId,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (entityId != null) 'entity_id': entityId,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (entityType != null) 'entity_type': entityType,
+      if (driveFileId != null) 'drive_file_id': driveFileId,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DriveFileMappingsTableCompanion copyWith({
+    Value<String>? entityId,
+    Value<String>? ownerId,
+    Value<String>? entityType,
+    Value<String>? driveFileId,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return DriveFileMappingsTableCompanion(
+      entityId: entityId ?? this.entityId,
+      ownerId: ownerId ?? this.ownerId,
+      entityType: entityType ?? this.entityType,
+      driveFileId: driveFileId ?? this.driveFileId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (driveFileId.present) {
+      map['drive_file_id'] = Variable<String>(driveFileId.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DriveFileMappingsTableCompanion(')
+          ..write('entityId: $entityId, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('entityType: $entityType, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8872,6 +10981,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AttachmentsTableTable attachmentsTable = $AttachmentsTableTable(
     this,
   );
+  late final $NotesTableTable notesTable = $NotesTableTable(this);
+  late final $TombstonesTableTable tombstonesTable = $TombstonesTableTable(
+    this,
+  );
+  late final $DriveFileMappingsTableTable driveFileMappingsTable =
+      $DriveFileMappingsTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8890,6 +11005,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pageSnapshotsTable,
     customTemplatesTable,
     attachmentsTable,
+    notesTable,
+    tombstonesTable,
+    driveFileMappingsTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -9262,6 +11380,8 @@ typedef $$NotebooksTableTableCreateCompanionBuilder =
       required DateTime updatedAt,
       Value<DateTime?> deletedAt,
       Value<String> syncStatus,
+      Value<String?> deletionId,
+      Value<DateTime?> lastSyncedAt,
       Value<int> rowid,
     });
 typedef $$NotebooksTableTableUpdateCompanionBuilder =
@@ -9287,6 +11407,8 @@ typedef $$NotebooksTableTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
       Value<String> syncStatus,
+      Value<String?> deletionId,
+      Value<DateTime?> lastSyncedAt,
       Value<int> rowid,
     });
 
@@ -9525,6 +11647,16 @@ class $$NotebooksTableTableFilterComposer
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9767,6 +11899,16 @@ class $$NotebooksTableTableOrderingComposer
     column: $table.syncStatus,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$NotebooksTableTableAnnotationComposer
@@ -9854,6 +11996,16 @@ class $$NotebooksTableTableAnnotationComposer
 
   GeneratedColumn<String> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
     builder: (column) => column,
   );
 
@@ -10043,6 +12195,8 @@ class $$NotebooksTableTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
+                Value<String?> deletionId = const Value.absent(),
+                Value<DateTime?> lastSyncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotebooksTableCompanion(
                 id: id,
@@ -10066,6 +12220,8 @@ class $$NotebooksTableTableTableManager
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
                 syncStatus: syncStatus,
+                deletionId: deletionId,
+                lastSyncedAt: lastSyncedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -10091,6 +12247,8 @@ class $$NotebooksTableTableTableManager
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
+                Value<String?> deletionId = const Value.absent(),
+                Value<DateTime?> lastSyncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotebooksTableCompanion.insert(
                 id: id,
@@ -10114,6 +12272,8 @@ class $$NotebooksTableTableTableManager
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
                 syncStatus: syncStatus,
+                deletionId: deletionId,
+                lastSyncedAt: lastSyncedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -15668,6 +17828,1035 @@ typedef $$AttachmentsTableTableProcessedTableManager =
       AttachmentsTableData,
       PrefetchHooks Function()
     >;
+typedef $$NotesTableTableCreateCompanionBuilder = NotesTableCompanion Function({
+  required String id,
+  Value<String> ownerId,
+  required String notebookId,
+  Value<String> title,
+  Value<String> contentDelta,
+  Value<String> plainText,
+  Value<String> preview,
+  Value<String> tagsJson,
+  Value<bool> isPinned,
+  Value<bool> isFavorite,
+  Value<bool> isArchived,
+  Value<bool> isDeleted,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<String?> deletionId,
+  Value<String> syncStatus,
+  Value<DateTime?> lastSyncedAt,
+  Value<int> localVersion,
+  Value<int> serverVersion,
+  Value<String?> deviceId,
+  Value<String?> lastModifiedBy,
+  Value<int> rowid,
+});
+typedef $$NotesTableTableUpdateCompanionBuilder = NotesTableCompanion Function({
+  Value<String> id,
+  Value<String> ownerId,
+  Value<String> notebookId,
+  Value<String> title,
+  Value<String> contentDelta,
+  Value<String> plainText,
+  Value<String> preview,
+  Value<String> tagsJson,
+  Value<bool> isPinned,
+  Value<bool> isFavorite,
+  Value<bool> isArchived,
+  Value<bool> isDeleted,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<String?> deletionId,
+  Value<String> syncStatus,
+  Value<DateTime?> lastSyncedAt,
+  Value<int> localVersion,
+  Value<int> serverVersion,
+  Value<String?> deviceId,
+  Value<String?> lastModifiedBy,
+  Value<int> rowid,
+});
+
+class $$NotesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $NotesTableTable> {
+  $$NotesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notebookId => $composableBuilder(
+    column: $table.notebookId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentDelta => $composableBuilder(
+    column: $table.contentDelta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plainText => $composableBuilder(
+    column: $table.plainText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get preview => $composableBuilder(
+    column: $table.preview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPinned => $composableBuilder(
+    column: $table.isPinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get localVersion => $composableBuilder(
+    column: $table.localVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverVersion => $composableBuilder(
+    column: $table.serverVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastModifiedBy => $composableBuilder(
+    column: $table.lastModifiedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NotesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotesTableTable> {
+  $$NotesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notebookId => $composableBuilder(
+    column: $table.notebookId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentDelta => $composableBuilder(
+    column: $table.contentDelta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plainText => $composableBuilder(
+    column: $table.plainText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get preview => $composableBuilder(
+    column: $table.preview,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPinned => $composableBuilder(
+    column: $table.isPinned,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get localVersion => $composableBuilder(
+    column: $table.localVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get serverVersion => $composableBuilder(
+    column: $table.serverVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastModifiedBy => $composableBuilder(
+    column: $table.lastModifiedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NotesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotesTableTable> {
+  $$NotesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get notebookId => $composableBuilder(
+    column: $table.notebookId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get contentDelta => $composableBuilder(
+    column: $table.contentDelta,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get plainText =>
+      $composableBuilder(column: $table.plainText, builder: (column) => column);
+
+  GeneratedColumn<String> get preview =>
+      $composableBuilder(column: $table.preview, builder: (column) => column);
+
+  GeneratedColumn<String> get tagsJson =>
+      $composableBuilder(column: $table.tagsJson, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPinned =>
+      $composableBuilder(column: $table.isPinned, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get localVersion => $composableBuilder(
+    column: $table.localVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get serverVersion => $composableBuilder(
+    column: $table.serverVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get lastModifiedBy => $composableBuilder(
+    column: $table.lastModifiedBy,
+    builder: (column) => column,
+  );
+}
+
+class $$NotesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotesTableTable,
+          NotesTableData,
+          $$NotesTableTableFilterComposer,
+          $$NotesTableTableOrderingComposer,
+          $$NotesTableTableAnnotationComposer,
+          $$NotesTableTableCreateCompanionBuilder,
+          $$NotesTableTableUpdateCompanionBuilder,
+          (
+            NotesTableData,
+            BaseReferences<_$AppDatabase, $NotesTableTable, NotesTableData>,
+          ),
+          NotesTableData,
+          PrefetchHooks Function()
+        > {
+  $$NotesTableTableTableManager(_$AppDatabase db, $NotesTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> contentDelta = const Value.absent(),
+                Value<String> plainText = const Value.absent(),
+                Value<String> preview = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
+                Value<bool> isPinned = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isArchived = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String?> deletionId = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncedAt = const Value.absent(),
+                Value<int> localVersion = const Value.absent(),
+                Value<int> serverVersion = const Value.absent(),
+                Value<String?> deviceId = const Value.absent(),
+                Value<String?> lastModifiedBy = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotesTableCompanion(
+                id: id,
+                ownerId: ownerId,
+                notebookId: notebookId,
+                title: title,
+                contentDelta: contentDelta,
+                plainText: plainText,
+                preview: preview,
+                tagsJson: tagsJson,
+                isPinned: isPinned,
+                isFavorite: isFavorite,
+                isArchived: isArchived,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                deletionId: deletionId,
+                syncStatus: syncStatus,
+                lastSyncedAt: lastSyncedAt,
+                localVersion: localVersion,
+                serverVersion: serverVersion,
+                deviceId: deviceId,
+                lastModifiedBy: lastModifiedBy,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String> ownerId = const Value.absent(),
+                required String notebookId,
+                Value<String> title = const Value.absent(),
+                Value<String> contentDelta = const Value.absent(),
+                Value<String> plainText = const Value.absent(),
+                Value<String> preview = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
+                Value<bool> isPinned = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isArchived = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String?> deletionId = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<DateTime?> lastSyncedAt = const Value.absent(),
+                Value<int> localVersion = const Value.absent(),
+                Value<int> serverVersion = const Value.absent(),
+                Value<String?> deviceId = const Value.absent(),
+                Value<String?> lastModifiedBy = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotesTableCompanion.insert(
+                id: id,
+                ownerId: ownerId,
+                notebookId: notebookId,
+                title: title,
+                contentDelta: contentDelta,
+                plainText: plainText,
+                preview: preview,
+                tagsJson: tagsJson,
+                isPinned: isPinned,
+                isFavorite: isFavorite,
+                isArchived: isArchived,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                deletionId: deletionId,
+                syncStatus: syncStatus,
+                lastSyncedAt: lastSyncedAt,
+                localVersion: localVersion,
+                serverVersion: serverVersion,
+                deviceId: deviceId,
+                lastModifiedBy: lastModifiedBy,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$NotesTableTable, NotesTableData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $NotesTableTable,
+                    NotesTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NotesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotesTableTable,
+      NotesTableData,
+      $$NotesTableTableFilterComposer,
+      $$NotesTableTableOrderingComposer,
+      $$NotesTableTableAnnotationComposer,
+      $$NotesTableTableCreateCompanionBuilder,
+      $$NotesTableTableUpdateCompanionBuilder,
+      (
+        NotesTableData,
+        BaseReferences<_$AppDatabase, $NotesTableTable, NotesTableData>,
+      ),
+      NotesTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$TombstonesTableTableCreateCompanionBuilder =
+    TombstonesTableCompanion Function({
+      required String id,
+      Value<String> ownerId,
+      required String entityType,
+      required String deletionId,
+      required DateTime deletedAt,
+      Value<DateTime?> syncedAt,
+      Value<int> rowid,
+    });
+typedef $$TombstonesTableTableUpdateCompanionBuilder =
+    TombstonesTableCompanion Function({
+      Value<String> id,
+      Value<String> ownerId,
+      Value<String> entityType,
+      Value<String> deletionId,
+      Value<DateTime> deletedAt,
+      Value<DateTime?> syncedAt,
+      Value<int> rowid,
+    });
+
+class $$TombstonesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $TombstonesTableTable> {
+  $$TombstonesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TombstonesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $TombstonesTableTable> {
+  $$TombstonesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TombstonesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TombstonesTableTable> {
+  $$TombstonesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deletionId => $composableBuilder(
+    column: $table.deletionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+}
+
+class $$TombstonesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TombstonesTableTable,
+          TombstonesTableData,
+          $$TombstonesTableTableFilterComposer,
+          $$TombstonesTableTableOrderingComposer,
+          $$TombstonesTableTableAnnotationComposer,
+          $$TombstonesTableTableCreateCompanionBuilder,
+          $$TombstonesTableTableUpdateCompanionBuilder,
+          (
+            TombstonesTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $TombstonesTableTable,
+              TombstonesTableData
+            >,
+          ),
+          TombstonesTableData,
+          PrefetchHooks Function()
+        > {
+  $$TombstonesTableTableTableManager(
+    _$AppDatabase db,
+    $TombstonesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TombstonesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TombstonesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TombstonesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> deletionId = const Value.absent(),
+                Value<DateTime> deletedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TombstonesTableCompanion(
+                id: id,
+                ownerId: ownerId,
+                entityType: entityType,
+                deletionId: deletionId,
+                deletedAt: deletedAt,
+                syncedAt: syncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String> ownerId = const Value.absent(),
+                required String entityType,
+                required String deletionId,
+                required DateTime deletedAt,
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TombstonesTableCompanion.insert(
+                id: id,
+                ownerId: ownerId,
+                entityType: entityType,
+                deletionId: deletionId,
+                deletedAt: deletedAt,
+                syncedAt: syncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TombstonesTableTable, TombstonesTableData>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $TombstonesTableTable,
+                    TombstonesTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TombstonesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TombstonesTableTable,
+      TombstonesTableData,
+      $$TombstonesTableTableFilterComposer,
+      $$TombstonesTableTableOrderingComposer,
+      $$TombstonesTableTableAnnotationComposer,
+      $$TombstonesTableTableCreateCompanionBuilder,
+      $$TombstonesTableTableUpdateCompanionBuilder,
+      (
+        TombstonesTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $TombstonesTableTable,
+          TombstonesTableData
+        >,
+      ),
+      TombstonesTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$DriveFileMappingsTableTableCreateCompanionBuilder =
+    DriveFileMappingsTableCompanion Function({
+      required String entityId,
+      Value<String> ownerId,
+      required String entityType,
+      required String driveFileId,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DriveFileMappingsTableTableUpdateCompanionBuilder =
+    DriveFileMappingsTableCompanion Function({
+      Value<String> entityId,
+      Value<String> ownerId,
+      Value<String> entityType,
+      Value<String> driveFileId,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$DriveFileMappingsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DriveFileMappingsTableTable> {
+  $$DriveFileMappingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DriveFileMappingsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DriveFileMappingsTableTable> {
+  $$DriveFileMappingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DriveFileMappingsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DriveFileMappingsTableTable> {
+  $$DriveFileMappingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DriveFileMappingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DriveFileMappingsTableTable,
+          DriveFileMappingsTableData,
+          $$DriveFileMappingsTableTableFilterComposer,
+          $$DriveFileMappingsTableTableOrderingComposer,
+          $$DriveFileMappingsTableTableAnnotationComposer,
+          $$DriveFileMappingsTableTableCreateCompanionBuilder,
+          $$DriveFileMappingsTableTableUpdateCompanionBuilder,
+          (
+            DriveFileMappingsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $DriveFileMappingsTableTable,
+              DriveFileMappingsTableData
+            >,
+          ),
+          DriveFileMappingsTableData,
+          PrefetchHooks Function()
+        > {
+  $$DriveFileMappingsTableTableTableManager(
+    _$AppDatabase db,
+    $DriveFileMappingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DriveFileMappingsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DriveFileMappingsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DriveFileMappingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> entityId = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> driveFileId = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DriveFileMappingsTableCompanion(
+                entityId: entityId,
+                ownerId: ownerId,
+                entityType: entityType,
+                driveFileId: driveFileId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String entityId,
+                Value<String> ownerId = const Value.absent(),
+                required String entityType,
+                required String driveFileId,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DriveFileMappingsTableCompanion.insert(
+                entityId: entityId,
+                ownerId: ownerId,
+                entityType: entityType,
+                driveFileId: driveFileId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $DriveFileMappingsTableTable,
+                    DriveFileMappingsTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $DriveFileMappingsTableTable,
+                    DriveFileMappingsTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DriveFileMappingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DriveFileMappingsTableTable,
+      DriveFileMappingsTableData,
+      $$DriveFileMappingsTableTableFilterComposer,
+      $$DriveFileMappingsTableTableOrderingComposer,
+      $$DriveFileMappingsTableTableAnnotationComposer,
+      $$DriveFileMappingsTableTableCreateCompanionBuilder,
+      $$DriveFileMappingsTableTableUpdateCompanionBuilder,
+      (
+        DriveFileMappingsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $DriveFileMappingsTableTable,
+          DriveFileMappingsTableData
+        >,
+      ),
+      DriveFileMappingsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -15698,4 +18887,13 @@ class $AppDatabaseManager {
       $$CustomTemplatesTableTableTableManager(_db, _db.customTemplatesTable);
   $$AttachmentsTableTableTableManager get attachmentsTable =>
       $$AttachmentsTableTableTableManager(_db, _db.attachmentsTable);
+  $$NotesTableTableTableManager get notesTable =>
+      $$NotesTableTableTableManager(_db, _db.notesTable);
+  $$TombstonesTableTableTableManager get tombstonesTable =>
+      $$TombstonesTableTableTableManager(_db, _db.tombstonesTable);
+  $$DriveFileMappingsTableTableTableManager get driveFileMappingsTable =>
+      $$DriveFileMappingsTableTableTableManager(
+        _db,
+        _db.driveFileMappingsTable,
+      );
 }

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import 'package:naik_notes/core/theme/app_theme.dart';
+import 'package:naik_notes/core/theme/app_colors.dart';
+import 'package:naik_notes/features/history/presentation/widgets/notes_history_sheet.dart';
 import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
 
 /// Card widget displayed under Settings → Cloud Storage for configuring
-/// personal Google Drive attachment storage (`appDataFolder`).
+/// personal Google Drive note, drawing, and attachment storage (`appDataFolder`).
 class GoogleDriveSettingsCard extends ConsumerWidget {
   const GoogleDriveSettingsCard({super.key});
 
@@ -16,13 +17,50 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final primaryColor = isDark ? const Color(0xFFE07A5F) : AppColors.leatherTerracotta;
+    final primaryColor =
+        isDark ? const Color(0xFFE07A5F) : AppColors.leatherTerracotta;
     const successColor = Color(0xFF22C55E);
     const warningColor = Color(0xFFF59E0B);
+    const errorColor = Color(0xFFEF4444);
+    const infoColor = Color(0xFF3B82F6);
     final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : Colors.brown.shade200;
+    final borderColor =
+        isDark ? const Color(0xFF334155) : Colors.brown.shade200;
 
     final dateFormat = DateFormat('MMM d, yyyy · h:mm a');
+
+    // Status pill config
+    Color statusColor;
+    String statusLabel;
+    IconData statusIcon;
+
+    switch (driveState.status) {
+      case DriveConnectionStatus.connected:
+        statusColor = successColor;
+        statusLabel = 'Connected';
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      case DriveConnectionStatus.connecting:
+        statusColor = infoColor;
+        statusLabel = 'Connecting...';
+        statusIcon = Icons.sync_rounded;
+        break;
+      case DriveConnectionStatus.reconnecting:
+        statusColor = warningColor;
+        statusLabel = 'Reconnecting';
+        statusIcon = Icons.autorenew_rounded;
+        break;
+      case DriveConnectionStatus.failed:
+        statusColor = errorColor;
+        statusLabel = 'Connection Failed';
+        statusIcon = Icons.error_outline_rounded;
+        break;
+      case DriveConnectionStatus.idle:
+        statusColor = warningColor;
+        statusLabel = 'Not Connected';
+        statusIcon = Icons.cloud_off_rounded;
+        break;
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -58,16 +96,18 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Google Drive Attachments',
+                        'Google Drive Cloud Storage',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Private appDataFolder Storage',
+                        'Automatic Private Backup & Sync',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: isDark ? Colors.grey.shade400 : Colors.brown.shade600,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : Colors.brown.shade600,
                         ),
                       ),
                     ],
@@ -75,33 +115,24 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                 ),
                 // Connection Status Pill
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: driveState.isConnected
-                        ? successColor.withValues(alpha: 0.15)
-                        : warningColor.withValues(alpha: 0.15),
+                    color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: driveState.isConnected
-                          ? successColor.withValues(alpha: 0.4)
-                          : warningColor.withValues(alpha: 0.4),
+                      color: statusColor.withValues(alpha: 0.4),
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        driveState.isConnected
-                            ? Icons.check_circle_rounded
-                            : Icons.cloud_off_rounded,
-                        color: driveState.isConnected ? successColor : warningColor,
-                        size: 14,
-                      ),
+                      Icon(statusIcon, color: statusColor, size: 14),
                       const SizedBox(width: 6),
                       Text(
-                        driveState.isConnected ? 'Connected' : 'Not Connected',
+                        statusLabel,
                         style: TextStyle(
-                          color: driveState.isConnected ? successColor : warningColor,
+                          color: statusColor,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -129,7 +160,7 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                 _buildDetailRow(
                   context,
                   icon: Icons.verified_user_outlined,
-                  label: 'Last Verified',
+                  label: 'Last Synchronized',
                   value: dateFormat.format(driveState.lastVerifiedAt!),
                 ),
               const SizedBox(height: 10),
@@ -137,15 +168,77 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                 context,
                 icon: Icons.folder_special_outlined,
                 label: 'Storage Provider',
-                value: 'Google Drive API v3 (Hidden appDataFolder)',
+                value: 'Google Drive API v3 (Private appDataFolder)',
               ),
               const SizedBox(height: 16),
 
-              // Queue diagnostics
+              // Progress banner if active synchronization
+              if (driveState.syncProgressMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border:
+                        Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: primaryColor,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              driveState.syncProgressMessage!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? Colors.grey.shade200
+                                    : Colors.brown.shade800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${(driveState.syncProgress * 100).toInt()}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: driveState.syncProgress > 0
+                            ? driveState.syncProgress
+                            : null,
+                        color: primaryColor,
+                        backgroundColor: primaryColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Queue diagnostics metrics
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : Colors.brown.shade50,
+                  color:
+                      isDark ? const Color(0xFF0F172A) : Colors.brown.shade50,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: borderColor.withValues(alpha: 0.6)),
                 ),
@@ -154,16 +247,27 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                   children: [
                     _buildMetricColumn(
                       context,
+                      label: 'Synced Notebooks',
+                      value: '${driveState.totalSyncedNotebooks}',
+                      color: primaryColor,
+                    ),
+                    Container(height: 30, width: 1, color: borderColor),
+                    _buildMetricColumn(
+                      context,
                       label: 'Pending Uploads',
                       value: '${driveState.pendingUploadsCount}',
-                      color: driveState.pendingUploadsCount > 0 ? primaryColor : Colors.grey,
+                      color: driveState.pendingUploadsCount > 0
+                          ? primaryColor
+                          : Colors.grey,
                     ),
                     Container(height: 30, width: 1, color: borderColor),
                     _buildMetricColumn(
                       context,
                       label: 'Failed Uploads',
                       value: '${driveState.failedUploadsCount}',
-                      color: driveState.failedUploadsCount > 0 ? Colors.red : Colors.grey,
+                      color: driveState.failedUploadsCount > 0
+                          ? Colors.red
+                          : Colors.grey,
                     ),
                   ],
                 ),
@@ -176,37 +280,58 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: driveState.isLoading
+                      onPressed: driveState.isSyncing
                           ? null
-                          : () => ref.read(googleDriveProvider.notifier).syncNow(),
-                      icon: driveState.isLoading
+                          : () => ref
+                              .read(googleDriveProvider.notifier)
+                              .syncNow(),
+                      icon: driveState.isSyncing
                           ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.sync_rounded, size: 18),
-                      label: const Text('Sync Attachments'),
+                      label: Text(
+                        driveState.isSyncing ? 'Syncing...' : 'Sync Now',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   OutlinedButton.icon(
-                    onPressed: driveState.isLoading
+                    onPressed: driveState.isLoading || driveState.isSyncing
                         ? null
                         : () => _confirmDisconnect(context, ref),
-                    icon: const Icon(Icons.link_off_rounded, size: 18, color: Colors.redAccent),
-                    label: const Text('Disconnect', style: TextStyle(color: Colors.redAccent)),
+                    icon: const Icon(
+                      Icons.link_off_rounded,
+                      size: 18,
+                      color: Colors.redAccent,
+                    ),
+                    label: const Text(
+                      'Disconnect',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => NotesHistorySheet.show(context),
+                  icon: const Icon(Icons.history_edu_rounded, size: 18),
+                  label: const Text('View Notes & Sync History'),
+                ),
+              ),
             ] else ...[
-              // Disconnected Explanation
+              // Disconnected / Failed Explanation
               Text(
-                'Connect your personal Google Drive to store images, PDFs, and attachments '
-                'in your private hidden application folder. Attachments sync seamlessly across '
-                'Windows Desktop, iPadOS, and Android without incurring cloud storage costs.',
+                'Connect your personal Google Drive to securely back up your notebooks, '
+                'handwritten notes, PDFs, and other documents in your private hidden folder. '
+                'Notes sync seamlessly across Windows Desktop, iPadOS, and Android.',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark ? Colors.grey.shade300 : Colors.brown.shade800,
+                  color:
+                      isDark ? Colors.grey.shade300 : Colors.brown.shade800,
                   height: 1.5,
                 ),
               ),
@@ -216,20 +341,29 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade900.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade800),
+                      color: Colors.red.shade900.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border:
+                          Border.all(color: Colors.red.shade400, width: 0.8),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
-                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: Colors.redAccent,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             driveState.errorMessage!,
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -240,24 +374,35 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: driveState.isLoading
+                  onPressed: driveState.isConnecting
                       ? null
-                      : () => ref.read(googleDriveProvider.notifier).connectDrive(),
-                  icon: driveState.isLoading
+                      : () => ref
+                          .read(googleDriveProvider.notifier)
+                          .connectDrive(),
+                  icon: driveState.isConnecting
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.add_to_drive_rounded),
                   label: Text(
-                    driveState.isLoading ? 'Connecting...' : 'Connect Google Drive',
+                    driveState.isConnecting
+                        ? 'Connecting...'
+                        : (driveState.isReconnecting || driveState.hasFailed
+                            ? 'Reconnect Google Drive'
+                            : 'Connect Google Drive'),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -279,7 +424,11 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
 
     return Row(
       children: [
-        Icon(icon, size: 16, color: isDark ? Colors.grey.shade400 : Colors.brown.shade600),
+        Icon(
+          icon,
+          size: 16,
+          color: isDark ? Colors.grey.shade400 : Colors.brown.shade600,
+        ),
         const SizedBox(width: 8),
         Text(
           '$label: ',
@@ -336,8 +485,9 @@ class GoogleDriveSettingsCard extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Disconnect Google Drive?'),
         content: const Text(
-          'Your existing local attachments will remain intact on this device, but new attachments '
-          'will not synchronize across your other devices until you reconnect Google Drive.',
+          'Your existing local notes and attachments will remain intact on this device, '
+          'but new notes and edits will not synchronize across your other devices '
+          'until you reconnect Google Drive.',
         ),
         actions: [
           TextButton(

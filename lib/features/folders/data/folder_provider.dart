@@ -15,11 +15,9 @@ class FoldersNotifier extends Notifier<List<Folder>> {
 
   @override
   List<Folder> build() {
-    ref.watch(folderRepositoryProvider);
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-    if (user != null) {
-      _loadInitial(user.id);
+    final userId = ref.watch(authProvider.select((s) => s.user?.id));
+    if (userId != null) {
+      _loadInitial(userId);
     } else {
       state = const [];
     }
@@ -99,11 +97,12 @@ class FoldersNotifier extends Notifier<List<Folder>> {
   }
 
   Future<void> deleteFolder(String id) async {
+    final currentUid = ref.read(authProvider).user?.id ?? 'local_user';
     final toDelete = state.firstWhere(
       (f) => f.id == id,
       orElse: () => Folder(
         id: id,
-        ownerId: 'local_user',
+        ownerId: currentUid,
         name: 'Deleted Folder',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

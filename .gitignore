@@ -62,3 +62,9 @@ env.json
 
 # Widget Preview related
 .widget_preview/
+
+# Generated Test Files
+naik_notes_history.json
+*.db-shm
+*.db-wal
+

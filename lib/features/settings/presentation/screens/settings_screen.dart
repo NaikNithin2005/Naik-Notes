@@ -943,6 +943,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.cleaning_services_rounded),
+                  title: const Text('Clean Duplicate Notebooks'),
+                  subtitle: const Text(
+                    'Remove redundant (Cloud Copy) duplicates and reconcile tombstones',
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                  ),
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Cleaning up duplicate notebooks...'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    await ref
+                        .read(notebooksProvider.notifier)
+                        .cleanupDuplicates();
+                    if (context.mounted) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Notebook deduplication complete!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.devices_rounded),
                   title: const Text('Registered Devices'),
                   subtitle: const Text(

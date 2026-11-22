@@ -49,13 +49,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _loginWithApple() async {
-    final success = await ref.read(authProvider.notifier).signInWithApple();
-    if (success && mounted && GoRouterState.of(context).matchedLocation != RouteNames.dashboard) {
-      context.go(RouteNames.dashboard);
-    }
-  }
-
   void _showForgotPasswordDialog(BuildContext context) {
     final resetEmailController = TextEditingController(
       text: _emailController.text,
@@ -107,8 +100,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final theme = Theme.of(context);
     final authState = ref.watch(authProvider);
     final isGoogleAvailable = AuthErrorHandler.isGoogleSupported();
-    final isAppleAvailable = AuthErrorHandler.isAppleSupported();
-    final isPhoneAvailable = AuthErrorHandler.isPhoneSupported();
     final isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
     return Scaffold(
@@ -353,17 +344,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ),
                               ),
 
-                              // Social & Phone Authentication Providers (Mobile/Web only)
-                              if (isGoogleAvailable || isAppleAvailable || (isPhoneAvailable && !isWindows)) ...[
-                                const SizedBox(height: 16),
+                              // Fast Connect with Google
+                              if (isGoogleAvailable) ...[
+                                const SizedBox(height: 18),
                                 Row(
                                   children: [
                                     const Expanded(child: Divider()),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 12),
                                       child: Text(
-                                        'OR',
+                                        'OR FAST CONNECT',
                                         style: theme.textTheme.bodySmall?.copyWith(
+                                          letterSpacing: 0.8,
+                                          fontWeight: FontWeight.w600,
                                           color: theme.colorScheme.onSurfaceVariant,
                                         ),
                                       ),
@@ -373,60 +366,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 const SizedBox(height: 14),
 
-                                // Google Sign-In
-                                if (isGoogleAvailable) ...[
-                                  OutlinedButton.icon(
-                                    onPressed: authState.isLoading
-                                        ? null
-                                        : _loginWithGoogle,
-                                    icon: const GoogleLogo(size: 20),
-                                    label: const Text('Continue with Google'),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(46),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                OutlinedButton.icon(
+                                  onPressed: authState.isLoading
+                                      ? null
+                                      : _loginWithGoogle,
+                                  icon: authState.isLoading
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const GoogleLogo(size: 20),
+                                  label: Text(
+                                    authState.isLoading
+                                        ? 'Connecting to Google...'
+                                        : 'Continue with Google',
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                ],
-
-                                // Apple Sign-In
-                                if (isAppleAvailable) ...[
-                                  OutlinedButton.icon(
-                                    onPressed: authState.isLoading ? null : _loginWithApple,
-                                    icon: const AppleLogo(size: 20),
-                                    label: const Text('Continue with Apple'),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(46),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-
-                                // Phone OTP Sign-In (optional on mobile)
-                                if (isPhoneAvailable && !isWindows) ...[
-                                  OutlinedButton.icon(
-                                    onPressed: authState.isLoading
-                                        ? null
-                                        : () {
-                                            ref.read(authProvider.notifier).clearMessages();
-                                            context.push(RouteNames.phoneAuth);
-                                          },
-                                    icon: const Icon(Icons.phone_iphone_rounded, size: 18),
-                                    label: const Text('Sign In with Phone & OTP'),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(46),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
+                                ),
                               ],
 
                               if (isWindows) ...[

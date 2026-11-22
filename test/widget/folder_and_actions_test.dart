@@ -68,6 +68,15 @@ class _MockFolderAuthRepo implements AuthRepository {
   Future<AppUser?> restoreSession() async => _user;
   @override
   Future<void> sendPasswordReset(String email) async {}
+  @override
+  Future<String> verifyPasswordResetCode(String code) async => 'user@example.com';
+  @override
+  Future<void> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {}
+  @override
+  Future<void> sendEmailVerification() async {}
 }
 
 void main() {

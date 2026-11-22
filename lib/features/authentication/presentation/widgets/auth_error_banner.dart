@@ -99,17 +99,16 @@ class _AuthErrorBannerState extends State<AuthErrorBanner> {
                         text: 'http://127.0.0.1:8085/oauth2callback',
                       ),
                     );
-                    if (mounted) {
-                      setState(() => _copied = true);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Copied "http://127.0.0.1:8085/oauth2callback" to clipboard!',
-                          ),
-                          duration: Duration(seconds: 2),
+                    if (!context.mounted) return;
+                    setState(() => _copied = true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Copied "http://127.0.0.1:8085/oauth2callback" to clipboard!',
                         ),
-                      );
-                    }
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
                   },
                   icon: Icon(
                     _copied ? Icons.check : Icons.copy,
