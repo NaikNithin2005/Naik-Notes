@@ -1,24 +1,33 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-import 'package:naik_notes/core/presentation/responsive_layout.dart';
+
 import 'package:naik_notes/core/routing/route_names.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
+import 'package:naik_notes/data/models/canvas_element_model.dart';
 import 'package:naik_notes/data/models/notebook_model.dart';
 import 'package:naik_notes/data/models/page_model.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/data/models/search_index_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
+import 'package:naik_notes/features/canvas/data/canvas_elements_provider.dart';
 import 'package:naik_notes/features/canvas/data/stroke_provider.dart';
-import 'package:naik_notes/features/canvas/data/toolbar_preferences.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/canvas_floating_pill.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/canvas_minimal_toolbar.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/canvas_page_pill.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/canvas_top_nav_bar.dart';
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_canvas.dart';
 import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_shortcuts.dart';
-import 'package:naik_notes/features/canvas/presentation/widgets/handwriting_toolbar.dart';
+import 'package:naik_notes/features/canvas/presentation/widgets/math_formula_dialog.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
 import 'package:naik_notes/features/notebooks/data/page_provider.dart';
 import 'package:naik_notes/features/ai_assistant/presentation/widgets/ai_study_assistant_sheet.dart';
-import 'package:naik_notes/features/audio/data/audio_provider.dart';
 import 'package:naik_notes/features/audio/presentation/widgets/audio_recording_bar.dart';
 import 'package:naik_notes/features/pdf/data/sticky_note_provider.dart';
 import 'package:naik_notes/features/pdf/presentation/widgets/pdf_document_search_bar.dart';
@@ -31,8 +40,10 @@ import 'package:naik_notes/features/templates/presentation/widgets/template_cust
 import 'package:naik_notes/features/version_history/presentation/widgets/version_history_sheet.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/note_attachments_sheet.dart';
 import '../widgets/export_notebook_dialog.dart';
+import '../widgets/rename_notebook_dialog.dart';
 
-/// Notebook reader & writing canvas workspace.
+/// Clean, minimal, canvas-first workspace for Naik Notes.
+/// Dedicates ~90% of screen to the writing surface with floating glassmorphic pills.
 class NotebookViewScreen extends ConsumerStatefulWidget {
   final String notebookId;
 
@@ -46,8 +57,10 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   bool _showThumbnails = false;
   bool _showSearch = false;
   bool _showAudioBar = false;
-  bool _isContinuousScroll = false;
+  bool _isContinuousScroll = true; // Top-to-Bottom Vertical Scroll is Default!
   bool _isReadingMode = false;
+  bool _isWriting = false;
+  Timer? _writingFadeTimer;
   String _searchQuery = '';
   int _activeMatchIndex = 0;
   bool _isLoading = true;
@@ -56,7 +69,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   late final TransformationController _transformationController =
       TransformationController();
   final ScrollController _continuousScrollController = ScrollController();
-  bool _hasAutoFitted = false;
+  late final PageController _horizontalPageController;
   double _lastAvailableWidth = 0.0;
   double _lastAvailableHeight = 0.0;
   StrokesNotifier? _strokesNotifier;
@@ -64,11 +77,28 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   @override
   void initState() {
     super.initState();
+    _transformationController.addListener(_onTransformationChanged);
     _strokesNotifier = ref.read(strokesNotifierProvider.notifier);
+    _horizontalPageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(currentPageIndexProvider.notifier).setPage(1);
       _loadNotebookData();
     });
+  }
+
+  void _onTransformationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _writingFadeTimer?.cancel();
+    _transformationController.removeListener(_onTransformationChanged);
+    _horizontalPageController.dispose();
+    _strokesNotifier?.flushPendingStrokes();
+    _transformationController.dispose();
+    _continuousScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadNotebookData() async {
@@ -122,17 +152,9 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _strokesNotifier?.flushPendingStrokes();
-    _transformationController.dispose();
-    _continuousScrollController.dispose();
-    super.dispose();
-  }
-
   void _zoomIn() {
     final currentScale = _transformationController.value.getMaxScaleOnAxis();
-    if (currentScale < 3.5) {
+    if (currentScale < 5.0) {
       _transformationController.value =
           Matrix4.copy(_transformationController.value)..scale(1.2, 1.2, 1.0);
     }
@@ -147,7 +169,145 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   }
 
   void _resetZoom() {
-    _transformationController.value = Matrix4.identity();
+    _fitToWidth();
+  }
+
+  NotebookPage? _getActivePage(List<NotebookPage> pageList) {
+    if (pageList.isEmpty) return null;
+    final currentIdx = ref.read(currentPageIndexProvider);
+    final clamped = currentIdx.clamp(1, pageList.length);
+    return pageList[clamped - 1];
+  }
+
+  Future<void> _handleQuickAddPage() async {
+    final allPages = ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+    final activePage = _getActivePage(allPages);
+    final templateId = activePage?.templateId ?? _fallbackNotebook?.paperTemplateId ?? 'college_ruled';
+    final properties = activePage?.properties;
+
+    await ref.read(notebookPagesProvider.notifier).addPage(
+      widget.notebookId,
+      templateId: templateId,
+      properties: properties,
+    );
+
+    final updatedPages = ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+    final newPageNumber = updatedPages.length;
+    ref.read(currentPageIndexProvider.notifier).setPage(newPageNumber);
+
+    if (_isContinuousScroll && _continuousScrollController.hasClients) {
+      _continuousScrollController.animateTo(
+        _continuousScrollController.position.maxScrollExtent + 900,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    } else if (!_isContinuousScroll && _horizontalPageController.hasClients) {
+      _horizontalPageController.animateToPage(
+        newPageNumber - 1,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  Future<void> _handleTakePhoto() async {
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: ImageSource.camera);
+      if (photo != null && mounted) {
+        final allPages = ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+        final activePage = _getActivePage(allPages);
+        if (activePage != null) {
+          final newElement = CanvasElement(
+            id: 'elem-${const Uuid().v4()}',
+            pageId: activePage.id,
+            type: CanvasElementType.image,
+            x: 80.0,
+            y: 120.0,
+            width: 300.0,
+            height: 220.0,
+            imagePath: photo.path,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          ref.read(canvasElementsProvider.notifier).addElement(newElement);
+        }
+      }
+    } catch (e) {
+      debugPrint('Camera not available or permitted: $e');
+    }
+  }
+
+  Future<void> _handleImportImage() async {
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.image);
+      if (result.isNotEmpty && result.first.path != null && mounted) {
+        final path = result.first.path!;
+        final allPages = ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+        final activePage = _getActivePage(allPages);
+        if (activePage != null) {
+          final newElement = CanvasElement(
+            id: 'elem-${const Uuid().v4()}',
+            pageId: activePage.id,
+            type: CanvasElementType.image,
+            x: 80.0,
+            y: 120.0,
+            width: 300.0,
+            height: 220.0,
+            imagePath: path,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          ref.read(canvasElementsProvider.notifier).addElement(newElement);
+        }
+      }
+    } catch (e) {
+      debugPrint('File picker error: $e');
+    }
+  }
+
+  Future<void> _handleInsertMath() async {
+    final formula = await MathFormulaDialog.show(context);
+    if (formula != null && mounted) {
+      final allPages = ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+      final activePage = _getActivePage(allPages);
+      if (activePage != null) {
+        final newElement = CanvasElement(
+          id: 'elem-${const Uuid().v4()}',
+          pageId: activePage.id,
+          type: CanvasElementType.mathFormula,
+          x: 120.0,
+          y: 150.0,
+          width: 240.0,
+          height: 80.0,
+          content: formula,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        ref.read(canvasElementsProvider.notifier).addElement(newElement);
+      }
+    }
+  }
+
+  Future<void> _handleAddStickyNote() async {
+    final allPages = ref.read(notebookPagesProvider)[widget.notebookId] ?? [];
+    final activePage = _getActivePage(allPages);
+    if (activePage != null) {
+      final newElement = CanvasElement(
+        id: 'elem-${const Uuid().v4()}',
+        pageId: activePage.id,
+        type: CanvasElementType.stickyNote,
+        x: 80.0,
+        y: 100.0,
+        width: 180.0,
+        height: 150.0,
+        content: '',
+        colorHex: '#FEF08A',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      ref.read(canvasElementsProvider.notifier).addElement(newElement);
+    }
   }
 
   void _fitToWidth({
@@ -182,20 +342,26 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
             ? _lastAvailableHeight
             : MediaQuery.of(context).size.height);
 
-    // Fit viewport width with comfortable 48px padding (24px each side)
-    final targetScale = ((screenW - 48) / pWidth).clamp(0.4, 2.5);
+    // Fit-to-Width: Fill 80–85% of viewport width on Desktop/Tablet Landscape, capped at 1150px
+    double targetContentWidth = screenW * 0.85;
+    if (targetContentWidth > 1150.0) {
+      targetContentWidth = 1150.0;
+    }
+    if (screenW < 600) {
+      targetContentWidth = (screenW - 24).clamp(300.0, 700.0);
+    }
+    final targetScale = (targetContentWidth / pWidth).clamp(0.4, 5.0);
 
     // Center horizontally in viewport
-    final tx = screenW * (1.0 - targetScale) / 2.0;
+    final tx = (screenW - (pWidth * targetScale)) / 2.0;
 
-    // For vertical: center if it fits vertically, otherwise align near top
+    // Center vertically if it fits, otherwise align top with 72px clearance for floating pills
     final scaledHeight = pHeight * targetScale;
     final double ty;
-    if (scaledHeight + 48 <= screenH) {
-      ty = screenH * (1.0 - targetScale) / 2.0;
+    if (scaledHeight + 120 <= screenH) {
+      ty = (screenH - scaledHeight) / 2.0;
     } else {
-      final yTop = (screenH - pHeight) / 2.0;
-      ty = 24.0 - (targetScale * yTop);
+      ty = 72.0;
     }
 
     final matrix = Matrix4.identity()
@@ -205,6 +371,13 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
     setState(() {
       _transformationController.value = matrix;
     });
+  }
+
+  void _openRenameDialog(Notebook notebook) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => RenameNotebookDialog(notebook: notebook),
+    );
   }
 
   void _openTemplateSettings(
@@ -358,119 +531,100 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) {
+      builder: (sheetCtx) {
         return StatefulBuilder(
-          builder: (sheetCtx, setSheetState) {
+          builder: (ctx, setSheetState) {
             return DraggableScrollableSheet(
-              initialChildSize: 0.65,
-              minChildSize: 0.40,
-              maxChildSize: 0.90,
+              initialChildSize: 0.55,
+              minChildSize: 0.35,
+              maxChildSize: 0.85,
               expand: false,
-              builder: (innerCtx, scrollController) {
+              builder: (_, scrollController) {
                 return Padding(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Insert New Page',
-                            style: Theme.of(sheetCtx).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.of(sheetCtx).pop(),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Insertion Position Selector
-                      Text(
-                        'Page Placement',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 6),
                       Center(
-                        child: SegmentedButton<String>(
-                          segments: [
-                            const ButtonSegment<String>(
-                              value: 'end',
-                              label: Text('At End'),
-                              icon: Icon(Icons.last_page_rounded, size: 16),
-                            ),
-                            if (activePage != null)
-                              ButtonSegment<String>(
-                                value: 'before',
-                                label: Text(
-                                  'Before P.${activePage.pageNumber}',
-                                ),
-                                icon: const Icon(
-                                  Icons.arrow_upward_rounded,
-                                  size: 16,
-                                ),
-                              ),
-                            if (activePage != null)
-                              ButtonSegment<String>(
-                                value: 'after',
-                                label: Text('After P.${activePage.pageNumber}'),
-                                icon: const Icon(
-                                  Icons.arrow_downward_rounded,
-                                  size: 16,
-                                ),
-                              ),
-                          ],
-                          selected: {selectedPosition},
-                          onSelectionChanged: (newSelection) {
-                            setSheetState(
-                              () => selectedPosition = newSelection.first,
-                            );
-                          },
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'Choose a paper template for this new page:',
-                        style: Theme.of(sheetCtx).textTheme.bodyMedium
-                            ?.copyWith(color: Colors.grey[700]),
+                      const Text(
+                        'Insert New Page',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('At End'),
+                            selected: selectedPosition == 'end',
+                            onSelected: (val) {
+                              if (val) setSheetState(() => selectedPosition = 'end');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          if (activePage != null) ...[
+                            ChoiceChip(
+                              label: Text('Before P${activePage.pageNumber}'),
+                              selected: selectedPosition == 'before',
+                              onSelected: (val) {
+                                if (val) setSheetState(() => selectedPosition = 'before');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: Text('After P${activePage.pageNumber}'),
+                              selected: selectedPosition == 'after',
+                              onSelected: (val) {
+                                if (val) setSheetState(() => selectedPosition = 'after');
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Select Paper Template',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Expanded(
                         child: ListView.separated(
                           controller: scrollController,
                           itemCount: PaperTemplateType.values.length,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1),
-                          itemBuilder: (itemCtx, index) {
-                            final type = PaperTemplateType.values[index];
+                          separatorBuilder: (context, index) => const Divider(height: 1),
+                          itemBuilder: (c, idx) {
+                            final type = PaperTemplateType.values[idx];
                             return ListTile(
                               title: Text(
                                 type.displayName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
                               subtitle: Text(
                                 type.description,
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              trailing: const Icon(
-                                Icons.add_circle_outline,
-                                size: 20,
-                              ),
+                              trailing: const Icon(Icons.add_circle_outline, size: 20),
                               onTap: () async {
                                 Navigator.of(sheetCtx).pop();
                                 NotebookPage newPage;
                                 String actionDescription;
 
-                                if (selectedPosition == 'before' &&
-                                    activePage != null) {
+                                if (selectedPosition == 'before' && activePage != null) {
                                   newPage = await ref
                                       .read(notebookPagesProvider.notifier)
                                       .insertPageBefore(
@@ -480,8 +634,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                                       );
                                   actionDescription =
                                       'Inserted Page ${newPage.pageNumber} before Page ${activePage.pageNumber}';
-                                } else if (selectedPosition == 'after' &&
-                                    activePage != null) {
+                                } else if (selectedPosition == 'after' && activePage != null) {
                                   newPage = await ref
                                       .read(notebookPagesProvider.notifier)
                                       .insertPageAfter(
@@ -530,9 +683,83 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
     );
   }
 
+  void _onOverflowAction(
+    String action,
+    Notebook notebook,
+    List<NotebookPage> pages,
+    NotebookPage? activePage,
+  ) {
+    switch (action) {
+      case 'readingMode':
+        setState(() => _isReadingMode = !_isReadingMode);
+        if (_isReadingMode) {
+          ref.read(activeToolProvider.notifier).setTool(ToolType.pan);
+        }
+        break;
+      case 'search':
+        setState(() => _showSearch = !_showSearch);
+        break;
+      case 'attachments':
+        NoteAttachmentsSheet.show(context, widget.notebookId);
+        break;
+      case 'audio':
+        setState(() => _showAudioBar = !_showAudioBar);
+        break;
+      case 'aiAssistant':
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => AiStudyAssistantSheet(
+            notebookId: widget.notebookId,
+            notebookTitle: notebook.title,
+          ),
+        );
+        break;
+      case 'history':
+        if (activePage != null) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) => VersionHistorySheet(
+              pageId: activePage.id,
+              notebookId: widget.notebookId,
+            ),
+          );
+        }
+        break;
+      case 'templateStore':
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => const TemplateStoreSheet(),
+        );
+        break;
+      case 'bookmark':
+        if (activePage != null) {
+          ref
+              .read(notebookPagesProvider.notifier)
+              .toggleBookmark(widget.notebookId, activePage.id);
+        }
+        break;
+      case 'export':
+        ExportNotebookDialog.show(
+          context,
+          notebook: notebook,
+          pages: pages,
+          activePage: activePage,
+        );
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final notebooks = ref.watch(notebooksProvider);
     final notebook = notebooks
         .where((nb) => nb.id == widget.notebookId)
@@ -540,13 +767,6 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
 
     if (notebook == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Notebook'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go(RouteNames.dashboard),
-          ),
-        ),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -555,12 +775,6 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
                 const Text('Loading notebook...'),
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to Library'),
-                  onPressed: () => context.go(RouteNames.dashboard),
-                ),
               ] else ...[
                 const Icon(
                   Icons.error_outline_rounded,
@@ -569,29 +783,15 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _errorMessage ?? 'Notebook not found in local library.',
+                  _errorMessage ?? 'Notebook not found in library.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilledButton.icon(
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Retry'),
-                      onPressed: _loadNotebookData,
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Back to Library'),
-                      onPressed: () => context.go(RouteNames.dashboard),
-                    ),
-                  ],
+                FilledButton.icon(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Back to Library'),
+                  onPressed: () => context.go(RouteNames.dashboard),
                 ),
               ],
             ],
@@ -604,7 +804,6 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
     final pages = pagesMap[widget.notebookId] ?? [];
     final currentPageIndex = ref.watch(currentPageIndexProvider);
 
-    // Clamp current page to bounds
     final clampedIndex = currentPageIndex.clamp(
       1,
       pages.isEmpty ? 1 : pages.length,
@@ -640,19 +839,6 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
     final totalMatches = allMatches.length;
     final currentMatchDisplay = totalMatches == 0 ? 0 : (_activeMatchIndex + 1);
 
-    final activeBoxesOnCurrentPage = activePage == null
-        ? <WordBoundingBox>[]
-        : allMatches
-              .where((m) => m.pageId == activePage.id)
-              .map((m) => m.box)
-              .toList();
-    final activeBoxIndexInPage =
-        (allMatches.isNotEmpty &&
-            _activeMatchIndex < allMatches.length &&
-            allMatches[_activeMatchIndex].pageId == activePage?.id)
-        ? activeBoxesOnCurrentPage.indexOf(allMatches[_activeMatchIndex].box)
-        : -1;
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -666,1233 +852,673 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
       child: Scaffold(
         backgroundColor: _isReadingMode
             ? const Color(0xFFF3EEDC)
-            : const Color(0xFFE8E4DF),
-        appBar: AppBar(
-          backgroundColor: theme.colorScheme.surface,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            tooltip: 'Return to Library',
-            onPressed: () async {
-              await ref
-                  .read(strokesNotifierProvider.notifier)
-                  .flushPendingStrokes();
-              if (context.mounted) {
-                context.go(RouteNames.dashboard);
+            : (isDark ? const Color(0xFF141416) : const Color(0xFFE8E4DF)),
+        body: HandwritingShortcuts(
+          pageId: activePage?.id ?? '',
+          onToggleSearch: () => setState(() => _showSearch = !_showSearch),
+          onZoomIn: _zoomIn,
+          onZoomOut: _zoomOut,
+          onResetZoom: _resetZoom,
+          onAddPage: _showAddPageDialog,
+          onAddStickyNote: activePage != null
+              ? () async {
+                  await ref
+                      .read(stickyNotesProvider.notifier)
+                      .addStickyNote(activePage.id, x: 80.0, y: 100.0);
+                }
+              : null,
+          child: Listener(
+            onPointerDown: (_) {
+              _writingFadeTimer?.cancel();
+              if (!_isWriting) {
+                setState(() => _isWriting = true);
               }
             },
-          ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _searchQuery.isNotEmpty
-                    ? '${notebook.title} (Search: "$_searchQuery")'
-                    : notebook.title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              Text(
-                'Page $clampedIndex of ${pages.isEmpty ? 1 : pages.length} • ${activeType.displayName}',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
-          actions: context.screenWidth < 1100
-            ? [
-                // Thumbnail Sidebar Toggle
-                IconButton(
-                  icon: Icon(
-                    _showThumbnails
-                        ? Icons.view_sidebar
-                        : Icons.view_sidebar_outlined,
-                  ),
-                  tooltip: 'Page Thumbnails',
-                  onPressed: () =>
-                      setState(() => _showThumbnails = !_showThumbnails),
-                ),
-
-                // Reading Mode Toggle
-                IconButton(
-                  icon: Icon(
-                    _isReadingMode
-                        ? Icons.auto_stories
-                        : Icons.auto_stories_outlined,
-                  ),
-                  tooltip: _isReadingMode
-                      ? 'Exit Reading Mode'
-                      : 'Reading Mode',
-                  color: _isReadingMode ? theme.colorScheme.primary : null,
-                  onPressed: () {
-                    setState(() => _isReadingMode = !_isReadingMode);
-                    if (_isReadingMode) {
-                      ref
-                          .read(activeToolProvider.notifier)
-                          .setTool(ToolType.pan);
-                    }
-                  },
-                ),
-
-                // Undo & Redo
-                IconButton(
-                  icon: const Icon(Icons.undo_rounded),
-                  tooltip: 'Undo',
-                  onPressed:
-                      activePage != null &&
-                          ref.watch(canUndoProvider(activePage.id))
-                      ? () => ref
-                            .read(strokesNotifierProvider.notifier)
-                            .undo(activePage.id)
-                      : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.redo_rounded),
-                  tooltip: 'Redo',
-                  onPressed:
-                      activePage != null &&
-                          ref.watch(canRedoProvider(activePage.id))
-                      ? () => ref
-                            .read(strokesNotifierProvider.notifier)
-                            .redo(activePage.id)
-                      : null,
-                ),
-
-                // Compact Overflow Menu
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: 'More actions',
-                  onSelected: (val) async {
-                    switch (val) {
-                      case 'attachments':
-                        NoteAttachmentsSheet.show(context, widget.notebookId);
-                        break;
-                      case 'search':
-                        setState(() => _showSearch = !_showSearch);
-                        break;
-                      case 'audio':
-                        setState(() => _showAudioBar = !_showAudioBar);
-                        break;
-                      case 'aiAssistant':
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (ctx) => AiStudyAssistantSheet(
-                            notebookId: widget.notebookId,
-                            notebookTitle: notebook.title,
-                          ),
-                        );
-                        break;
-                      case 'history':
-                        if (activePage != null) {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (ctx) => VersionHistorySheet(
-                              pageId: activePage.id,
-                              notebookId: widget.notebookId,
-                            ),
-                          );
-                        }
-                        break;
-                      case 'templateStore':
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (ctx) => const TemplateStoreSheet(),
-                        );
-                        break;
-                      case 'bookmark':
-                        if (activePage != null) {
-                          ref
-                              .read(notebookPagesProvider.notifier)
-                              .toggleBookmark(widget.notebookId, activePage.id);
-                        }
-                        break;
-                      case 'sticky':
-                        if (activePage != null) {
-                          await ref
-                              .read(stickyNotesProvider.notifier)
-                              .addStickyNote(activePage.id, x: 80.0, y: 100.0);
-                        }
-                        break;
-                      case 'viewMode':
-                        setState(
-                          () => _isContinuousScroll = !_isContinuousScroll,
-                        );
-                        break;
-                      case 'template':
-                        if (activePage != null) {
-                          _openTemplateSettings(
-                            activePage.id,
-                            activeType,
-                            activeProps,
-                          );
-                        }
-                        break;
-                      case 'export':
-                        ExportNotebookDialog.show(
-                          context,
-                          notebook: notebook,
-                          pages: pages,
-                          activePage: activePage,
-                        );
-                        break;
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                      value: 'attachments',
-                      child: Row(
-                        children: [
-                          Icon(Icons.attachment_rounded, size: 20),
-                          SizedBox(width: 12),
-                          Text('Attachments (Drive)'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'audio',
-                      child: Row(
-                        children: [
-                          Icon(
-                            _showAudioBar ? Icons.mic : Icons.mic_none_outlined,
-                            size: 20,
-                            color: _showAudioBar ? Colors.redAccent : null,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text('Lecture Audio'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'aiAssistant',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.auto_awesome,
-                            size: 20,
-                            color: Colors.amber,
-                          ),
-                          SizedBox(width: 12),
-                          Text('AI Study Assistant'),
-                        ],
-                      ),
-                    ),
-                    if (activePage != null)
-                      const PopupMenuItem(
-                        value: 'history',
-                        child: Row(
-                          children: [
-                            Icon(Icons.history_rounded, size: 20),
-                            SizedBox(width: 12),
-                            Text('Page Version History'),
-                          ],
-                        ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'templateStore',
-                      child: Row(
-                        children: [
-                          Icon(Icons.storefront_outlined, size: 20),
-                          SizedBox(width: 12),
-                          Text('Community Template Store'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'search',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.search,
-                            size: 20,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text('Search Document'),
-                        ],
-                      ),
-                    ),
-                    if (activePage != null)
-                      PopupMenuItem(
-                        value: 'bookmark',
-                        child: Row(
-                          children: [
-                            Icon(
-                              activePage.isBookmarked
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
-                              size: 20,
-                              color: activePage.isBookmarked
-                                  ? Colors.amber[700]
-                                  : null,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              activePage.isBookmarked
-                                  ? 'Remove Bookmark'
-                                  : 'Bookmark Page',
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (activePage != null)
-                      const PopupMenuItem(
-                        value: 'sticky',
-                        child: Row(
-                          children: [
-                            Icon(Icons.note_add_outlined, size: 20),
-                            SizedBox(width: 12),
-                            Text('Add Sticky Note'),
-                          ],
-                        ),
-                      ),
-                    PopupMenuItem(
-                      value: 'viewMode',
-                      child: Row(
-                        children: [
-                          Icon(
-                            _isContinuousScroll
-                                ? Icons.view_stream
-                                : Icons.crop_portrait,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            _isContinuousScroll
-                                ? 'Single Page View'
-                                : 'Continuous Scroll View',
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (activePage != null)
-                      const PopupMenuItem(
-                        value: 'template',
-                        child: Row(
-                          children: [
-                            Icon(Icons.tune_rounded, size: 20),
-                            SizedBox(width: 12),
-                            Text('Paper Template & Style'),
-                          ],
-                        ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'export',
-                      child: Row(
-                        children: [
-                          Icon(Icons.share_outlined, size: 20),
-                          SizedBox(width: 12),
-                          Text('Export Flattened PDF'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 4),
-              ]
-            : [
-                // Note Attachments (Google Drive)
-                IconButton(
-                  icon: const Icon(Icons.attachment_rounded),
-                  tooltip: 'Attachments (Google Drive)',
-                  onPressed: () =>
-                      NoteAttachmentsSheet.show(context, widget.notebookId),
-                ),
-
-                // Thumbnail Sidebar Toggle
-                IconButton(
-                  icon: Icon(
-                    _showThumbnails
-                        ? Icons.view_sidebar
-                        : Icons.view_sidebar_outlined,
-                  ),
-                  tooltip: 'Page Thumbnails',
-                  onPressed: () =>
-                      setState(() => _showThumbnails = !_showThumbnails),
-                ),
-
-                // Reading Mode Toggle
-                IconButton(
-                  icon: Icon(
-                    _isReadingMode
-                        ? Icons.auto_stories
-                        : Icons.auto_stories_outlined,
-                  ),
-                  tooltip: _isReadingMode
-                      ? 'Exit Reading Mode'
-                      : 'Reading Mode',
-                  color: _isReadingMode ? theme.colorScheme.primary : null,
-                  onPressed: () {
-                    setState(() => _isReadingMode = !_isReadingMode);
-                    if (_isReadingMode) {
-                      ref
-                          .read(activeToolProvider.notifier)
-                          .setTool(ToolType.pan);
-                    }
-                  },
-                ),
-
-                // Bookmark Page Toggle
-                if (activePage != null)
-                  IconButton(
-                    icon: Icon(
-                      activePage.isBookmarked
-                          ? Icons.bookmark
-                          : Icons.bookmark_border,
-                      color: activePage.isBookmarked ? Colors.amber[700] : null,
-                    ),
-                    tooltip: activePage.isBookmarked
-                        ? 'Remove Bookmark'
-                        : 'Bookmark Page',
-                    onPressed: () {
-                      ref
-                          .read(notebookPagesProvider.notifier)
-                          .toggleBookmark(widget.notebookId, activePage.id);
-                    },
-                  ),
-
-                // Add Sticky Note
-                if (activePage != null)
-                  IconButton(
-                    icon: const Icon(Icons.note_add_outlined),
-                    tooltip: 'Add Sticky Note',
-                    onPressed: () async {
-                      await ref
-                          .read(stickyNotesProvider.notifier)
-                          .addStickyNote(activePage.id, x: 80.0, y: 100.0);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Sticky Note added! Drag to move, tap to edit.',
-                            ),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-
-                // View Mode Toggle (Single vs Continuous Scroll)
-                IconButton(
-                  icon: Icon(
-                    _isContinuousScroll
-                        ? Icons.view_stream
-                        : Icons.crop_portrait,
-                  ),
-                  tooltip: _isContinuousScroll
-                      ? 'Single Page View'
-                      : 'Continuous Scroll View',
-                  onPressed: () => setState(
-                    () => _isContinuousScroll = !_isContinuousScroll,
-                  ),
-                ),
-
-                // Search in Document
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  tooltip: 'Search Document',
-                  onPressed: () => setState(() => _showSearch = !_showSearch),
-                ),
-
-                // Template / Paper Customizer Button
-                IconButton(
-                  icon: const Icon(Icons.tune_rounded),
-                  tooltip: 'Paper Template & Style',
-                  onPressed: () {
-                    if (activePage != null) {
-                      _openTemplateSettings(
-                        activePage.id,
-                        activeType,
-                        activeProps,
-                      );
-                    }
-                  },
-                ),
-
-                // Undo & Redo
-                IconButton(
-                  icon: const Icon(Icons.undo_rounded),
-                  tooltip: 'Undo',
-                  onPressed:
-                      activePage != null &&
-                          ref.watch(canUndoProvider(activePage.id))
-                      ? () => ref
-                            .read(strokesNotifierProvider.notifier)
-                            .undo(activePage.id)
-                      : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.redo_rounded),
-                  tooltip: 'Redo',
-                  onPressed:
-                      activePage != null &&
-                          ref.watch(canRedoProvider(activePage.id))
-                      ? () => ref
-                            .read(strokesNotifierProvider.notifier)
-                            .redo(activePage.id)
-                      : null,
-                ),
-                const VerticalDivider(width: 16, indent: 12, endIndent: 12),
-
-                // Audio Recording shortcut
-                IconButton(
-                  icon: Icon(
-                    _showAudioBar ? Icons.mic : Icons.mic_none_rounded,
-                    color: _showAudioBar ? Colors.redAccent : null,
-                  ),
-                  tooltip: 'Record Lecture Audio',
-                  onPressed: () {
-                    setState(() => _showAudioBar = !_showAudioBar);
-                    if (_showAudioBar) {
-                      final audioService = ref.read(audioServiceProvider);
-                      if (!audioService.recordState.isRecording &&
-                          !audioService.playbackState.isPlaying) {
-                        audioService.startRecording(
-                          widget.notebookId,
-                          pageId: activePage?.id,
-                        );
-                      }
-                    }
-                  },
-                ),
-
-                // AI Study Assistant shortcut
-                IconButton(
-                  icon: Icon(
-                    Icons.auto_awesome_rounded,
-                    color: theme.colorScheme.primary,
-                  ),
-                  tooltip: 'AI Study Assistant',
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (ctx) => AiStudyAssistantSheet(
-                        notebookId: widget.notebookId,
-                        notebookTitle: notebook.title,
-                      ),
-                    );
-                  },
-                ),
-
-                // Version History shortcut
-                if (activePage != null)
-                  IconButton(
-                    icon: const Icon(Icons.history_rounded),
-                    tooltip: 'Page Version History',
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (ctx) => VersionHistorySheet(
-                          pageId: activePage.id,
-                          notebookId: widget.notebookId,
-                        ),
-                      );
-                    },
-                  ),
-
-                // Template Store shortcut
-                IconButton(
-                  icon: const Icon(Icons.storefront_outlined),
-                  tooltip: 'Community Template Store',
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (ctx) => const TemplateStoreSheet(),
-                    );
-                  },
-                ),
-
-                // Export Document (PDF / PNG)
-                IconButton(
-                  icon: const Icon(Icons.share_outlined),
-                  tooltip: 'Export Document (PDF / PNG)',
-                  onPressed: () {
-                    ExportNotebookDialog.show(
-                      context,
-                      notebook: notebook,
-                      pages: pages,
-                      activePage: activePage,
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-              ],
-      ),
-      body: HandwritingShortcuts(
-        pageId: activePage?.id ?? '',
-        onToggleSearch: () => setState(() => _showSearch = !_showSearch),
-        onZoomIn: _zoomIn,
-        onZoomOut: _zoomOut,
-        onResetZoom: _resetZoom,
-        onAddPage: _showAddPageDialog,
-        onAddStickyNote: activePage != null
-            ? () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await ref
-                    .read(stickyNotesProvider.notifier)
-                    .addStickyNote(activePage.id, x: 80.0, y: 100.0);
-                if (!mounted) return;
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Sticky Note added! Drag to move.'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              }
-            : null,
-        onTriggerSync: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saving and synchronizing notebook...'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        },
-        child: Row(
-          children: [
-            // Collapsible PDF / Document Thumbnail Sidebar
-            if (_showThumbnails)
-              PdfThumbnailSidebar(
-                notebookId: widget.notebookId,
-                pages: pages,
-                currentPageIndex: clampedIndex,
-                onSelectPage: (pageIndex) {
-                  ref
-                      .read(currentPageIndexProvider.notifier)
-                      .setPage(pageIndex);
-                },
-                onInsertPage: (pageId, pos) {
-                  _showAddPageDialog(
-                    referencePageId: pageId,
-                    initialPosition: pos,
-                  );
-                },
-                onClose: () => setState(() => _showThumbnails = false),
-              ),
-
-            Expanded(
-              child: Column(
-                children: [
-                  // In-Document Search Bar
-                  if (_showSearch)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      child: PdfDocumentSearchBar(
-                        currentMatchIndex: currentMatchDisplay,
-                        totalMatches: totalMatches,
-                        onSearch: (q) {
-                          setState(() {
-                            _searchQuery = q;
-                            _activeMatchIndex = 0;
-                          });
-                          ref
-                              .read(inDocumentSearchQueryProvider.notifier)
-                              .setQuery(q);
-                          if (q.isNotEmpty && allMatches.isNotEmpty) {
-                            ref
-                                .read(currentPageIndexProvider.notifier)
-                                .setPage(allMatches[0].pageNumber);
-                          }
-                        },
-                        onNextMatch: () {
-                          if (allMatches.isEmpty) return;
-                          setState(() {
-                            _activeMatchIndex =
-                                (_activeMatchIndex + 1) % allMatches.length;
-                            final targetPage =
-                                allMatches[_activeMatchIndex].pageNumber;
-                            if (targetPage != clampedIndex) {
-                              ref
-                                  .read(currentPageIndexProvider.notifier)
-                                  .setPage(targetPage);
-                            }
-                          });
-                        },
-                        onPreviousMatch: () {
-                          if (allMatches.isEmpty) return;
-                          setState(() {
-                            _activeMatchIndex =
-                                (_activeMatchIndex - 1 + allMatches.length) %
-                                allMatches.length;
-                            final targetPage =
-                                allMatches[_activeMatchIndex].pageNumber;
-                            if (targetPage != clampedIndex) {
-                              ref
-                                  .read(currentPageIndexProvider.notifier)
-                                  .setPage(targetPage);
-                            }
-                          });
-                        },
-                        onClose: () {
-                          setState(() {
-                            _showSearch = false;
-                            _searchQuery = '';
-                            _activeMatchIndex = 0;
-                          });
-                          ref
-                              .read(inDocumentSearchQueryProvider.notifier)
-                              .clear();
-                        },
-                      ),
-                    ),
-
-                  // Floating Audio Recording & Playback Bar
-                  if (_showAudioBar)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: AudioRecordingBar(
-                        notebookId: widget.notebookId,
-                        activePageId: activePage?.id,
-                        onClose: () => setState(() => _showAudioBar = false),
-                      ),
-                    ),
-
-                  // Reading Mode Info Banner
-                  if (_isReadingMode)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0E6D2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFD8C7AB)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.auto_stories,
-                            size: 18,
-                            color: Color(0xFF5C4033),
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'Reading Mode Active • Tools hidden for comfortable reading.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF5C4033),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          TextButton.icon(
-                            icon: const Icon(Icons.edit_note, size: 16),
-                            label: const Text(
-                              'Exit Reading Mode',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            onPressed: () =>
-                                setState(() => _isReadingMode = false),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // Dynamic Vector Handwriting & Inking Toolbar (Top Dock Placement)
-                  if (!_isReadingMode &&
-                      activePage != null &&
-                      ref.watch(toolbarPreferencesProvider).dockPosition !=
-                          ToolbarDockPosition.bottom)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      child: HandwritingToolbar(pageId: activePage.id),
-                    ),
-
-                  // Workspace: Reading Mode 3D Flip vs. Continuous Scroll vs. Interactive Single Page
-                  Expanded(
-                    child: activePage == null
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_isLoading) ...[
-                                  const CircularProgressIndicator(),
-                                  const SizedBox(height: 16),
-                                  const Text('Loading notebook pages...'),
-                                ] else ...[
-                                  const Icon(
-                                    Icons.note_add_outlined,
-                                    size: 48,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'No pages found for this notebook.',
-                                  ),
-                                  const SizedBox(height: 12),
-                                  FilledButton.icon(
-                                    icon: const Icon(Icons.add),
-                                    label: const Text('Add Initial Page'),
-                                    onPressed: () async {
-                                      await ref
-                                          .read(notebookPagesProvider.notifier)
-                                          .addPage(
-                                            widget.notebookId,
-                                            templateId:
-                                                notebook.paperTemplateId,
-                                          );
-                                    },
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.refresh),
-                                    label: const Text('Retry'),
-                                    onPressed: _loadNotebookData,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          )
-                        : _isReadingMode
-                        ? ReadingModePageFlipView(
-                            notebookId: widget.notebookId,
-                            pages: pages,
-                            initialPage: clampedIndex,
-                            onExitReadingMode: () =>
-                                setState(() => _isReadingMode = false),
-                          )
-                        : _isContinuousScroll
-                        ? Scrollbar(
-                            controller: _continuousScrollController,
-                            thumbVisibility: true,
-                            child: ListView.builder(
-                              controller: _continuousScrollController,
-                              padding: const EdgeInsets.symmetric(vertical: 24),
-                              itemCount: pages.length,
-                              itemBuilder: (ctx, idx) {
-                                final p = pages[idx];
-                                final pType = p.templateType;
-                                final pProps = p.properties;
-                                final stickyNotes = ref.watch(
-                                  pageStickyNotesProvider(p.id),
-                                );
-                                final pMatches = allMatches
-                                    .where((m) => m.pageId == p.id)
-                                    .map((m) => m.box)
-                                    .toList();
-                                final pActiveBoxIdx =
-                                    (allMatches.isNotEmpty &&
-                                        _activeMatchIndex < allMatches.length &&
-                                        allMatches[_activeMatchIndex].pageId ==
-                                            p.id)
-                                    ? pMatches.indexOf(
-                                        allMatches[_activeMatchIndex].box,
-                                      )
-                                    : -1;
-
-                                return Center(
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 24),
-                                    decoration: BoxDecoration(
-                                      color: _isReadingMode
-                                          ? const Color(0xFFFFFDF5)
-                                          : Colors.white,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          blurRadius: 16,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        HandwritingCanvas(
-                                          pageId: p.id,
-                                          type: pType,
-                                          properties: pProps,
-                                          width: p.width,
-                                          height: p.height,
-                                          searchMatches: pMatches,
-                                          activeSearchIndex: pActiveBoxIdx,
-                                          readOnly:
-                                              _isReadingMode ||
-                                              ref.watch(activeToolProvider) ==
-                                                  ToolType.pan,
-                                        ),
-                                        ...stickyNotes.map(
-                                          (note) =>
-                                              StickyNoteWidget(note: note),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          )
-                        : LayoutBuilder(
-                            builder: (context, constraints) {
-                              _lastAvailableWidth = constraints.maxWidth;
-                              _lastAvailableHeight = constraints.maxHeight;
-                              if (!_hasAutoFitted && constraints.maxWidth > 0) {
-                                _hasAutoFitted = true;
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
-                                  if (mounted) {
-                                    _fitToWidth(
-                                      availableWidth: constraints.maxWidth,
-                                      availableHeight: constraints.maxHeight,
-                                      pageWidth: activePage.width,
-                                      pageHeight: activePage.height,
-                                    );
-                                  }
-                                });
-                              }
-
-                              return InteractiveViewer(
-                                transformationController: _transformationController,
-                            minScale: 0.4,
-                            maxScale: 3.5,
-                            boundaryMargin: const EdgeInsets.all(80),
-                            panEnabled:
-                                _isReadingMode ||
-                                ref.watch(activeToolProvider) == ToolType.pan ||
-                                ref.watch(stylusOnlyModeProvider),
-                            scaleEnabled: true,
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 24,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: _isReadingMode
-                                        ? const Color(0xFFFFFDF5)
-                                        : Colors.white,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      HandwritingCanvas(
-                                        pageId: activePage.id,
-                                        type: activeType,
-                                        properties: activeProps,
-                                        width: activePage.width,
-                                        height: activePage.height,
-                                        searchMatches: activeBoxesOnCurrentPage,
-                                        activeSearchIndex: activeBoxIndexInPage,
-                                        readOnly:
-                                            _isReadingMode ||
-                                            ref.watch(activeToolProvider) ==
-                                                ToolType.pan,
-                                      ),
-                                      ...ref
-                                          .watch(
-                                            pageStickyNotesProvider(
-                                              activePage.id,
-                                            ),
-                                          )
-                                          .map(
-                                            (note) =>
-                                                StickyNoteWidget(note: note),
-                                          ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                  ),
-
-                  // Dynamic Vector Handwriting & Inking Toolbar (Bottom Dock Placement)
-                  if (!_isReadingMode &&
-                      activePage != null &&
-                      ref.watch(toolbarPreferencesProvider).dockPosition ==
-                          ToolbarDockPosition.bottom)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      child: HandwritingToolbar(pageId: activePage.id),
-                    ),
-
-                  // Bottom Page Navigation & Management Bar (Visible in Editing Mode)
-                  if (!_isReadingMode)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: SafeArea(
-                        top: false,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.max,
+            onPointerUp: (_) {
+              _writingFadeTimer?.cancel();
+              _writingFadeTimer = Timer(const Duration(milliseconds: 300), () {
+                if (mounted && _isWriting) {
+                  setState(() => _isWriting = false);
+                }
+              });
+            },
+            child: Stack(
+              children: [
+                // ========================================================
+                // LAYER 1: WRITING CANVAS SURFACE (~90% Screen Workspace)
+                // ========================================================
+                Positioned.fill(
+                  child: activePage == null
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Previous Page Button
-                              IconButton.filledTonal(
-                                icon: const Icon(
-                                  Icons.arrow_back_ios_new_rounded,
-                                  size: 16,
+                              if (_isLoading) ...[
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 16),
+                                const Text('Loading pages...'),
+                              ] else ...[
+                                const Icon(
+                                  Icons.note_add_outlined,
+                                  size: 48,
+                                  color: Colors.grey,
                                 ),
-                                tooltip: 'Previous Page',
-                                onPressed: clampedIndex > 1
-                                    ? () {
-                                        ref
-                                            .read(
-                                              currentPageIndexProvider.notifier,
-                                            )
-                                            .prevPage();
-                                      }
-                                    : null,
-                              ),
-                              const SizedBox(width: 8),
+                                const SizedBox(height: 12),
+                                const Text('No pages found in this notebook.'),
+                                const SizedBox(height: 12),
+                                FilledButton.icon(
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Add Page'),
+                                  onPressed: () async {
+                                    await ref
+                                        .read(notebookPagesProvider.notifier)
+                                        .addPage(
+                                          widget.notebookId,
+                                          templateId: notebook.paperTemplateId,
+                                        );
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : _isReadingMode
+                          ? ReadingModePageFlipView(
+                              notebookId: widget.notebookId,
+                              pages: pages,
+                              initialPage: clampedIndex,
+                              onExitReadingMode: () =>
+                                  setState(() => _isReadingMode = false),
+                            )
+                          : _isContinuousScroll
+                              // ----------------------------------------------------
+                              // MODE 1: TOP-TO-BOTTOM VERTICAL SCROLL (DEFAULT)
+                              // ----------------------------------------------------
+                              ? LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    _lastAvailableWidth = constraints.maxWidth;
+                                    _lastAvailableHeight = constraints.maxHeight;
+                                    final isPhone = constraints.maxWidth < 600;
 
-                              // Page indicator & Template summary (Tap for overview / reorder)
-                              Tooltip(
-                                message:
-                                    'Tap to view thumbnails & reorder pages',
-                                child: InkWell(
-                                  onTap: () => setState(
-                                    () => _showThumbnails = !_showThumbnails,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 4,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Page $clampedIndex / ${pages.isEmpty ? 1 : pages.length}',
-                                          style: theme.textTheme.titleMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
+                                    // Fit-to-Width default: fill 80-85% of viewport width on desktop (max 1150px)
+                                    final targetWidth = isPhone
+                                        ? (constraints.maxWidth - 24).clamp(300.0, 750.0)
+                                        : math.min(1150.0, constraints.maxWidth * 0.85);
+
+                                    return Scrollbar(
+                                      controller: _continuousScrollController,
+                                      thumbVisibility: true,
+                                      child: ListView.builder(
+                                        controller: _continuousScrollController,
+                                        padding: const EdgeInsets.only(top: 72, bottom: 96),
+                                        itemCount: pages.length + 1,
+                                        itemBuilder: (ctx, idx) {
+                                          if (idx == pages.length) {
+                                            // Pull-past-last-page / Add Page Card
+                                            return Center(
+                                              child: Container(
+                                                width: targetWidth,
+                                                margin: const EdgeInsets.symmetric(vertical: 24),
+                                                padding: const EdgeInsets.all(28),
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? const Color(0x20FFFFFF)
+                                                      : Colors.white.withValues(alpha: 0.65),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  border: Border.all(
+                                                    color: Colors.grey.withValues(alpha: 0.25),
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.add_circle_outline_rounded,
+                                                      size: 36,
+                                                      color: Colors.blueAccent,
+                                                    ),
+                                                    const SizedBox(height: 10),
+                                                    Text(
+                                                      'End of Document (Page ${pages.length} of ${pages.length})',
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    FilledButton.icon(
+                                                      icon: const Icon(Icons.add, size: 18),
+                                                      label: const Text('Add Page'),
+                                                      onPressed: _showAddPageDialog,
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: theme
-                                                .colorScheme
-                                                .primaryContainer,
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            activeType.displayName,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: theme
-                                                  .colorScheme
-                                                  .onPrimaryContainer,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Icon(
-                                          Icons.view_sidebar_rounded,
-                                          size: 14,
-                                          color: theme
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
+                                            );
+                                          }
 
-                              // Next Page Button
-                              IconButton.filledTonal(
-                                icon: const Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 16,
-                                ),
-                                tooltip: 'Next Page',
-                                onPressed: clampedIndex < pages.length
-                                    ? () {
-                                        ref
-                                            .read(
-                                              currentPageIndexProvider.notifier,
-                                            )
-                                            .nextPage(pages.length);
-                                      }
-                                    : null,
-                              ),
-                              const SizedBox(width: 8),
+                                          final p = pages[idx];
+                                          final pType = p.templateType;
+                                          final pProps = p.properties;
+                                          final stickyNotes = ref.watch(pageStickyNotesProvider(p.id));
+                                          final pMatches = allMatches
+                                              .where((m) => m.pageId == p.id)
+                                              .map((m) => m.box)
+                                              .toList();
+                                          final pActiveBoxIdx = (allMatches.isNotEmpty &&
+                                                  _activeMatchIndex < allMatches.length &&
+                                                  allMatches[_activeMatchIndex].pageId == p.id)
+                                              ? pMatches.indexOf(allMatches[_activeMatchIndex].box)
+                                              : -1;
 
-                              // Zoom & View Scale Controls Group
-                              const SizedBox(
-                                height: 24,
-                                child: VerticalDivider(width: 12, thickness: 1),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.zoom_out_rounded, size: 18),
-                                tooltip: 'Zoom Out (Ctrl -)',
-                                onPressed: _zoomOut,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.fit_screen_rounded, size: 18),
-                                tooltip: 'Fit Page to Width',
-                                onPressed: () => _fitToWidth(
-                                  availableWidth: _lastAvailableWidth,
-                                  availableHeight: _lastAvailableHeight,
-                                  pageWidth: activePage?.width,
-                                  pageHeight: activePage?.height,
-                                ),
-                              ),
-                              Tooltip(
-                                message: 'Reset Zoom (100%) (Ctrl 0)',
-                                child: InkWell(
-                                  onTap: _resetZoom,
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: theme
-                                          .colorScheme
-                                          .surfaceContainerHighest
-                                          .withValues(alpha: 0.5),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: ValueListenableBuilder<Matrix4>(
-                                      valueListenable: _transformationController,
-                                      builder: (context, matrix, _) {
-                                        final scale =
-                                            (matrix.getMaxScaleOnAxis() * 100).round();
-                                        return Text(
-                                          '$scale%',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: theme.colorScheme.onSurfaceVariant,
+                                          final pageScale = targetWidth / p.width;
+                                          final targetHeight = p.height * pageScale;
+
+                                          return Center(
+                                            child: Container(
+                                              width: targetWidth,
+                                              height: targetHeight,
+                                              margin: const EdgeInsets.symmetric(vertical: 14),
+                                              decoration: BoxDecoration(
+                                                color: _isReadingMode
+                                                    ? const Color(0xFFFFFDF5)
+                                                    : Colors.white,
+                                                borderRadius: BorderRadius.circular(4),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withValues(alpha: 0.12),
+                                                    blurRadius: 18,
+                                                    offset: const Offset(0, 5),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: FittedBox(
+                                                fit: BoxFit.contain,
+                                                alignment: Alignment.topLeft,
+                                                child: SizedBox(
+                                                  width: p.width,
+                                                  height: p.height,
+                                                  child: Stack(
+                                                    clipBehavior: Clip.none,
+                                                    children: [
+                                                      HandwritingCanvas(
+                                                        pageId: p.id,
+                                                        type: pType,
+                                                        properties: pProps,
+                                                        width: p.width,
+                                                        height: p.height,
+                                                        searchMatches: pMatches,
+                                                        activeSearchIndex: pActiveBoxIdx,
+                                                        readOnly: _isReadingMode ||
+                                                            ref.watch(activeToolProvider) == ToolType.pan,
+                                                      ),
+                                                      ...stickyNotes.map(
+                                                        (note) => StickyNoteWidget(note: note),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                )
+                              // ----------------------------------------------------
+                              // MODE 2: LEFT-TO-RIGHT HORIZONTAL PAGE FLIP
+                              // ----------------------------------------------------
+                              : LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    _lastAvailableWidth = constraints.maxWidth;
+                                    _lastAvailableHeight = constraints.maxHeight;
+                                    final isPhone = constraints.maxWidth < 600;
+
+                                    final targetWidth = isPhone
+                                        ? (constraints.maxWidth - 24).clamp(300.0, 750.0)
+                                        : math.min(1150.0, constraints.maxWidth * 0.85);
+
+                                    return PageView.builder(
+                                      controller: _horizontalPageController,
+                                      itemCount: pages.length + 1,
+                                      onPageChanged: (idx) {
+                                        if (idx < pages.length) {
+                                          ref
+                                              .read(currentPageIndexProvider.notifier)
+                                              .setPage(idx + 1);
+                                        }
+                                      },
+                                      itemBuilder: (ctx, idx) {
+                                        if (idx == pages.length) {
+                                          return Center(
+                                            child: Container(
+                                              width: targetWidth,
+                                              margin: const EdgeInsets.only(top: 72, bottom: 96),
+                                              padding: const EdgeInsets.all(32),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? const Color(0x20FFFFFF)
+                                                    : Colors.white.withValues(alpha: 0.65),
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: Colors.grey.withValues(alpha: 0.25),
+                                                ),
+                                              ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.add_circle_outline_rounded,
+                                                    size: 48,
+                                                    color: Colors.blueAccent,
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  const Text(
+                                                    'Swipe Past Last Page to Add Page',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 15,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 16),
+                                                  FilledButton.icon(
+                                                    icon: const Icon(Icons.add),
+                                                    label: const Text('Add Page'),
+                                                    onPressed: _showAddPageDialog,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        }
+
+                                        final p = pages[idx];
+                                        final pageScale = targetWidth / p.width;
+                                        final targetHeight = p.height * pageScale;
+                                        final stickyNotes = ref.watch(pageStickyNotesProvider(p.id));
+                                        final pMatches = allMatches
+                                            .where((m) => m.pageId == p.id)
+                                            .map((m) => m.box)
+                                            .toList();
+                                        final pActiveBoxIdx = (allMatches.isNotEmpty &&
+                                                _activeMatchIndex < allMatches.length &&
+                                                allMatches[_activeMatchIndex].pageId == p.id)
+                                            ? pMatches.indexOf(allMatches[_activeMatchIndex].box)
+                                            : -1;
+
+                                        return Center(
+                                          child: SingleChildScrollView(
+                                            padding: const EdgeInsets.only(top: 72, bottom: 96),
+                                            child: Container(
+                                              width: targetWidth,
+                                              height: targetHeight,
+                                              decoration: BoxDecoration(
+                                                color: _isReadingMode
+                                                    ? const Color(0xFFFFFDF5)
+                                                    : Colors.white,
+                                                borderRadius: BorderRadius.circular(4),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withValues(alpha: 0.12),
+                                                    blurRadius: 18,
+                                                    offset: const Offset(0, 5),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: FittedBox(
+                                                fit: BoxFit.contain,
+                                                alignment: Alignment.topLeft,
+                                                child: SizedBox(
+                                                  width: p.width,
+                                                  height: p.height,
+                                                  child: Stack(
+                                                    clipBehavior: Clip.none,
+                                                    children: [
+                                                      HandwritingCanvas(
+                                                        pageId: p.id,
+                                                        type: p.templateType,
+                                                        properties: p.properties,
+                                                        width: p.width,
+                                                        height: p.height,
+                                                        searchMatches: pMatches,
+                                                        activeSearchIndex: pActiveBoxIdx,
+                                                        readOnly: _isReadingMode ||
+                                                            ref.watch(activeToolProvider) == ToolType.pan,
+                                                      ),
+                                                      ...stickyNotes.map(
+                                                        (note) => StickyNoteWidget(note: note),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         );
                                       },
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.zoom_in_rounded, size: 18),
-                                tooltip: 'Zoom In (Ctrl +)',
-                                onPressed: _zoomIn,
-                              ),
-                              const SizedBox(
-                                height: 24,
-                                child: VerticalDivider(width: 12, thickness: 1),
-                              ),
-                              const SizedBox(width: 8),
+                ),
 
-                              // Duplicate Current Page
-                              if (activePage != null)
-                                IconButton.outlined(
-                                  icon: const Icon(
-                                    Icons.copy_rounded,
-                                    size: 16,
-                                  ),
-                                  tooltip: 'Duplicate Current Page',
-                                  onPressed: () =>
-                                      _duplicateCurrentPage(activePage),
-                                ),
-                              const SizedBox(width: 6),
+                // ========================================================
+                // LAYER 2: THUMBNAILS SIDEBAR (When Opened)
+                // ========================================================
+                if (_showThumbnails)
+                  Positioned(
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    child: SafeArea(
+                      child: PdfThumbnailSidebar(
+                        notebookId: widget.notebookId,
+                        pages: pages,
+                        currentPageIndex: clampedIndex,
+                        onSelectPage: (idx) {
+                          ref.read(currentPageIndexProvider.notifier).setPage(idx);
+                        },
+                        onInsertPage: (pageId, pos) {
+                          _showAddPageDialog(
+                            referencePageId: pageId,
+                            initialPosition: pos,
+                          );
+                        },
+                        onClose: () => setState(() => _showThumbnails = false),
+                      ),
+                    ),
+                  ),
 
-                              // Delete Current Page
-                              if (activePage != null)
-                                IconButton.outlined(
-                                  icon: const Icon(
-                                    Icons.delete_outline_rounded,
-                                    size: 16,
-                                  ),
-                                  tooltip: 'Delete Current Page',
-                                  onPressed: pages.length > 1
-                                      ? () => _deleteCurrentPage(
-                                          activePage,
-                                          pages.length,
-                                        )
-                                      : null,
-                                ),
-                              const SizedBox(width: 12),
-
-                              // Add Page Button
-                              FilledButton.icon(
-                                icon: const Icon(Icons.add, size: 18),
-                                label: const Text('Add Page'),
-                                onPressed: _showAddPageDialog,
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                ),
-                              ),
-                            ],
+                // ========================================================
+                // LAYER 3: IN-DOCUMENT SEARCH BAR OVERLAY
+                // ========================================================
+                if (_showSearch)
+                  Positioned(
+                    top: 60,
+                    left: 20,
+                    right: 20,
+                    child: SafeArea(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          child: PdfDocumentSearchBar(
+                            currentMatchIndex: currentMatchDisplay,
+                            totalMatches: totalMatches,
+                            onSearch: (q) {
+                              setState(() {
+                                _searchQuery = q;
+                                _activeMatchIndex = 0;
+                              });
+                              ref
+                                  .read(inDocumentSearchQueryProvider.notifier)
+                                  .setQuery(q);
+                              if (q.isNotEmpty && allMatches.isNotEmpty) {
+                                ref
+                                    .read(currentPageIndexProvider.notifier)
+                                    .setPage(allMatches[0].pageNumber);
+                              }
+                            },
+                            onNextMatch: () {
+                              if (allMatches.isEmpty) return;
+                              setState(() {
+                                _activeMatchIndex =
+                                    (_activeMatchIndex + 1) % allMatches.length;
+                                final targetPage =
+                                    allMatches[_activeMatchIndex].pageNumber;
+                                if (targetPage != clampedIndex) {
+                                  ref
+                                      .read(currentPageIndexProvider.notifier)
+                                      .setPage(targetPage);
+                                }
+                              });
+                            },
+                            onPreviousMatch: () {
+                              if (allMatches.isEmpty) return;
+                              setState(() {
+                                _activeMatchIndex =
+                                    (_activeMatchIndex - 1 + allMatches.length) %
+                                    allMatches.length;
+                                final targetPage =
+                                    allMatches[_activeMatchIndex].pageNumber;
+                                if (targetPage != clampedIndex) {
+                                  ref
+                                      .read(currentPageIndexProvider.notifier)
+                                      .setPage(targetPage);
+                                }
+                              });
+                            },
+                            onClose: () {
+                              setState(() {
+                                _showSearch = false;
+                                _searchQuery = '';
+                                _activeMatchIndex = 0;
+                              });
+                              ref
+                                  .read(inDocumentSearchQueryProvider.notifier)
+                                  .clear();
+                            },
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+
+                // ========================================================
+                // LAYER 4: AUDIO RECORDING BAR OVERLAY
+                // ========================================================
+                if (_showAudioBar)
+                  Positioned(
+                    top: 60,
+                    left: 20,
+                    right: 20,
+                    child: SafeArea(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 500),
+                          child: AudioRecordingBar(
+                            notebookId: widget.notebookId,
+                            activePageId: activePage?.id,
+                            onClose: () => setState(() => _showAudioBar = false),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // ========================================================
+                // LAYER 5: FLOATING CHROME WITH AUTO-FADE WHILE WRITING
+                // ========================================================
+                AnimatedOpacity(
+                  opacity: _isWriting ? 0.25 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: IgnorePointer(
+                    ignoring: _isWriting,
+                    child: Stack(
+                      children: [
+                        // Focus / Reading Mode: Minimal Exit Button
+                        if (_isReadingMode)
+                          Positioned(
+                            top: 14,
+                            left: 16,
+                            child: SafeArea(
+                              child: CanvasFloatingPill(
+                                child: TextButton.icon(
+                                  icon: const Icon(Icons.edit_note_rounded, size: 20),
+                                  label: const Text('Exit Focus Mode'),
+                                  onPressed: () =>
+                                      setState(() => _isReadingMode = false),
+                                ),
+                              ),
+                            ),
+                          )
+                        else ...[
+                          // Top Navigation Bar (Top-Left Pill & Top-Right Pill)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            child: SafeArea(
+                              bottom: false,
+                              child: CanvasTopNavBar(
+                                title: _searchQuery.isNotEmpty
+                                    ? '${notebook.title} (Search: "$_searchQuery")'
+                                    : notebook.title,
+                                syncStatus: notebook.syncStatus,
+                                isReadingMode: _isReadingMode,
+                                canUndo: activePage != null &&
+                                    ref.watch(canUndoProvider(activePage.id)),
+                                canRedo: activePage != null &&
+                                    ref.watch(canRedoProvider(activePage.id)),
+                                currentZoomPercent: (_transformationController.value
+                                            .getMaxScaleOnAxis() *
+                                        100)
+                                    .round(),
+                                isContinuousScroll: _isContinuousScroll,
+                                currentTemplate: activeType,
+                                onBack: () async {
+                                  await _strokesNotifier?.flushPendingStrokes();
+                                  if (context.mounted) {
+                                    context.go(RouteNames.dashboard);
+                                  }
+                                },
+                                onEditTitle: () => _openRenameDialog(notebook),
+                                onUndo: () {
+                                  if (activePage != null) {
+                                    ref
+                                        .read(strokesNotifierProvider.notifier)
+                                        .undo(activePage.id);
+                                  }
+                                },
+                                onRedo: () {
+                                  if (activePage != null) {
+                                    ref
+                                        .read(strokesNotifierProvider.notifier)
+                                        .redo(activePage.id);
+                                  }
+                                },
+                                onResetZoom: _resetZoom,
+                                onToggleScrollMode: () {
+                                  setState(
+                                    () => _isContinuousScroll = !_isContinuousScroll,
+                                  );
+                                },
+                                onSelectTemplate: (t) async {
+                                  if (activePage != null) {
+                                    await ref
+                                        .read(notebookPagesProvider.notifier)
+                                        .changePageTemplate(
+                                          widget.notebookId,
+                                          activePage.id,
+                                          t.id,
+                                          PaperProperties.defaultFor(t),
+                                        );
+                                  }
+                                },
+                                onOpenTemplateCustomizer: () {
+                                  if (activePage != null) {
+                                    _openTemplateSettings(
+                                      activePage.id,
+                                      activeType,
+                                      activeProps,
+                                    );
+                                  }
+                                },
+                                onExport: () {
+                                  ExportNotebookDialog.show(
+                                    context,
+                                    notebook: notebook,
+                                    pages: pages,
+                                    activePage: activePage,
+                                  );
+                                },
+                                onOverflowAction: (act) => _onOverflowAction(
+                                  act,
+                                  notebook,
+                                  pages,
+                                  activePage,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Top-Center Minimal Floating Toolbar (Desktop & Tablet >= 600px)
+                          if (activePage != null &&
+                              MediaQuery.of(context).size.width >= 600)
+                            Positioned(
+                              top: 8,
+                              left: 0,
+                              right: 0,
+                              child: SafeArea(
+                                bottom: false,
+                                child: Center(
+                                  child: CanvasMinimalToolbar(
+                                    pageId: activePage.id,
+                                    onAddStickyNote: _handleAddStickyNote,
+                                    onImportImage: _handleImportImage,
+                                    onTakePhoto: _handleTakePhoto,
+                                    onInsertMath: _handleInsertMath,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Bottom Floating Toolbar (Phone < 600px)
+                          if (activePage != null &&
+                              MediaQuery.of(context).size.width < 600)
+                            Positioned(
+                              bottom: 16,
+                              left: 0,
+                              right: 0,
+                              child: SafeArea(
+                                top: false,
+                                child: Center(
+                                  child: CanvasMinimalToolbar(
+                                    pageId: activePage.id,
+                                    onAddStickyNote: _handleAddStickyNote,
+                                    onImportImage: _handleImportImage,
+                                    onTakePhoto: _handleTakePhoto,
+                                    onInsertMath: _handleInsertMath,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Bottom-Right Page Pill: [ 1 / 3 | + ]
+                          Positioned(
+                            bottom: 16,
+                            right: 16,
+                            child: SafeArea(
+                              top: false,
+                              child: CanvasPagePill(
+                                currentPage: clampedIndex,
+                                totalPages: pages.length,
+                                pages: pages,
+                                onAddPage: _handleQuickAddPage,
+                                onSelectPage: (idx) {
+                                  ref
+                                      .read(currentPageIndexProvider.notifier)
+                                      .setPage(idx);
+                                  if (!_isContinuousScroll &&
+                                      _horizontalPageController.hasClients) {
+                                    _horizontalPageController.jumpToPage(idx - 1);
+                                  }
+                                },
+                                onDuplicatePage: (p) => _duplicateCurrentPage(p),
+                                onDeletePage: (p) =>
+                                    _deleteCurrentPage(p, pages.length),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

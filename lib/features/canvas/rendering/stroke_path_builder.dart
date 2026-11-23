@@ -455,7 +455,8 @@ class StrokePathBuilder {
     if (points.isEmpty) return path;
 
     if (points.length == 1) {
-      path.addOval(Rect.fromCircle(center: points.first.offset, radius: 0.5));
+      path.moveTo(points.first.x, points.first.y);
+      path.lineTo(points.first.x + 0.01, points.first.y);
       return path;
     }
 

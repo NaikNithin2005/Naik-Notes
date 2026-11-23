@@ -273,9 +273,11 @@ class Stroke {
   ) {
     if (points.isEmpty) return [];
 
+    final effectiveRadius = radius + width / 2.0;
+
     // Fast bounding box intersection test
-    final eraserBBox = Rect.fromCircle(center: eraserCenter, radius: radius);
-    if (!boundingBox.inflate(radius).overlaps(eraserBBox)) {
+    final eraserBBox = Rect.fromCircle(center: eraserCenter, radius: effectiveRadius);
+    if (!boundingBox.inflate(effectiveRadius).overlaps(eraserBBox)) {
       return [this];
     }
 
@@ -286,7 +288,7 @@ class Stroke {
     for (int i = 0; i < points.length; i++) {
       final pt = points[i];
       final dist = (pt.offset - eraserCenter).distance;
-      final insideCircle = dist <= radius;
+      final insideCircle = dist <= effectiveRadius;
 
       if (insideCircle) {
         didIntersect = true;
@@ -297,7 +299,7 @@ class Stroke {
       } else {
         if (currentSegment.isNotEmpty && i > 0) {
           final pPrev = points[i - 1].offset;
-          if (_distanceToSegment(eraserCenter, pPrev, pt.offset) <= radius) {
+          if (_distanceToSegment(eraserCenter, pPrev, pt.offset) <= effectiveRadius) {
             didIntersect = true;
             if (currentSegment.length >= 2) {
               remainingSegments.add(currentSegment);
@@ -317,7 +319,7 @@ class Stroke {
               points[i].offset,
               points[i + 1].offset,
             ) <=
-            radius) {
+            effectiveRadius) {
           didIntersect = true;
           break;
         }

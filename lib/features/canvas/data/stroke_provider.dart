@@ -220,10 +220,10 @@ enum EraserMode {
 
 class EraserModeNotifier extends Notifier<EraserMode> {
   @override
-  EraserMode build() => EraserMode.object;
+  EraserMode build() => EraserMode.partial;
   void setMode(EraserMode mode) => state = mode;
   void toggle() => state = state == EraserMode.partial
-      ? EraserMode.object
+      ? EraserMode.stroke
       : EraserMode.partial;
 }
 
@@ -1299,6 +1299,66 @@ class StrokesNotifier extends Notifier<StrokesState> {
     );
 
     await _repo.saveStrokes(newStrokes);
+  }
+
+  /// Recolors currently selected strokes to [newColor].
+  Future<void> recolorSelected(String pageId, Color newColor) async {
+    final selectedIds = state.selectedStrokeIds[pageId] ?? {};
+    if (selectedIds.isEmpty) return;
+
+    final currentList = state.pageStrokes[pageId] ?? [];
+    final beforeStrokes = <Stroke>[];
+    final afterStrokes = <Stroke>[];
+    final updatedList = <Stroke>[];
+
+    for (final s in currentList) {
+      if (selectedIds.contains(s.id)) {
+        beforeStrokes.add(s);
+        final recolored = s.copyWith(
+          colorValue: newColor.toARGB32(),
+          revision: s.revision + 1,
+        );
+        afterStrokes.add(recolored);
+        updatedList.add(recolored);
+      } else {
+        updatedList.add(s);
+      }
+    }
+
+    final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
+    updatedMap[pageId] = updatedList;
+
+    final currentUndo = List<StrokeAction>.from(state.undoStacks[pageId] ?? []);
+    _pushAction(
+      currentUndo,
+      TransformStrokesAction(before: beforeStrokes, after: afterStrokes),
+    );
+
+    final updatedUndo = Map<String, List<StrokeAction>>.from(state.undoStacks);
+    updatedUndo[pageId] = currentUndo;
+
+    state = state.copyWith(pageStrokes: updatedMap, undoStacks: updatedUndo);
+    await _repo.saveStrokes(afterStrokes);
+  }
+
+  /// Changes z-order of selected strokes (bring to front or send to back).
+  Future<void> reorderSelected(String pageId, {required bool bringToFront}) async {
+    final selectedIds = state.selectedStrokeIds[pageId] ?? {};
+    if (selectedIds.isEmpty) return;
+
+    final currentList = List<Stroke>.from(state.pageStrokes[pageId] ?? []);
+    final selected = currentList.where((s) => selectedIds.contains(s.id)).toList();
+    final nonSelected = currentList.where((s) => !selectedIds.contains(s.id)).toList();
+
+    final reordered = bringToFront
+        ? [...nonSelected, ...selected]
+        : [...selected, ...nonSelected];
+
+    final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
+    updatedMap[pageId] = reordered;
+
+    state = state.copyWith(pageStrokes: updatedMap);
+    await _repo.saveStrokes(reordered);
   }
 
   /// Undoes the last stroke action on [pageId].

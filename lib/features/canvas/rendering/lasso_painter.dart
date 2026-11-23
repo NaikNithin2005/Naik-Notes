@@ -50,7 +50,7 @@ class LassoPainter extends CustomPainter {
       final boxPath = Path()..addRect(box);
       _drawDashedPath(canvas, boxPath, borderPaint, dashLength: 6, dashGap: 4);
 
-      // Corner handles for scaling/rotating
+      // Corner handles for scaling/resizing
       final handlePaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
@@ -72,6 +72,18 @@ class LassoPainter extends CustomPainter {
         canvas.drawCircle(corner, handleRadius, handlePaint);
         canvas.drawCircle(corner, handleRadius, handleBorderPaint);
       }
+
+      // Top Rotation Handle (extends 24px above top center)
+      final rotateArmStart = box.topCenter;
+      final rotateHandlePos = Offset(box.topCenter.dx, box.topCenter.dy - 24.0);
+      final armPaint = Paint()
+        ..color = const Color(0xFF0284C7)
+        ..strokeWidth = 1.5;
+      canvas.drawLine(rotateArmStart, rotateHandlePos, armPaint);
+      canvas.drawCircle(rotateHandlePos, handleRadius + 1.0, handlePaint);
+      canvas.drawCircle(rotateHandlePos, handleRadius + 1.0, handleBorderPaint);
+      // Small rotation indicator dot in center
+      canvas.drawCircle(rotateHandlePos, 2.0, Paint()..color = const Color(0xFF0284C7));
     }
   }
 
