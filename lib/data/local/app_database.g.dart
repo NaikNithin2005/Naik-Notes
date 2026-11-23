@@ -606,6 +606,51 @@ class $NotebooksTableTable extends NotebooksTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _coverDriveIdMeta = const VerificationMeta(
+    'coverDriveId',
+  );
+  @override
+  late final GeneratedColumn<String> coverDriveId = GeneratedColumn<String>(
+    'cover_drive_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverFileNameMeta = const VerificationMeta(
+    'coverFileName',
+  );
+  @override
+  late final GeneratedColumn<String> coverFileName = GeneratedColumn<String>(
+    'cover_file_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverUpdatedAtMeta = const VerificationMeta(
+    'coverUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> coverUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'cover_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _coverImageBase64Meta = const VerificationMeta(
+    'coverImageBase64',
+  );
+  @override
+  late final GeneratedColumn<String> coverImageBase64 = GeneratedColumn<String>(
+    'cover_image_base64',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _paperTemplateIdMeta = const VerificationMeta(
     'paperTemplateId',
   );
@@ -797,6 +842,10 @@ class $NotebooksTableTable extends NotebooksTable
     coverId,
     coverColorHex,
     coverImageUrl,
+    coverDriveId,
+    coverFileName,
+    coverUpdatedAt,
+    coverImageBase64,
     paperTemplateId,
     orientation,
     pageSize,
@@ -880,6 +929,42 @@ class $NotebooksTableTable extends NotebooksTable
         coverImageUrl.isAcceptableOrUnknown(
           data['cover_image_url']!,
           _coverImageUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_drive_id')) {
+      context.handle(
+        _coverDriveIdMeta,
+        coverDriveId.isAcceptableOrUnknown(
+          data['cover_drive_id']!,
+          _coverDriveIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_file_name')) {
+      context.handle(
+        _coverFileNameMeta,
+        coverFileName.isAcceptableOrUnknown(
+          data['cover_file_name']!,
+          _coverFileNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_updated_at')) {
+      context.handle(
+        _coverUpdatedAtMeta,
+        coverUpdatedAt.isAcceptableOrUnknown(
+          data['cover_updated_at']!,
+          _coverUpdatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_image_base64')) {
+      context.handle(
+        _coverImageBase64Meta,
+        coverImageBase64.isAcceptableOrUnknown(
+          data['cover_image_base64']!,
+          _coverImageBase64Meta,
         ),
       );
     }
@@ -1027,6 +1112,22 @@ class $NotebooksTableTable extends NotebooksTable
         DriftSqlType.string,
         data['${effectivePrefix}cover_image_url'],
       ),
+      coverDriveId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_drive_id'],
+      ),
+      coverFileName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_file_name'],
+      ),
+      coverUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cover_updated_at'],
+      ),
+      coverImageBase64: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_image_base64'],
+      ),
       paperTemplateId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}paper_template_id'],
@@ -1106,6 +1207,10 @@ class NotebooksTableData extends DataClass
   final String coverId;
   final String coverColorHex;
   final String? coverImageUrl;
+  final String? coverDriveId;
+  final String? coverFileName;
+  final DateTime? coverUpdatedAt;
+  final String? coverImageBase64;
   final String paperTemplateId;
   final String orientation;
   final String pageSize;
@@ -1130,6 +1235,10 @@ class NotebooksTableData extends DataClass
     required this.coverId,
     required this.coverColorHex,
     this.coverImageUrl,
+    this.coverDriveId,
+    this.coverFileName,
+    this.coverUpdatedAt,
+    this.coverImageBase64,
     required this.paperTemplateId,
     required this.orientation,
     required this.pageSize,
@@ -1160,6 +1269,18 @@ class NotebooksTableData extends DataClass
     map['cover_color_hex'] = Variable<String>(coverColorHex);
     if (!nullToAbsent || coverImageUrl != null) {
       map['cover_image_url'] = Variable<String>(coverImageUrl);
+    }
+    if (!nullToAbsent || coverDriveId != null) {
+      map['cover_drive_id'] = Variable<String>(coverDriveId);
+    }
+    if (!nullToAbsent || coverFileName != null) {
+      map['cover_file_name'] = Variable<String>(coverFileName);
+    }
+    if (!nullToAbsent || coverUpdatedAt != null) {
+      map['cover_updated_at'] = Variable<DateTime>(coverUpdatedAt);
+    }
+    if (!nullToAbsent || coverImageBase64 != null) {
+      map['cover_image_base64'] = Variable<String>(coverImageBase64);
     }
     map['paper_template_id'] = Variable<String>(paperTemplateId);
     map['orientation'] = Variable<String>(orientation);
@@ -1201,6 +1322,18 @@ class NotebooksTableData extends DataClass
       coverImageUrl: coverImageUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(coverImageUrl),
+      coverDriveId: coverDriveId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverDriveId),
+      coverFileName: coverFileName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverFileName),
+      coverUpdatedAt: coverUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverUpdatedAt),
+      coverImageBase64: coverImageBase64 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverImageBase64),
       paperTemplateId: Value(paperTemplateId),
       orientation: Value(orientation),
       pageSize: Value(pageSize),
@@ -1241,6 +1374,10 @@ class NotebooksTableData extends DataClass
       coverId: serializer.fromJson<String>(json['coverId']),
       coverColorHex: serializer.fromJson<String>(json['coverColorHex']),
       coverImageUrl: serializer.fromJson<String?>(json['coverImageUrl']),
+      coverDriveId: serializer.fromJson<String?>(json['coverDriveId']),
+      coverFileName: serializer.fromJson<String?>(json['coverFileName']),
+      coverUpdatedAt: serializer.fromJson<DateTime?>(json['coverUpdatedAt']),
+      coverImageBase64: serializer.fromJson<String?>(json['coverImageBase64']),
       paperTemplateId: serializer.fromJson<String>(json['paperTemplateId']),
       orientation: serializer.fromJson<String>(json['orientation']),
       pageSize: serializer.fromJson<String>(json['pageSize']),
@@ -1270,6 +1407,10 @@ class NotebooksTableData extends DataClass
       'coverId': serializer.toJson<String>(coverId),
       'coverColorHex': serializer.toJson<String>(coverColorHex),
       'coverImageUrl': serializer.toJson<String?>(coverImageUrl),
+      'coverDriveId': serializer.toJson<String?>(coverDriveId),
+      'coverFileName': serializer.toJson<String?>(coverFileName),
+      'coverUpdatedAt': serializer.toJson<DateTime?>(coverUpdatedAt),
+      'coverImageBase64': serializer.toJson<String?>(coverImageBase64),
       'paperTemplateId': serializer.toJson<String>(paperTemplateId),
       'orientation': serializer.toJson<String>(orientation),
       'pageSize': serializer.toJson<String>(pageSize),
@@ -1297,6 +1438,10 @@ class NotebooksTableData extends DataClass
     String? coverId,
     String? coverColorHex,
     Value<String?> coverImageUrl = const Value.absent(),
+    Value<String?> coverDriveId = const Value.absent(),
+    Value<String?> coverFileName = const Value.absent(),
+    Value<DateTime?> coverUpdatedAt = const Value.absent(),
+    Value<String?> coverImageBase64 = const Value.absent(),
     String? paperTemplateId,
     String? orientation,
     String? pageSize,
@@ -1323,6 +1468,16 @@ class NotebooksTableData extends DataClass
     coverImageUrl: coverImageUrl.present
         ? coverImageUrl.value
         : this.coverImageUrl,
+    coverDriveId: coverDriveId.present ? coverDriveId.value : this.coverDriveId,
+    coverFileName: coverFileName.present
+        ? coverFileName.value
+        : this.coverFileName,
+    coverUpdatedAt: coverUpdatedAt.present
+        ? coverUpdatedAt.value
+        : this.coverUpdatedAt,
+    coverImageBase64: coverImageBase64.present
+        ? coverImageBase64.value
+        : this.coverImageBase64,
     paperTemplateId: paperTemplateId ?? this.paperTemplateId,
     orientation: orientation ?? this.orientation,
     pageSize: pageSize ?? this.pageSize,
@@ -1355,6 +1510,18 @@ class NotebooksTableData extends DataClass
       coverImageUrl: data.coverImageUrl.present
           ? data.coverImageUrl.value
           : this.coverImageUrl,
+      coverDriveId: data.coverDriveId.present
+          ? data.coverDriveId.value
+          : this.coverDriveId,
+      coverFileName: data.coverFileName.present
+          ? data.coverFileName.value
+          : this.coverFileName,
+      coverUpdatedAt: data.coverUpdatedAt.present
+          ? data.coverUpdatedAt.value
+          : this.coverUpdatedAt,
+      coverImageBase64: data.coverImageBase64.present
+          ? data.coverImageBase64.value
+          : this.coverImageBase64,
       paperTemplateId: data.paperTemplateId.present
           ? data.paperTemplateId.value
           : this.paperTemplateId,
@@ -1398,6 +1565,10 @@ class NotebooksTableData extends DataClass
           ..write('coverId: $coverId, ')
           ..write('coverColorHex: $coverColorHex, ')
           ..write('coverImageUrl: $coverImageUrl, ')
+          ..write('coverDriveId: $coverDriveId, ')
+          ..write('coverFileName: $coverFileName, ')
+          ..write('coverUpdatedAt: $coverUpdatedAt, ')
+          ..write('coverImageBase64: $coverImageBase64, ')
           ..write('paperTemplateId: $paperTemplateId, ')
           ..write('orientation: $orientation, ')
           ..write('pageSize: $pageSize, ')
@@ -1427,6 +1598,10 @@ class NotebooksTableData extends DataClass
     coverId,
     coverColorHex,
     coverImageUrl,
+    coverDriveId,
+    coverFileName,
+    coverUpdatedAt,
+    coverImageBase64,
     paperTemplateId,
     orientation,
     pageSize,
@@ -1455,6 +1630,10 @@ class NotebooksTableData extends DataClass
           other.coverId == this.coverId &&
           other.coverColorHex == this.coverColorHex &&
           other.coverImageUrl == this.coverImageUrl &&
+          other.coverDriveId == this.coverDriveId &&
+          other.coverFileName == this.coverFileName &&
+          other.coverUpdatedAt == this.coverUpdatedAt &&
+          other.coverImageBase64 == this.coverImageBase64 &&
           other.paperTemplateId == this.paperTemplateId &&
           other.orientation == this.orientation &&
           other.pageSize == this.pageSize &&
@@ -1481,6 +1660,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
   final Value<String> coverId;
   final Value<String> coverColorHex;
   final Value<String?> coverImageUrl;
+  final Value<String?> coverDriveId;
+  final Value<String?> coverFileName;
+  final Value<DateTime?> coverUpdatedAt;
+  final Value<String?> coverImageBase64;
   final Value<String> paperTemplateId;
   final Value<String> orientation;
   final Value<String> pageSize;
@@ -1506,6 +1689,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     this.coverId = const Value.absent(),
     this.coverColorHex = const Value.absent(),
     this.coverImageUrl = const Value.absent(),
+    this.coverDriveId = const Value.absent(),
+    this.coverFileName = const Value.absent(),
+    this.coverUpdatedAt = const Value.absent(),
+    this.coverImageBase64 = const Value.absent(),
     this.paperTemplateId = const Value.absent(),
     this.orientation = const Value.absent(),
     this.pageSize = const Value.absent(),
@@ -1532,6 +1719,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     this.coverId = const Value.absent(),
     this.coverColorHex = const Value.absent(),
     this.coverImageUrl = const Value.absent(),
+    this.coverDriveId = const Value.absent(),
+    this.coverFileName = const Value.absent(),
+    this.coverUpdatedAt = const Value.absent(),
+    this.coverImageBase64 = const Value.absent(),
     this.paperTemplateId = const Value.absent(),
     this.orientation = const Value.absent(),
     this.pageSize = const Value.absent(),
@@ -1561,6 +1752,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Expression<String>? coverId,
     Expression<String>? coverColorHex,
     Expression<String>? coverImageUrl,
+    Expression<String>? coverDriveId,
+    Expression<String>? coverFileName,
+    Expression<DateTime>? coverUpdatedAt,
+    Expression<String>? coverImageBase64,
     Expression<String>? paperTemplateId,
     Expression<String>? orientation,
     Expression<String>? pageSize,
@@ -1587,6 +1782,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       if (coverId != null) 'cover_id': coverId,
       if (coverColorHex != null) 'cover_color_hex': coverColorHex,
       if (coverImageUrl != null) 'cover_image_url': coverImageUrl,
+      if (coverDriveId != null) 'cover_drive_id': coverDriveId,
+      if (coverFileName != null) 'cover_file_name': coverFileName,
+      if (coverUpdatedAt != null) 'cover_updated_at': coverUpdatedAt,
+      if (coverImageBase64 != null) 'cover_image_base64': coverImageBase64,
       if (paperTemplateId != null) 'paper_template_id': paperTemplateId,
       if (orientation != null) 'orientation': orientation,
       if (pageSize != null) 'page_size': pageSize,
@@ -1615,6 +1814,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     Value<String>? coverId,
     Value<String>? coverColorHex,
     Value<String?>? coverImageUrl,
+    Value<String?>? coverDriveId,
+    Value<String?>? coverFileName,
+    Value<DateTime?>? coverUpdatedAt,
+    Value<String?>? coverImageBase64,
     Value<String>? paperTemplateId,
     Value<String>? orientation,
     Value<String>? pageSize,
@@ -1641,6 +1844,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
       coverId: coverId ?? this.coverId,
       coverColorHex: coverColorHex ?? this.coverColorHex,
       coverImageUrl: coverImageUrl ?? this.coverImageUrl,
+      coverDriveId: coverDriveId ?? this.coverDriveId,
+      coverFileName: coverFileName ?? this.coverFileName,
+      coverUpdatedAt: coverUpdatedAt ?? this.coverUpdatedAt,
+      coverImageBase64: coverImageBase64 ?? this.coverImageBase64,
       paperTemplateId: paperTemplateId ?? this.paperTemplateId,
       orientation: orientation ?? this.orientation,
       pageSize: pageSize ?? this.pageSize,
@@ -1686,6 +1893,18 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
     }
     if (coverImageUrl.present) {
       map['cover_image_url'] = Variable<String>(coverImageUrl.value);
+    }
+    if (coverDriveId.present) {
+      map['cover_drive_id'] = Variable<String>(coverDriveId.value);
+    }
+    if (coverFileName.present) {
+      map['cover_file_name'] = Variable<String>(coverFileName.value);
+    }
+    if (coverUpdatedAt.present) {
+      map['cover_updated_at'] = Variable<DateTime>(coverUpdatedAt.value);
+    }
+    if (coverImageBase64.present) {
+      map['cover_image_base64'] = Variable<String>(coverImageBase64.value);
     }
     if (paperTemplateId.present) {
       map['paper_template_id'] = Variable<String>(paperTemplateId.value);
@@ -1749,6 +1968,10 @@ class NotebooksTableCompanion extends UpdateCompanion<NotebooksTableData> {
           ..write('coverId: $coverId, ')
           ..write('coverColorHex: $coverColorHex, ')
           ..write('coverImageUrl: $coverImageUrl, ')
+          ..write('coverDriveId: $coverDriveId, ')
+          ..write('coverFileName: $coverFileName, ')
+          ..write('coverUpdatedAt: $coverUpdatedAt, ')
+          ..write('coverImageBase64: $coverImageBase64, ')
           ..write('paperTemplateId: $paperTemplateId, ')
           ..write('orientation: $orientation, ')
           ..write('pageSize: $pageSize, ')
@@ -11367,6 +11590,10 @@ typedef $$NotebooksTableTableCreateCompanionBuilder =
       Value<String> coverId,
       Value<String> coverColorHex,
       Value<String?> coverImageUrl,
+      Value<String?> coverDriveId,
+      Value<String?> coverFileName,
+      Value<DateTime?> coverUpdatedAt,
+      Value<String?> coverImageBase64,
       Value<String> paperTemplateId,
       Value<String> orientation,
       Value<String> pageSize,
@@ -11394,6 +11621,10 @@ typedef $$NotebooksTableTableUpdateCompanionBuilder =
       Value<String> coverId,
       Value<String> coverColorHex,
       Value<String?> coverImageUrl,
+      Value<String?> coverDriveId,
+      Value<String?> coverFileName,
+      Value<DateTime?> coverUpdatedAt,
+      Value<String?> coverImageBase64,
       Value<String> paperTemplateId,
       Value<String> orientation,
       Value<String> pageSize,
@@ -11582,6 +11813,26 @@ class $$NotebooksTableTableFilterComposer
 
   ColumnFilters<String> get coverImageUrl => $composableBuilder(
     column: $table.coverImageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverDriveId => $composableBuilder(
+    column: $table.coverDriveId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverFileName => $composableBuilder(
+    column: $table.coverFileName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get coverUpdatedAt => $composableBuilder(
+    column: $table.coverUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverImageBase64 => $composableBuilder(
+    column: $table.coverImageBase64,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11835,6 +12086,26 @@ class $$NotebooksTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverDriveId => $composableBuilder(
+    column: $table.coverDriveId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverFileName => $composableBuilder(
+    column: $table.coverFileName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get coverUpdatedAt => $composableBuilder(
+    column: $table.coverUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverImageBase64 => $composableBuilder(
+    column: $table.coverImageBase64,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get paperTemplateId => $composableBuilder(
     column: $table.paperTemplateId,
     builder: (column) => ColumnOrderings(column),
@@ -11947,6 +12218,26 @@ class $$NotebooksTableTableAnnotationComposer
 
   GeneratedColumn<String> get coverImageUrl => $composableBuilder(
     column: $table.coverImageUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverDriveId => $composableBuilder(
+    column: $table.coverDriveId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverFileName => $composableBuilder(
+    column: $table.coverFileName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get coverUpdatedAt => $composableBuilder(
+    column: $table.coverUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverImageBase64 => $composableBuilder(
+    column: $table.coverImageBase64,
     builder: (column) => column,
   );
 
@@ -12182,6 +12473,10 @@ class $$NotebooksTableTableTableManager
                 Value<String> coverId = const Value.absent(),
                 Value<String> coverColorHex = const Value.absent(),
                 Value<String?> coverImageUrl = const Value.absent(),
+                Value<String?> coverDriveId = const Value.absent(),
+                Value<String?> coverFileName = const Value.absent(),
+                Value<DateTime?> coverUpdatedAt = const Value.absent(),
+                Value<String?> coverImageBase64 = const Value.absent(),
                 Value<String> paperTemplateId = const Value.absent(),
                 Value<String> orientation = const Value.absent(),
                 Value<String> pageSize = const Value.absent(),
@@ -12207,6 +12502,10 @@ class $$NotebooksTableTableTableManager
                 coverId: coverId,
                 coverColorHex: coverColorHex,
                 coverImageUrl: coverImageUrl,
+                coverDriveId: coverDriveId,
+                coverFileName: coverFileName,
+                coverUpdatedAt: coverUpdatedAt,
+                coverImageBase64: coverImageBase64,
                 paperTemplateId: paperTemplateId,
                 orientation: orientation,
                 pageSize: pageSize,
@@ -12234,6 +12533,10 @@ class $$NotebooksTableTableTableManager
                 Value<String> coverId = const Value.absent(),
                 Value<String> coverColorHex = const Value.absent(),
                 Value<String?> coverImageUrl = const Value.absent(),
+                Value<String?> coverDriveId = const Value.absent(),
+                Value<String?> coverFileName = const Value.absent(),
+                Value<DateTime?> coverUpdatedAt = const Value.absent(),
+                Value<String?> coverImageBase64 = const Value.absent(),
                 Value<String> paperTemplateId = const Value.absent(),
                 Value<String> orientation = const Value.absent(),
                 Value<String> pageSize = const Value.absent(),
@@ -12259,6 +12562,10 @@ class $$NotebooksTableTableTableManager
                 coverId: coverId,
                 coverColorHex: coverColorHex,
                 coverImageUrl: coverImageUrl,
+                coverDriveId: coverDriveId,
+                coverFileName: coverFileName,
+                coverUpdatedAt: coverUpdatedAt,
+                coverImageBase64: coverImageBase64,
                 paperTemplateId: paperTemplateId,
                 orientation: orientation,
                 pageSize: pageSize,

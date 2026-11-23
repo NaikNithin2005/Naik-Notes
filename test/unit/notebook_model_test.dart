@@ -81,5 +81,61 @@ void main() {
       expect(updated.pageCount, 5);
       expect(updated.coverId, original.coverId);
     });
+
+    test('serializes and deserializes Google Drive cover attributes', () {
+      final coverTime = DateTime(2026, 11, 20, 10, 30, 0);
+      final nb = Notebook(
+        id: 'nb-cover-test',
+        ownerId: 'user-cover',
+        title: 'Biology Notes',
+        coverId: 'custom',
+        coverDriveId: 'drive_file_id_xyz789',
+        coverFileName: 'cover_biology.jpg',
+        coverUpdatedAt: coverTime,
+        coverImageUrl: 'C:\\Users\\test\\covers\\legacy.jpg',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final json = nb.toJson();
+      expect(json['coverDriveId'], 'drive_file_id_xyz789');
+      expect(json['coverFileName'], 'cover_biology.jpg');
+      expect(json['coverUpdatedAt'], coverTime.toIso8601String());
+      expect(json['coverImageUrl'], 'C:\\Users\\test\\covers\\legacy.jpg');
+
+      final deserialized = Notebook.fromJson(json);
+      expect(deserialized.coverDriveId, 'drive_file_id_xyz789');
+      expect(deserialized.coverFileName, 'cover_biology.jpg');
+      expect(deserialized.coverUpdatedAt, coverTime);
+
+      // Test clearCoverDriveId in copyWith
+      final cleared = deserialized.copyWith(clearCoverDriveId: true);
+      expect(cleared.coverDriveId, isNull);
+      expect(cleared.coverFileName, isNull);
+      expect(cleared.coverUpdatedAt, isNull);
+    });
+
+    test('serializes, deserializes and clears Firestore coverImageBase64', () {
+      const sampleBase64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBD...testBase64Payload==';
+      final nb = Notebook(
+        id: 'nb-base64-test',
+        ownerId: 'user-base64',
+        title: 'Physics Notes',
+        coverId: 'custom',
+        coverImageBase64: sampleBase64,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final json = nb.toJson();
+      expect(json['coverImageBase64'], sampleBase64);
+
+      final deserialized = Notebook.fromJson(json);
+      expect(deserialized.coverImageBase64, sampleBase64);
+
+      // Test clearCoverImageBase64 in copyWith
+      final cleared = deserialized.copyWith(clearCoverImageBase64: true);
+      expect(cleared.coverImageBase64, isNull);
+    });
   });
 }

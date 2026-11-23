@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naik_notes/data/local/database_provider.dart';
@@ -5,8 +6,11 @@ import 'package:naik_notes/data/models/shape_model.dart';
 import 'package:naik_notes/data/models/stroke_model.dart';
 import 'package:naik_notes/data/repositories/stroke_repository.dart';
 import 'package:naik_notes/features/audio/data/audio_provider.dart';
+import 'package:naik_notes/features/authentication/data/auth_provider.dart';
+import 'package:naik_notes/features/notebooks/data/page_provider.dart';
 import 'package:naik_notes/features/pdf/data/sticky_note_provider.dart';
 import 'package:naik_notes/features/storage/data/google_drive_provider.dart';
+import 'package:naik_notes/features/sync/data/sync_provider.dart';
 import 'package:naik_notes/services/recognition/handwriting_recognition_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -597,6 +601,10 @@ class StrokesNotifier extends Notifier<StrokesState> {
   final _uuid = const Uuid();
   static const int maxUndoHistory = 50;
 
+  final Map<String, List<Stroke>> _pendingCloudStrokes = {};
+  final Map<String, Timer> _strokeDebounceTimers = {};
+  final Map<String, StreamSubscription> _strokeSubscriptions = {};
+
   void _pushAction(List<StrokeAction> stack, StrokeAction action) {
     stack.add(action);
     if (stack.length > maxUndoHistory) {
@@ -606,18 +614,128 @@ class StrokesNotifier extends Notifier<StrokesState> {
 
   @override
   StrokesState build() {
+    ref.onDispose(() {
+      for (final timer in _strokeDebounceTimers.values) {
+        timer.cancel();
+      }
+      _strokeDebounceTimers.clear();
+      for (final sub in _strokeSubscriptions.values) {
+        sub.cancel();
+      }
+      _strokeSubscriptions.clear();
+    });
     return const StrokesState();
   }
 
   StrokeRepository get _repo => ref.read(strokeRepositoryProvider);
 
+  Future<String?> _resolveNotebookId(String pageId) async {
+    final allPagesMap = ref.read(notebookPagesProvider);
+    for (final entry in allPagesMap.entries) {
+      if (entry.value.any((p) => p.id == pageId)) {
+        return entry.key;
+      }
+    }
+    try {
+      final page = await ref.read(pageRepositoryProvider).getPageById(pageId);
+      return page?.notebookId;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Loads strokes from local SQLite persistence for the specified page.
+  /// Also synchronizes with Cloud Firestore and attaches a real-time listener.
   Future<void> loadStrokesForPage(String pageId) async {
     final strokes = await _repo.getStrokesForPage(pageId);
     final updatedMap = Map<String, List<Stroke>>.from(state.pageStrokes);
     updatedMap[pageId] = strokes;
 
     state = state.copyWith(pageStrokes: updatedMap);
+
+    // Cloud stroke hydration and real-time listening
+    final uid = ref.read(authProvider).user?.id;
+    if (uid != null && uid != 'local_user') {
+      final notebookId = await _resolveNotebookId(pageId);
+      if (notebookId != null) {
+        try {
+          final fbSync = ref.read(firebaseSyncServiceProvider);
+          final remoteStrokes =
+              await fbSync.fetchStrokes(uid, notebookId, pageId);
+          if (remoteStrokes.isNotEmpty) {
+            await _repo.saveStrokes(remoteStrokes);
+            final merged = await _repo.getStrokesForPage(pageId);
+            final newMap = Map<String, List<Stroke>>.from(state.pageStrokes);
+            newMap[pageId] = merged;
+            state = state.copyWith(pageStrokes: newMap);
+          }
+
+          // Attach real-time stroke subscription
+          _strokeSubscriptions[pageId]?.cancel();
+          final sub = fbSync.listenToStrokes(uid, notebookId, pageId,
+              (incoming) async {
+            if (incoming.isNotEmpty && ref.mounted) {
+              await _repo.saveStrokes(incoming);
+              final activeStrokes =
+                  incoming.where((s) => s.deletedAt == null).toList();
+              final currentStrokes = state.pageStrokes[pageId] ?? [];
+              final Map<String, Stroke> byId = {
+                for (final s in currentStrokes) s.id: s,
+                for (final s in activeStrokes) s.id: s,
+              };
+              final mergedList = byId.values.toList()
+                ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+              final m = Map<String, List<Stroke>>.from(state.pageStrokes);
+              m[pageId] = mergedList;
+              state = state.copyWith(pageStrokes: m);
+            }
+          });
+          if (sub != null) {
+            _strokeSubscriptions[pageId] = sub;
+          }
+        } catch (e) {
+          debugPrint('[StrokeNotifier] Cloud strokes load/sync error: $e');
+        }
+      }
+    }
+  }
+
+  void _scheduleCloudStrokePush(String pageId, Stroke stroke) {
+    _pendingCloudStrokes.putIfAbsent(pageId, () => []).add(stroke);
+    _strokeDebounceTimers[pageId]?.cancel();
+    _strokeDebounceTimers[pageId] =
+        Timer(const Duration(milliseconds: 1200), () {
+      flushPendingStrokes(pageId: pageId);
+    });
+  }
+
+  /// Explicitly flushes pending strokes to Firestore.
+  Future<void> flushPendingStrokes({String? pageId}) async {
+    final targets =
+        pageId != null ? [pageId] : _pendingCloudStrokes.keys.toList();
+    for (final pid in targets) {
+      _strokeDebounceTimers[pid]?.cancel();
+      _strokeDebounceTimers.remove(pid);
+      final strokesToPush = _pendingCloudStrokes.remove(pid);
+      if (strokesToPush == null || strokesToPush.isEmpty) continue;
+
+      final uid = ref.read(authProvider).user?.id;
+      if (uid != null && uid != 'local_user') {
+        final notebookId = await _resolveNotebookId(pid);
+        if (notebookId != null) {
+          try {
+            await ref.read(firebaseSyncServiceProvider).pushStrokes(
+                  uid,
+                  notebookId,
+                  pid,
+                  strokesToPush,
+                );
+          } catch (e) {
+            debugPrint('[StrokeNotifier] flushPendingStrokes error: $e');
+          }
+        }
+      }
+    }
   }
 
   /// Adds a newly completed stroke to the page and database.
@@ -644,6 +762,7 @@ class StrokesNotifier extends Notifier<StrokesState> {
     );
 
     await _repo.saveStroke(stroke);
+    _scheduleCloudStrokePush(pageId, stroke);
 
     // Schedule debounced Google Drive cloud backup for handwriting strokes
     try {

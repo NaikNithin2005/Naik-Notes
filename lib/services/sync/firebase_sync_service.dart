@@ -188,6 +188,10 @@ class FirebaseSyncService {
         'coverId': notebook.coverId,
         'coverColorHex': notebook.coverColorHex,
         'coverImageUrl': notebook.coverImageUrl,
+        'coverDriveId': notebook.coverDriveId,
+        'coverFileName': notebook.coverFileName,
+        'coverUpdatedAt': notebook.coverUpdatedAt?.toIso8601String(),
+        'coverImageBase64': notebook.coverImageBase64,
         'paperTemplateId': notebook.paperTemplateId,
         'orientation': notebook.orientation,
         'pageSize': notebook.pageSize,
@@ -286,6 +290,10 @@ class FirebaseSyncService {
             'coverId': nb.coverId,
             'coverColorHex': nb.coverColorHex,
             'coverImageUrl': nb.coverImageUrl,
+            'coverDriveId': nb.coverDriveId,
+            'coverFileName': nb.coverFileName,
+            'coverUpdatedAt': nb.coverUpdatedAt?.toIso8601String(),
+            'coverImageBase64': nb.coverImageBase64,
             'paperTemplateId': nb.paperTemplateId,
             'orientation': nb.orientation,
             'pageSize': nb.pageSize,
@@ -611,6 +619,59 @@ class FirebaseSyncService {
     }
   }
 
+  /// Listens to real-time pages under `/users/{uid}/notebooks/{notebookId}/pages`.
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? listenToPages(
+    String uid,
+    String notebookId,
+    void Function(List<NotebookPage> pages) onUpdate,
+  ) {
+    final ref = _userPagesRef(uid, notebookId);
+    if (ref == null) return null;
+    try {
+      return ref.orderBy('pageNumber').snapshots(includeMetadataChanges: true).listen(
+        (snapshot) {
+          final list = <NotebookPage>[];
+          for (final doc in snapshot.docs) {
+            final d = doc.data();
+            final templateId = d['templateId'] as String? ?? 'college_ruled';
+            final propsMap = d['properties'] as Map<String, dynamic>?;
+
+            list.add(
+              NotebookPage(
+                id: doc.id,
+                notebookId: notebookId,
+                sectionId: d['sectionId'] as String?,
+                pageNumber: d['pageNumber'] as int? ?? 1,
+                templateId: templateId,
+                properties: propsMap != null
+                    ? PaperProperties.fromJson(propsMap)
+                    : PaperProperties.defaultFor(
+                        PaperTemplateType.fromId(templateId),
+                      ),
+                width: (d['width'] as num?)?.toDouble() ?? 595.28,
+                height: (d['height'] as num?)?.toDouble() ?? 841.89,
+                isBookmarked: d['isBookmarked'] as bool? ?? false,
+                pdfPageIndex: d['pdfPageIndex'] as int?,
+                revision: d['revision'] as int? ?? 1,
+                createdAt: d['createdAt'] != null
+                    ? DateTime.tryParse(d['createdAt'] as String) ?? DateTime.now()
+                    : DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+          }
+          onUpdate(list);
+        },
+        onError: (err) {
+          debugPrint('[FirebaseSyncService] listenToPages error: $err');
+        },
+      );
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] listenToPages init error: $e');
+      return null;
+    }
+  }
+
   // --- STROKES ---
 
   /// Pushes a batch of handwriting strokes to Firestore
@@ -713,6 +774,70 @@ class FirebaseSyncService {
     } catch (e) {
       debugPrint('Firestore fetchStrokes note: $e');
       return [];
+    }
+  }
+
+  /// Listens to real-time strokes under `/users/{uid}/notebooks/{notebookId}/pages/{pageId}/strokes`.
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? listenToStrokes(
+    String uid,
+    String notebookId,
+    String pageId,
+    void Function(List<Stroke> strokes) onUpdate,
+  ) {
+    final strokesRef = _userStrokesRef(uid, notebookId, pageId);
+    if (strokesRef == null) return null;
+    try {
+      return strokesRef.snapshots(includeMetadataChanges: true).listen(
+        (snapshot) {
+          final list = <Stroke>[];
+          for (final doc in snapshot.docs) {
+            final d = doc.data();
+            final ptsRaw = d['points'] as List<dynamic>? ?? [];
+            final points = ptsRaw.map((p) {
+              final m = p as Map<String, dynamic>;
+              return StrokePoint(
+                x: (m['x'] as num).toDouble(),
+                y: (m['y'] as num).toDouble(),
+                pressure: (m['pressure'] as num?)?.toDouble() ?? 0.5,
+                tilt: (m['tilt'] as num?)?.toDouble() ?? 0.0,
+                timestamp: m['timestamp'] as int? ?? 0,
+              );
+            }).toList();
+
+            final toolName = d['tool'] as String? ?? 'ballpointPen';
+            final tool = ToolType.values.firstWhere(
+              (t) => t.name == toolName,
+              orElse: () => ToolType.ballpointPen,
+            );
+
+            list.add(
+              Stroke(
+                id: doc.id,
+                pageId: pageId,
+                tool: tool,
+                colorValue: d['colorValue'] as int? ?? 0xFF000000,
+                width: (d['width'] as num?)?.toDouble() ?? 2.0,
+                opacity: (d['opacity'] as num?)?.toDouble() ?? 1.0,
+                points: points,
+                revision: d['revision'] as int? ?? 1,
+                createdAt: d['createdAt'] != null
+                    ? DateTime.tryParse(d['createdAt'] as String) ?? DateTime.now()
+                    : DateTime.now(),
+                deletedAt: d['deletedAt'] != null
+                    ? DateTime.tryParse(d['deletedAt'] as String)
+                    : null,
+              ),
+            );
+          }
+          onUpdate(list);
+        },
+        onError: (err) {
+          debugPrint('[FirebaseSyncService] listenToStrokes error: $err');
+        },
+      );
+    } catch (e) {
+      debugPrint('[FirebaseSyncService] listenToStrokes init error: $e');
+      return null;
     }
   }
 
@@ -1119,6 +1244,10 @@ class FirebaseSyncService {
       coverId: d['coverId'] as String? ?? 'classic_leather',
       coverColorHex: d['coverColorHex'] as String? ?? '#8B4513',
       coverImageUrl: d['coverImageUrl'] as String?,
+      coverDriveId: d['coverDriveId'] as String?,
+      coverFileName: d['coverFileName'] as String?,
+      coverUpdatedAt: parseDate(d['coverUpdatedAt']),
+      coverImageBase64: d['coverImageBase64'] as String?,
       paperTemplateId: d['paperTemplateId'] as String? ?? 'college_ruled',
       orientation: d['orientation'] as String? ?? 'portrait',
       pageSize: d['pageSize'] as String? ?? 'A4',

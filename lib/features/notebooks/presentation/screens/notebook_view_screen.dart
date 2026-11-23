@@ -59,10 +59,12 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
   bool _hasAutoFitted = false;
   double _lastAvailableWidth = 0.0;
   double _lastAvailableHeight = 0.0;
+  StrokesNotifier? _strokesNotifier;
 
   @override
   void initState() {
     super.initState();
+    _strokesNotifier = ref.read(strokesNotifierProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(currentPageIndexProvider.notifier).setPage(1);
       _loadNotebookData();
@@ -122,6 +124,7 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
 
   @override
   void dispose() {
+    _strokesNotifier?.flushPendingStrokes();
     _transformationController.dispose();
     _continuousScrollController.dispose();
     super.dispose();
@@ -652,9 +655,12 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          context.go(RouteNames.dashboard);
+          await _strokesNotifier?.flushPendingStrokes();
+          if (context.mounted) {
+            context.go(RouteNames.dashboard);
+          }
         }
       },
       child: Scaffold(
@@ -666,7 +672,14 @@ class _NotebookViewScreenState extends ConsumerState<NotebookViewScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             tooltip: 'Return to Library',
-            onPressed: () => context.go(RouteNames.dashboard),
+            onPressed: () async {
+              await ref
+                  .read(strokesNotifierProvider.notifier)
+                  .flushPendingStrokes();
+              if (context.mounted) {
+                context.go(RouteNames.dashboard);
+              }
+            },
           ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

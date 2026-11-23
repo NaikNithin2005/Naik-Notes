@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/widgets/notebook_cover_image.dart';
 import '../../../../data/models/notebook_model.dart';
 
 /// Realistic stationery notebook card widget with context actions.
@@ -106,31 +105,18 @@ class NotebookCard extends StatelessWidget {
                   child: Stack(
                     children: [
                       // Custom Uploaded Cover Image Background
-                      if (notebook.coverImageUrl != null &&
-                          notebook.coverImageUrl!.isNotEmpty)
-                        Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(8),
-                              bottomLeft: Radius.circular(8),
-                              topRight: Radius.circular(16),
-                              bottomRight: Radius.circular(16),
-                            ),
-                            child: notebook.coverImageUrl!.startsWith('http')
-                                ? Image.network(
-                                    notebook.coverImageUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) =>
-                                        const SizedBox.shrink(),
-                                  )
-                                : Image.file(
-                                    File(notebook.coverImageUrl!),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) =>
-                                        const SizedBox.shrink(),
-                                  ),
+                      Positioned.fill(
+                        child: NotebookCoverImage(
+                          notebook: notebook,
+                          fit: BoxFit.cover,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(8),
+                            bottomLeft: Radius.circular(8),
+                            topRight: Radius.circular(16),
+                            bottomRight: Radius.circular(16),
                           ),
                         ),
+                      ),
 
                       // Book Spine Shadow on Left
                       Positioned(

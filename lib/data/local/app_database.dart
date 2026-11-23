@@ -30,6 +30,10 @@ class NotebooksTable extends Table {
   TextColumn get coverColorHex =>
       text().withDefault(const Constant('#8B4513'))();
   TextColumn get coverImageUrl => text().nullable()();
+  TextColumn get coverDriveId => text().nullable()();
+  TextColumn get coverFileName => text().nullable()();
+  DateTimeColumn get coverUpdatedAt => dateTime().nullable()();
+  TextColumn get coverImageBase64 => text().nullable()();
   TextColumn get paperTemplateId =>
       text().withDefault(const Constant('college_ruled'))();
   TextColumn get orientation =>
@@ -382,7 +386,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -416,6 +420,14 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(notesTable, notesTable.serverVersion);
         await m.addColumn(notesTable, notesTable.deviceId);
         await m.addColumn(notesTable, notesTable.lastModifiedBy);
+      }
+      if (from < 16) {
+        await m.addColumn(notebooksTable, notebooksTable.coverDriveId);
+        await m.addColumn(notebooksTable, notebooksTable.coverFileName);
+        await m.addColumn(notebooksTable, notebooksTable.coverUpdatedAt);
+      }
+      if (from < 17) {
+        await m.addColumn(notebooksTable, notebooksTable.coverImageBase64);
       }
     },
   );

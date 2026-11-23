@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -15,9 +17,17 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
   final _uuid = const Uuid();
   PageRepository get _repository => ref.read(pageRepositoryProvider);
 
+  final Map<String, StreamSubscription> _pageSubscriptions = {};
+
   @override
   Map<String, List<NotebookPage>> build() {
     ref.watch(pageRepositoryProvider);
+    ref.onDispose(() {
+      for (final sub in _pageSubscriptions.values) {
+        sub.cancel();
+      }
+      _pageSubscriptions.clear();
+    });
     return {};
   }
 
@@ -32,6 +42,37 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
     String orientation = 'portrait',
     int count = 1,
   }) async {
+    final currentUserId = ref.read(authProvider).user?.id;
+
+    // 1. Prioritize pulling existing cloud pages before falling back to local creation
+    if (currentUserId != null && currentUserId != 'local_user') {
+      try {
+        final fbSync = ref.read(firebaseSyncServiceProvider);
+        final remotePages = await fbSync.fetchPages(currentUserId, notebookId);
+        if (remotePages.isNotEmpty) {
+          for (final rp in remotePages) {
+            await _repository.savePage(rp);
+          }
+        }
+
+        // Attach real-time listener for notebook pages across devices
+        _pageSubscriptions[notebookId]?.cancel();
+        final sub = fbSync.listenToPages(currentUserId, notebookId, (incomingPages) async {
+          if (incomingPages.isNotEmpty && ref.mounted) {
+            for (final ip in incomingPages) {
+              await _repository.savePage(ip);
+            }
+            state = {...state, notebookId: incomingPages};
+          }
+        });
+        if (sub != null) {
+          _pageSubscriptions[notebookId] = sub;
+        }
+      } catch (e) {
+        debugPrint('[NotebookPagesNotifier] fetchPages error: $e');
+      }
+    }
+
     final pages = await _repository.ensurePagesExist(
       notebookId,
       templateId: templateId,
@@ -41,6 +82,17 @@ class NotebookPagesNotifier extends Notifier<Map<String, List<NotebookPage>>> {
     );
     if (pages.isNotEmpty) {
       state = {...state, notebookId: pages};
+    }
+
+    // If new pages were generated locally, push them to Firestore
+    if (currentUserId != null && currentUserId != 'local_user') {
+      for (final p in pages) {
+        try {
+          await ref
+              .read(firebaseSyncServiceProvider)
+              .pushPage(currentUserId, notebookId, p);
+        } catch (_) {}
+      }
     }
   }
 

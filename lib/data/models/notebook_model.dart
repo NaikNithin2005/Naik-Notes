@@ -8,6 +8,10 @@ class Notebook {
   final String coverId;
   final String coverColorHex;
   final String? coverImageUrl;
+  final String? coverDriveId;
+  final String? coverFileName;
+  final DateTime? coverUpdatedAt;
+  final String? coverImageBase64;
   final String paperTemplateId;
   final String orientation; // 'portrait' | 'landscape'
   final String pageSize; // 'A4' | 'Letter' | 'Custom'
@@ -35,6 +39,10 @@ class Notebook {
     required this.coverId,
     this.coverColorHex = '#8B4513',
     this.coverImageUrl,
+    this.coverDriveId,
+    this.coverFileName,
+    this.coverUpdatedAt,
+    this.coverImageBase64,
     this.paperTemplateId = 'college_ruled',
     this.orientation = 'portrait',
     this.pageSize = 'A4',
@@ -61,6 +69,10 @@ class Notebook {
     String? coverId,
     String? coverColorHex,
     String? coverImageUrl,
+    String? coverDriveId,
+    String? coverFileName,
+    DateTime? coverUpdatedAt,
+    String? coverImageBase64,
     String? paperTemplateId,
     String? orientation,
     String? pageSize,
@@ -78,6 +90,8 @@ class Notebook {
     DateTime? lastSyncedAt,
     bool clearFolderId = false,
     bool clearCoverImageUrl = false,
+    bool clearCoverDriveId = false,
+    bool clearCoverImageBase64 = false,
     bool clearDeletedAt = false,
     bool clearDeletionId = false,
   }) {
@@ -92,6 +106,18 @@ class Notebook {
       coverImageUrl: clearCoverImageUrl
           ? null
           : (coverImageUrl ?? this.coverImageUrl),
+      coverDriveId: clearCoverDriveId
+          ? null
+          : (coverDriveId ?? this.coverDriveId),
+      coverFileName: clearCoverDriveId
+          ? null
+          : (coverFileName ?? this.coverFileName),
+      coverUpdatedAt: clearCoverDriveId
+          ? null
+          : (coverUpdatedAt ?? this.coverUpdatedAt),
+      coverImageBase64: clearCoverImageBase64
+          ? null
+          : (coverImageBase64 ?? this.coverImageBase64),
       paperTemplateId: paperTemplateId ?? this.paperTemplateId,
       orientation: orientation ?? this.orientation,
       pageSize: pageSize ?? this.pageSize,
@@ -120,6 +146,10 @@ class Notebook {
       'coverId': coverId,
       'coverColorHex': coverColorHex,
       'coverImageUrl': coverImageUrl,
+      'coverDriveId': coverDriveId,
+      'coverFileName': coverFileName,
+      'coverUpdatedAt': coverUpdatedAt?.toIso8601String(),
+      'coverImageBase64': coverImageBase64,
       'paperTemplateId': paperTemplateId,
       'orientation': orientation,
       'pageSize': pageSize,
@@ -148,6 +178,12 @@ class Notebook {
       coverId: json['coverId'] as String? ?? 'classic_leather',
       coverColorHex: json['coverColorHex'] as String? ?? '#8B4513',
       coverImageUrl: json['coverImageUrl'] as String?,
+      coverDriveId: json['coverDriveId'] as String?,
+      coverFileName: json['coverFileName'] as String?,
+      coverUpdatedAt: json['coverUpdatedAt'] != null
+          ? DateTime.tryParse(json['coverUpdatedAt'] as String)
+          : null,
+      coverImageBase64: json['coverImageBase64'] as String?,
       paperTemplateId: json['paperTemplateId'] as String? ?? 'college_ruled',
       orientation: json['orientation'] as String? ?? 'portrait',
       pageSize: json['pageSize'] as String? ?? 'A4',

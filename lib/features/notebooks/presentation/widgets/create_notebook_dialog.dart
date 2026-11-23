@@ -10,8 +10,8 @@ import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/features/authentication/data/auth_provider.dart';
 import 'package:naik_notes/features/folders/data/folder_provider.dart';
 import 'package:naik_notes/features/notebooks/data/notebook_provider.dart';
-import 'package:naik_notes/features/sync/data/sync_provider.dart';
 import 'package:naik_notes/features/templates/presentation/widgets/paper_template_view.dart';
+import 'package:naik_notes/services/storage/cover_image_service.dart';
 
 /// Modal dialog for creating a new notebook with custom cover image upload
 /// and visual page template selection with live previews.
@@ -111,20 +111,34 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
     setState(() => _isUploadingCover = true);
 
     String? coverImageUrl;
+    String? coverDriveId;
+    String? coverFileName;
+    DateTime? coverUpdatedAt;
+    String? coverImageBase64;
 
-    // Upload to Firebase Storage if custom image is selected
+    // Compress to Base64 for instant Firestore sync & upload to Google Drive if custom image is selected
     if (_customCoverBytes != null) {
+      try {
+        coverImageBase64 = await CoverImageService.encodeCoverImageToBase64(_customCoverBytes!);
+      } catch (e) {
+        debugPrint('[CreateNotebookDialog] Cover base64 compression notice: $e');
+      }
+
       final auth = ref.read(authProvider);
       final uid = auth.user?.id ?? 'local_user';
       try {
-        final storage = ref.read(firebaseStorageServiceProvider);
-        coverImageUrl = await storage.uploadNotebookCover(
+        final coverService = ref.read(coverImageServiceProvider);
+        final result = await coverService.uploadCoverImage(
           uid: uid,
           notebookId: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-          imageBytes: _customCoverBytes!,
+          rawBytes: _customCoverBytes!,
         );
+        coverDriveId = result.driveFileId;
+        coverFileName = result.fileName;
+        coverUpdatedAt = result.updatedAt;
+        coverImageUrl = result.localPath;
       } catch (e) {
-        // Fallback to local path if storage is offline
+        // Fallback to local path if Drive storage is offline
         coverImageUrl = _customCoverPath;
       }
     } else if (_customCoverPath != null) {
@@ -141,6 +155,10 @@ class _CreateNotebookDialogState extends ConsumerState<CreateNotebookDialog> {
             coverId: _selectedCoverId,
             coverColorHex: _selectedCoverColor,
             coverImageUrl: coverImageUrl,
+            coverDriveId: coverDriveId,
+            coverFileName: coverFileName,
+            coverUpdatedAt: coverUpdatedAt,
+            coverImageBase64: coverImageBase64,
             paperTemplateId: _selectedTemplate.id,
             orientation: _selectedOrientation,
             pageSize: _selectedPageSize,

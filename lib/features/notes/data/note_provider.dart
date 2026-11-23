@@ -107,6 +107,13 @@ class NotesNotifier extends Notifier<List<Note>> {
     await _repo.saveNote(newNote);
     state = [newNote, ...state];
 
+    // Push new note to Firestore immediately if authenticated
+    if (uid != 'local_user') {
+      try {
+        await ref.read(firebaseSyncServiceProvider).pushNote(uid, newNote);
+      } catch (_) {}
+    }
+
     // Select the newly created note
     ref.read(selectedNoteProvider.notifier).selectNote(newNote);
     return newNote;

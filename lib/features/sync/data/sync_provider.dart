@@ -18,6 +18,7 @@ import '../../../services/sync/firebase_sync_service.dart';
 import '../../../services/sync/sync_service.dart';
 import '../../authentication/data/auth_provider.dart';
 import '../../notebooks/data/notebook_provider.dart';
+import '../../notes/data/note_provider.dart';
 
 enum SyncUiStatus { synced, saving, syncing, offline, error, pending, conflict }
 
@@ -222,6 +223,101 @@ class SyncNotifier extends Notifier<SyncState> {
         }
       } catch (e) {
         debugPrint('[SyncNotifier] Real-time merge error: $e');
+      }
+    });
+
+    // 2. Real-time note content synchronization across devices
+    fbSync.listenToNotes(uid, (remoteNotes, hasPendingWrites) async {
+      if (!ref.mounted) return;
+      try {
+        final noteRepo = ref.read(noteRepositoryProvider);
+        final notebookRepo = ref.read(notebookRepositoryProvider);
+        bool hasChanges = false;
+
+        for (final rNote in remoteNotes) {
+          if (await notebookRepo.isTombstoned(rNote.id)) {
+            await fbSync.permanentlyDeleteNote(uid, rNote.id);
+            continue;
+          }
+          final localNote = await noteRepo.getNoteById(rNote.id, ownerId: uid);
+          if (rNote.deletedAt != null || rNote.isDeleted) {
+            if (localNote != null && !localNote.isDeleted) {
+              await noteRepo.deleteNote(rNote.id, deletionId: rNote.deletionId);
+              hasChanges = true;
+            }
+          } else {
+            if (localNote != null && localNote.isDeleted) {
+              if (rNote.updatedAt.isAfter(localNote.deletedAt ?? localNote.updatedAt)) {
+                await noteRepo.restoreNote(rNote.id);
+                hasChanges = true;
+              }
+            } else if (localNote == null) {
+              await noteRepo.saveNote(rNote);
+              hasChanges = true;
+            } else {
+              final isLocalModified = localNote.syncStatus == 'pending';
+              final isRemoteNewer = rNote.serverVersion > localNote.serverVersion ||
+                  (rNote.serverVersion == localNote.serverVersion &&
+                      rNote.updatedAt.isAfter(localNote.updatedAt));
+              final hasContentDiverged =
+                  localNote.contentDelta != rNote.contentDelta ||
+                  localNote.title != rNote.title;
+
+              if (isLocalModified && isRemoteNewer && hasContentDiverged) {
+                final platform = NoteHistoryService.currentDeviceName.split(' ').first;
+                final conflictTitle = '${localNote.title} (Conflict Copy - $platform)';
+                final existingInNotebook = await noteRepo.getAllNotes(
+                  ownerId: uid,
+                  notebookId: localNote.notebookId,
+                );
+                final alreadyExists = existingInNotebook.any(
+                  (n) => n.title == conflictTitle && n.contentDelta == localNote.contentDelta,
+                );
+                if (!alreadyExists) {
+                  final conflictNote = localNote.copyWith(
+                    id: const Uuid().v4(),
+                    title: conflictTitle,
+                    localVersion: 1,
+                    serverVersion: 1,
+                    syncStatus: 'pending',
+                    updatedAt: DateTime.now(),
+                  );
+                  await noteRepo.saveNote(conflictNote);
+                  await fbSync.pushNote(uid, conflictNote);
+                }
+                await noteRepo.saveNote(rNote.copyWith(
+                  syncStatus: 'synced',
+                  localVersion: rNote.serverVersion,
+                ));
+                hasChanges = true;
+              } else if (isRemoteNewer) {
+                await noteRepo.saveNote(rNote.copyWith(
+                  syncStatus: 'synced',
+                  localVersion: rNote.serverVersion,
+                ));
+                hasChanges = true;
+              }
+            }
+          }
+        }
+
+        if (hasChanges && ref.mounted) {
+          final selectedNote = ref.read(selectedNoteProvider);
+          if (selectedNote != null) {
+            final updatedSelected = await noteRepo.getNoteById(selectedNote.id, ownerId: uid);
+            if (updatedSelected != null && updatedSelected.updatedAt.isAfter(selectedNote.updatedAt)) {
+              ref.read(selectedNoteProvider.notifier).selectNote(updatedSelected);
+            }
+          }
+          await ref.read(notesProvider.notifier).loadNotes(uid);
+          state = state.copyWith(
+            lastSyncedAt: DateTime.now(),
+            status: SyncUiStatus.synced,
+            clearError: true,
+          );
+        }
+      } catch (e) {
+        debugPrint('[SyncNotifier] Real-time notes merge error: $e');
       }
     });
   }

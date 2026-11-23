@@ -96,9 +96,36 @@ class _NoteEditorViewState extends ConsumerState<NoteEditorView> {
       _docSub = null;
       _controller.dispose();
       _initQuillController(widget.note.contentDelta);
-    } else if (oldWidget.note.title != widget.note.title &&
-        _titleController.text != widget.note.title) {
-      _titleController.text = widget.note.title;
+    } else {
+      if (oldWidget.note.title != widget.note.title &&
+          _titleController.text != widget.note.title) {
+        _titleController.removeListener(_onTitleChanged);
+        _titleController.text = widget.note.title;
+        _titleController.addListener(_onTitleChanged);
+      }
+
+      // Safe hydration when remote note was updated on another device
+      final autoSaveState = ref.read(noteAutoSaveCoordinatorProvider);
+      final isLocalDirty =
+          autoSaveState.isDirty && autoSaveState.activeNoteId == widget.note.id;
+      if (!isLocalDirty &&
+          oldWidget.note.contentDelta != widget.note.contentDelta &&
+          widget.note.updatedAt.isAfter(oldWidget.note.updatedAt)) {
+        _docSub?.cancel();
+        Document doc;
+        try {
+          final decoded = jsonDecode(widget.note.contentDelta);
+          doc = Document.fromJson(decoded);
+        } catch (_) {
+          doc = Document()..insert(0, '\n');
+        }
+        _controller.document = doc;
+        _docSub = _controller.document.changes.listen((_) {
+          if (!_isDisposed) {
+            _onContentChanged();
+          }
+        });
+      }
     }
   }
 

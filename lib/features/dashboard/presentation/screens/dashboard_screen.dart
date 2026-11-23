@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +14,6 @@ import 'package:naik_notes/features/notebooks/presentation/widgets/create_notebo
 import 'package:naik_notes/features/notebooks/presentation/widgets/move_to_folder_dialog.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/rename_notebook_dialog.dart';
 import 'package:naik_notes/features/search/data/search_provider.dart';
-import 'package:naik_notes/features/sync/data/sync_provider.dart';
 import 'package:naik_notes/features/template_store/presentation/widgets/template_store_sheet.dart';
 import 'package:naik_notes/core/theme/theme_controller.dart';
 import 'package:naik_notes/core/widgets/naik_empty_state.dart';
@@ -26,6 +23,8 @@ import 'package:naik_notes/data/models/page_model.dart';
 import 'package:naik_notes/data/models/paper_template_model.dart';
 import 'package:naik_notes/features/notebooks/presentation/widgets/export_notebook_dialog.dart';
 import 'package:naik_notes/services/pdf/pdf_service.dart';
+import 'package:naik_notes/services/storage/cover_image_service.dart';
+import 'package:naik_notes/core/widgets/notebook_cover_image.dart';
 
 import 'package:flutter/services.dart';
 import 'package:naik_notes/features/history/presentation/widgets/notes_history_sheet.dart';
@@ -166,6 +165,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     WidgetRef ref,
     Notebook nb,
   ) async {
+    final hasCustomCover = (nb.coverImageBase64 != null && nb.coverImageBase64!.isNotEmpty) ||
+        (nb.coverDriveId != null && nb.coverDriveId!.isNotEmpty) ||
+        (nb.coverImageUrl != null && nb.coverImageUrl!.isNotEmpty);
+
+    if (hasCustomCover) {
+      final action = await showModalBottomSheet<String>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.image_outlined),
+                title: const Text('Choose New Cover Image'),
+                onTap: () => Navigator.of(ctx).pop('pick'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Remove Custom Cover (Restore Default)',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () => Navigator.of(ctx).pop('remove'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (action == 'remove') {
+        try {
+          await ref.read(notebooksProvider.notifier).updateCover(
+                nb.id,
+                clearCoverImageBase64: true,
+                clearCoverDriveId: true,
+                clearCoverImageUrl: true,
+              );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Restored default cover for "${nb.title}"'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to remove cover: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+        return;
+      } else if (action != 'pick') {
+        return;
+      }
+    }
+
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -190,7 +250,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 ),
                 SizedBox(width: 12),
-                Text('Uploading custom cover to cloud storage...'),
+                Text('Compressing and updating cover...'),
               ],
             ),
             duration: Duration(seconds: 4),
@@ -198,21 +258,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         );
       }
 
-      final authState = ref.read(authProvider);
-      final uid = authState.user?.id ?? 'guest';
-      final storageService = ref.read(firebaseStorageServiceProvider);
+      // Fast-path: Compress to Base64 in isolate (~20-40 KB) for instantaneous cross-platform Firestore sync
+      final base64String = await CoverImageService.encodeCoverImageToBase64(bytes);
 
-      final extension = file.extension ?? 'jpg';
-      final downloadUrl = await storageService.uploadNotebookCover(
-        uid: uid,
-        notebookId: nb.id,
-        imageBytes: bytes,
-        extension: extension,
-      );
+      // Best-effort Drive upload in background
+      String? driveFileId;
+      String? fileName;
+      DateTime? driveUpdatedAt;
+      String? localPath;
+      try {
+        final authState = ref.read(authProvider);
+        final uid = authState.user?.id ?? 'guest';
+        final coverService = ref.read(coverImageServiceProvider);
+        final extension = file.extension ?? 'jpg';
+        final uploadResult = await coverService.uploadCoverImage(
+          uid: uid,
+          notebookId: nb.id,
+          rawBytes: bytes,
+          extension: extension,
+          previousDriveFileId: nb.coverDriveId,
+        );
+        driveFileId = uploadResult.driveFileId;
+        fileName = uploadResult.fileName;
+        driveUpdatedAt = uploadResult.updatedAt;
+        localPath = uploadResult.localPath;
+      } catch (driveErr) {
+        debugPrint('[DashboardScreen] Drive backup notice: $driveErr');
+      }
 
-      await ref
-          .read(notebooksProvider.notifier)
-          .updateCover(nb.id, coverImageUrl: downloadUrl);
+      await ref.read(notebooksProvider.notifier).updateCover(
+            nb.id,
+            coverImageBase64: base64String,
+            coverDriveId: driveFileId,
+            coverFileName: fileName,
+            coverUpdatedAt: driveUpdatedAt,
+            coverImageUrl: localPath,
+          );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1354,26 +1435,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             decoration: BoxDecoration(
                               color: _parseColor(nb.coverColorHex),
                               borderRadius: BorderRadius.circular(6),
-                              image: nb.coverImageUrl != null &&
-                                      nb.coverImageUrl!.isNotEmpty
-                                  ? DecorationImage(
-                                      image: (nb.coverImageUrl!.startsWith('http')
-                                          ? NetworkImage(nb.coverImageUrl!)
-                                          : FileImage(
-                                              File(nb.coverImageUrl!),
-                                            )) as ImageProvider,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
                             ),
-                            child: nb.coverImageUrl != null &&
-                                    nb.coverImageUrl!.isNotEmpty
-                                ? null
-                                : const Icon(
-                                    Icons.book,
-                                    color: Colors.white,
-                                    size: 20,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: NotebookCoverImage(
+                                      notebook: nb,
+                                      fit: BoxFit.cover,
+                                      fallback: const Center(
+                                        child: Icon(
+                                          Icons.book,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
                                   ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
